@@ -32,7 +32,7 @@ function useHealth() {
 
 const FEATURES = [
   { id: 'F-0', label: 'Scaffold & Infrastructure', done: true },
-  { id: 'F-1', label: 'Authentication & Profiles', done: false },
+  { id: 'F-1', label: 'Authentication & Profiles', done: true },
   { id: 'F-2', label: 'Event Feed & Management', done: false },
   { id: 'F-3', label: 'Paste-to-Post AI Extraction', done: false },
   { id: 'F-4', label: 'Team Finder — Posts & Requests', done: false },
