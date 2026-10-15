@@ -1,0 +1,154 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base resets ─────────────────────────────────────────────────────────────── */
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    overscroll-behavior: none;
+  }
+
+  body {
+    @apply bg-background text-on-surface font-sans text-body-md antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Hide scrollbars — keep scroll functionality (mobile-first PWA) */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  /* Focus rings — keyboard-accessible, matching primary color */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+}
+
+/* ── Component classes ────────────────────────────────────────────────────────── */
+@layer components {
+  /* ── Card ─────────────────────────────────────────────────────────────────── */
+  .card {
+    @apply bg-surface-container-lowest rounded-xl border border-outline-variant shadow-level-1;
+  }
+
+  .card-hover {
+    @apply card cursor-pointer transition-all duration-150
+           hover:shadow-level-2 hover:border-outline active:scale-[0.99];
+  }
+
+  /* ── Bottom navigation bar ───────────────────────────────────────────────── */
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 h-16
+           bg-white/95 backdrop-blur-md
+           border-t border-outline-variant shadow-level-3;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* ── Input fields ────────────────────────────────────────────────────────── */
+  .input-base {
+    @apply w-full h-12 px-4
+           bg-surface-container-lowest text-on-surface text-body-md
+           rounded-lg border border-outline-variant
+           placeholder:text-on-surface-variant placeholder:text-body-md
+           focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15
+           transition-all duration-150;
+  }
+
+  /* ── Pill chips (event tags, filter chips) ───────────────────────────────── */
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+           font-sans font-semibold select-none;
+  }
+
+  /* ── Buttons ─────────────────────────────────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2
+           font-sans font-semibold rounded-lg
+           transition-all duration-150 select-none cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
+    min-height: 44px;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-on-primary px-5 h-11 text-label-lg
+           hover:opacity-90 active:scale-[0.98] shadow-sm;
+  }
+
+  .btn-secondary {
+    @apply btn bg-surface-container-lowest text-on-surface px-5 h-11 text-label-lg
+           border border-outline-variant
+           hover:bg-surface-container-low active:scale-[0.98];
+  }
+
+  .btn-accent {
+    @apply btn bg-secondary-container text-on-secondary-container px-5 h-11 text-label-lg
+           hover:opacity-90 active:scale-[0.98];
+  }
+
+  .btn-destructive {
+    @apply btn bg-error-container text-on-error-container px-5 h-11 text-label-lg
+           border border-red-200 hover:bg-red-100 active:scale-[0.98];
+  }
+
+  /* ── Verified seal (used on credential cards) ────────────────────────────── */
+  .verified-seal {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+           bg-emerald-50 text-emerald-700 text-label-sm font-semibold;
+  }
+
+  /* ── Deadline badge (JetBrains Mono countdown) ───────────────────────────── */
+  .deadline-badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full
+           bg-amber-50 text-amber-700 font-mono text-code-sm;
+  }
+
+  /* ── Page shell ──────────────────────────────────────────────────────────── */
+  .page-shell {
+    @apply min-h-screen bg-background pb-20 pt-safe;
+  }
+
+  /* ── Section header ──────────────────────────────────────────────────────── */
+  .section-header {
+    @apply flex items-center justify-between px-gutter pt-4 pb-2;
+  }
+}
+
+/* ── Utilities ────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Safe area padding (iPhone notch / home bar) */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Touch target minimum (WCAG 2.5.5) */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Text truncation helpers */
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+}
