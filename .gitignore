@@ -1,0 +1,10 @@
+# ── Reference / prototype folders (not part of the implementation) ────────────
+cip---campus-innovation-*/
+stitch_campus_innovation_platform_pwa/
+
+# ── Windows system files ───────────────────────────────────────────────────────
+desktop.ini
+Thumbs.db
+
+# ── macOS system files ─────────────────────────────────────────────────────────
+.DS_Store
