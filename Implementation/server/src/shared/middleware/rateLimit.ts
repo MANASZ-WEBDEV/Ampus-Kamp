@@ -26,10 +26,10 @@ function makeLimiter(options: Partial<Options>) {
 
 // ── Specific limiters ─────────────────────────────────────────────────────────
 
-/** Login: 10 attempts per 15 min per IP */
+/** Login: 5 attempts per minute per IP (spec: FR-2 — 6th attempt → 429) */
 export const loginLimiter = makeLimiter({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
+  windowMs: 60 * 1000,
+  max: 5,
   message: 'Too many login attempts.',
 });
 
