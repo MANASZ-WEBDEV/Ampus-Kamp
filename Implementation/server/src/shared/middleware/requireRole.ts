@@ -1,4 +1,4 @@
-import type { Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import type { AuthRequest, UserRole } from '@/shared/types';
 import { ForbiddenError, UnauthorizedError } from '@/shared/errors';
 
@@ -11,16 +11,17 @@ import { ForbiddenError, UnauthorizedError } from '@/shared/errors';
  * Usage:
  *   router.post('/events', requireAuth, requireRole(['faculty', 'admin']), handler)
  */
-export function requireRole(roles: UserRole[]) {
-  return (req: AuthRequest, _res: Response, next: NextFunction): void => {
-    if (!req.user) {
+export function requireRole(roles: UserRole[]): RequestHandler {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    const authReq = req as AuthRequest;
+    if (!authReq.user) {
       return void next(new UnauthorizedError());
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (!roles.includes(authReq.user.role)) {
       return void next(
         new ForbiddenError(
-          `This action requires one of: [${roles.join(', ')}]. Your role: ${req.user.role}`,
+          `This action requires one of: [${roles.join(', ')}]. Your role: ${authReq.user.role}`,
         ),
       );
     }

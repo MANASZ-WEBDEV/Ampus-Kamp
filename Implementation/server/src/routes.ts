@@ -1,5 +1,8 @@
 import type { Application } from 'express';
 import { healthRouter } from '@/modules/health/health.routes';
+import { authRouter } from '@/modules/auth/auth.routes';
+import { usersRouter } from '@/modules/users/user.routes';
+import { rosterRouter } from '@/modules/roster/roster.routes';
 
 /**
  * mountRoutes — registers all feature routers on the app.
@@ -13,11 +16,14 @@ export function mountRoutes(app: Application): void {
     res.status(200).json({
       data: {
         name: 'Campus Innovation Platform — API Server',
-        version: '1.0.0-F0',
+        version: '1.0.0-F1',
         status: 'running',
         hint: 'Open http://localhost:5173 for the web client.',
         endpoints: {
           health: 'GET /api/v1/health',
+          auth: 'POST /api/v1/auth/register | login | verify-otp | resend-otp | logout',
+          users: 'GET /api/v1/users/me | PUT /api/v1/users/me | GET /api/v1/users/:id',
+          roster: 'POST /api/v1/roster/import (admin)',
         },
       },
     });
@@ -27,9 +33,9 @@ export function mountRoutes(app: Application): void {
   app.use('/api/v1/health', healthRouter);
 
   // ── F-1: Auth & Profiles ──────────────────────────────────────────────────
-  // app.use('/api/v1/auth', authRouter);
-  // app.use('/api/v1/users', usersRouter);
-  // app.use('/api/v1/roster', rosterRouter);
+  app.use('/api/v1/auth', authRouter);
+  app.use('/api/v1/users', usersRouter);
+  app.use('/api/v1/roster', rosterRouter);
 
   // ── F-2: Events ───────────────────────────────────────────────────────────
   // app.use('/api/v1/events', eventsRouter);
