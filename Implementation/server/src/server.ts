@@ -2,16 +2,20 @@ import http from 'http';
 import { createApp } from '@/app';
 import { connectDB, disconnectDB } from '@/config/db';
 import { env } from '@/config/env';
+import { scheduleCloseEvents } from '@/jobs/closeEvents';
 
 async function main(): Promise<void> {
   // 1. Connect to MongoDB before accepting requests
   await connectDB();
 
-  // 2. Build the Express app
+  // 2. Register background jobs
+  scheduleCloseEvents();
+
+  // 3. Build the Express app
   const app = createApp();
   const server = http.createServer(app);
 
-  // 3. Listen
+  // 4. Listen
   server.listen(env.PORT, () => {
     console.log(
       JSON.stringify({
