@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import * as authApi from '@/features/auth/api/auth.api';
-import { ApiError } from '@/lib/apiClient';
 import { BottomNav } from '@/components/layout/BottomNav';
 
 export default function ProfilePage() {
@@ -14,7 +13,6 @@ export default function ProfilePage() {
   const [skillInput, setSkillInput] = useState('');
   const [toastMsg, setToastMsg] = useState('');
 
-  // Full profile (includes phone)
   const { data: profile, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: authApi.getMe,
@@ -60,7 +58,22 @@ export default function ProfilePage() {
   const dept = profile?.department;
   const deptName = typeof dept === 'object' && dept !== null ? (dept as { name: string }).name : String(dept ?? '');
   const deptCode = typeof dept === 'object' && dept !== null ? (dept as { code: string }).code : '';
-  const initials = (profile?.name ?? authUser?.name ?? '').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
+  // Strip parentheses/non-alpha chars before extracting initials
+  // "Faculty (CSE)" → "Faculty CSE" → "FC" (not "F(")
+  const rawName = (profile?.name ?? authUser?.name ?? '');
+  const initials = rawName
+    .replace(/[^a-zA-Z\s]/g, ' ')  // replace ( ) and other non-alpha with space
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(n => n[0])
+    .join('')
+    .toUpperCase();
+
+  const role = profile?.role ?? authUser?.role;
+  const isFaculty = role === 'faculty' || role === 'dept_head' || role === 'admin';
 
   if (isLoading) {
     return (
@@ -85,37 +98,68 @@ export default function ProfilePage() {
 
       <main className="flex-1 w-full pt-4 pb-24 flex flex-col gap-3 max-w-2xl mx-auto px-4">
 
-        {/* ── Profile Hero Card ────────────────────────────────────────── */}
+        {/* ── Profile Hero Card ──────────────────────────────────────────── */}
         <section className="relative overflow-hidden rounded-2xl bg-surface-container-lowest shadow-sm p-4">
           <div className="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-primary-fixed/20 blur-2xl pointer-events-none" />
 
           <div className="flex items-start justify-between relative z-10">
             <div className="flex gap-4 items-center">
-              {/* Avatar */}
+              {/* Avatar — square + bg-primary for faculty, circle for students */}
               <div className="relative">
-                <div className="w-[72px] h-[72px] rounded-full bg-primary-container flex items-center justify-center text-on-primary font-headline-lg text-headline-lg font-bold shadow-sm">
-                  {initials}
+                <div className={`w-[72px] h-[72px] flex items-center justify-center font-headline-lg text-[22px] font-bold shadow-sm ${
+                  isFaculty
+                    ? 'rounded-2xl bg-primary text-on-primary'
+                    : 'rounded-full bg-primary-container text-on-primary'
+                }`}>
+                  {initials
+                    ? <span>{initials}</span>
+                    : <span className="material-symbols-outlined text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+                  }
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary-container text-on-primary flex items-center justify-center shadow-sm">
-                  <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-surface-container-lowest border-2 border-surface-container-lowest flex items-center justify-center shadow-sm">
+                  <span className="material-symbols-outlined text-primary text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
                 </div>
               </div>
 
-              {/* Info */}
+              {/* Name + role-specific subtitle */}
               <div className="flex flex-col min-w-0">
                 <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-bold truncate">
-                  {profile?.name ?? authUser?.name}
+                  {rawName || 'Profile'}
                 </h1>
-                <p className="font-label-lg text-label-lg text-primary-container font-semibold">
-                  B.Tech {deptName}
-                </p>
-                <div className="flex items-center gap-1.5 mt-0.5 text-on-surface-variant font-code-sm text-code-sm">
-                  <span className="bg-surface-container-high px-1.5 py-0.5 rounded text-on-surface font-semibold">
-                    {profile?.year ? `${profile.year}${['st', 'nd', 'rd'][profile.year - 1] ?? 'th'} Year` : deptCode}
-                  </span>
-                  <span>•</span>
-                  <span>{profile?.enrollmentNo ?? authUser?.enrollmentNo}</span>
-                </div>
+
+                {isFaculty ? (
+                  <>
+                    <p className="font-label-lg text-label-lg text-primary font-semibold mt-0.5">
+                      {deptName || 'Department Faculty'}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed-variant font-label-sm text-[10px] font-bold uppercase tracking-wide">
+                        <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
+                        Faculty
+                      </span>
+                      {(profile?.enrollmentNo ?? deptCode) && (
+                        <span className="font-code-sm text-[10px] text-on-surface-variant">
+                          {profile?.enrollmentNo ?? deptCode}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-label-lg text-label-lg text-primary-container font-semibold">
+                      B.Tech {deptName}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5 text-on-surface-variant font-code-sm text-code-sm">
+                      <span className="bg-surface-container-high px-1.5 py-0.5 rounded text-on-surface font-semibold">
+                        {profile?.year
+                          ? `${profile.year}${['st', 'nd', 'rd'][profile.year - 1] ?? 'th'} Year`
+                          : deptCode}
+                      </span>
+                      <span>•</span>
+                      <span>{profile?.enrollmentNo ?? authUser?.enrollmentNo}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -147,14 +191,18 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {/* ── Stats Grid ──────────────────────────────────────────────── */}
+        {/* ── Stats Grid — role-specific ──────────────────────────────────── */}
         <section className="grid grid-cols-3 gap-2">
-          {[
-            { icon: 'military_tech', value: '—', label: 'Milestones', color: 'bg-surface-container-low text-primary-container', fill: true },
-            { icon: 'school', value: '—', label: 'Verified Credits', color: 'bg-primary-fixed text-on-primary-fixed-variant', fill: false },
-            { icon: 'rocket_launch', value: '—', label: 'Active Squads', color: 'bg-secondary-fixed text-on-secondary-fixed-variant', fill: true },
-          ].map(({ icon, value, label, color, fill }) => (
-            <div key={icon} className="bg-surface-container-lowest p-4 rounded-2xl shadow-sm flex flex-col justify-between">
+          {(isFaculty ? [
+            { icon: 'campaign',      value: '—', label: 'Posted Events',   color: 'bg-primary-fixed text-on-primary-fixed-variant',    fill: true },
+            { icon: 'groups',        value: '—', label: 'Active Students', color: 'bg-surface-container-low text-primary',              fill: false },
+            { icon: 'apartment',     value: deptCode || '—', label: 'Department',color: 'bg-secondary-fixed text-on-secondary-fixed',    fill: false },
+          ] : [
+            { icon: 'military_tech', value: '—', label: 'Milestones',      color: 'bg-surface-container-low text-primary-container',   fill: true },
+            { icon: 'school',        value: '—', label: 'Verified Credits', color: 'bg-primary-fixed text-on-primary-fixed-variant',   fill: false },
+            { icon: 'rocket_launch', value: '—', label: 'Active Squads',   color: 'bg-secondary-fixed text-on-secondary-fixed-variant',fill: true },
+          ]).map(({ icon, value, label, color, fill }) => (
+            <div key={label} className="bg-surface-container-lowest p-4 rounded-2xl shadow-sm flex flex-col justify-between">
               <div className={`w-8 h-8 rounded-xl ${color} flex items-center justify-center mb-2`}>
                 <span className="material-symbols-outlined text-[20px]" style={fill ? { fontVariationSettings: "'FILL' 1" } : {}}>{icon}</span>
               </div>
@@ -166,69 +214,101 @@ export default function ProfilePage() {
           ))}
         </section>
 
-        {/* ── Privacy / Contact Guard ──────────────────────────────────── */}
-        <section className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center text-primary-container">
-                <span className="material-symbols-outlined text-[20px]">lock</span>
-              </div>
-              <div>
-                <span className="font-label-lg text-label-lg text-on-surface font-semibold">Phone Visibility</span>
-                <span className="font-label-md text-label-md text-on-surface-variant block">Confidential Contact Shield</span>
-              </div>
-            </div>
-            {/* Toggle */}
-            <button
-              id="phone-privacy-toggle"
-              role="switch"
-              aria-checked={profile?.phoneVisible}
-              onClick={() => {
-                const next = !profile?.phoneVisible;
-                authApi.updateMe({ phoneVisible: next }).then(() => {
-                  queryClient.invalidateQueries({ queryKey: ['me'] });
-                  showToast(next ? 'Phone visible to squad teammates' : 'Phone shielded from all peers');
-                });
-              }}
-              className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus:outline-none ${profile?.phoneVisible ? 'bg-primary-container' : 'bg-surface-container-high'}`}>
-              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-surface-container-lowest shadow-md transition duration-200 ease-in-out mt-1 ${profile?.phoneVisible ? 'translate-x-6' : 'translate-x-1'}`} />
-            </button>
-          </div>
-          <div className="flex items-start gap-2 bg-surface-container-low p-3 rounded-xl">
-            <span className="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5">shield</span>
-            <p className="font-body-sm text-body-sm text-on-surface-variant">
-              <strong className="text-on-surface">Protects your personal contact:</strong> Phone details are hidden until you mutually join an approved hackathon or incubator squad.
-            </p>
-          </div>
-        </section>
-
-        {/* ── Skills ────────────────────────────────────────────────────── */}
-        <section className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
+        {/* ── Faculty: Event Management shortcuts ─────────────────────────── */}
+        {isFaculty && (
+          <section className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary-container text-[20px]">hub</span>
-              <h2 className="font-headline-sm text-headline-sm text-on-surface font-bold">Skills & Proficiencies</h2>
+              <span className="material-symbols-outlined text-primary text-[20px]">campaign</span>
+              <h2 className="font-headline-sm text-headline-sm text-on-surface font-bold">Event Management</h2>
             </div>
-            <span className="font-label-sm text-label-sm text-primary-container bg-primary-fixed/40 px-2 py-0.5 rounded-full font-semibold">
-              {profile?.skills?.length ?? 0} Listed
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {(profile?.skills ?? []).map(skill => (
-              <div key={skill} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low text-on-surface font-label-md text-label-md shadow-sm">
-                <span>{skill}</span>
-                <span className="material-symbols-outlined text-primary-container text-[15px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-              </div>
-            ))}
-            <button id="add-skill-btn" onClick={() => setIsEditing(true)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-surface-container text-on-surface-variant font-label-md text-label-md hover:text-on-surface transition-colors">
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              <span>Add Skill</span>
-            </button>
-          </div>
-        </section>
+            <p className="font-body-sm text-xs text-on-surface-variant">
+              Create, publish, and manage events visible to all enrolled students on the CIP feed.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                id="view-my-events-btn"
+                onClick={() => navigate('/events/my')}
+                className="h-11 px-3 rounded-xl bg-primary-fixed text-on-primary-fixed-variant font-label-lg text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm">
+                <span className="material-symbols-outlined text-[18px]">event_note</span>
+                My Events
+              </button>
+              <button
+                id="post-new-event-btn"
+                onClick={() => navigate('/events/new')}
+                className="h-11 px-3 rounded-xl bg-primary text-on-primary font-label-lg text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm">
+                <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                Post Event
+              </button>
+            </div>
+          </section>
+        )}
 
-        {/* ── Account info ────────────────────────────────────────────── */}
+        {/* ── Privacy / Contact Guard — students only ──────────────────────── */}
+        {!isFaculty && (
+          <section className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center text-primary-container">
+                  <span className="material-symbols-outlined text-[20px]">lock</span>
+                </div>
+                <div>
+                  <span className="font-label-lg text-label-lg text-on-surface font-semibold">Phone Visibility</span>
+                  <span className="font-label-md text-label-md text-on-surface-variant block">Confidential Contact Shield</span>
+                </div>
+              </div>
+              <button
+                id="phone-privacy-toggle"
+                role="switch"
+                aria-checked={profile?.phoneVisible}
+                onClick={() => {
+                  const next = !profile?.phoneVisible;
+                  authApi.updateMe({ phoneVisible: next }).then(() => {
+                    queryClient.invalidateQueries({ queryKey: ['me'] });
+                    showToast(next ? 'Phone visible to squad teammates' : 'Phone shielded from all peers');
+                  });
+                }}
+                className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus:outline-none ${profile?.phoneVisible ? 'bg-primary-container' : 'bg-surface-container-high'}`}>
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-surface-container-lowest shadow-md transition duration-200 ease-in-out mt-1 ${profile?.phoneVisible ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+            <div className="flex items-start gap-2 bg-surface-container-low p-3 rounded-xl">
+              <span className="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5">shield</span>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">
+                <strong className="text-on-surface">Protects your personal contact:</strong> Phone details are hidden until you mutually join an approved hackathon or incubator squad.
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* ── Skills — students only ───────────────────────────────────────── */}
+        {!isFaculty && (
+          <section className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary-container text-[20px]">hub</span>
+                <h2 className="font-headline-sm text-headline-sm text-on-surface font-bold">Skills & Proficiencies</h2>
+              </div>
+              <span className="font-label-sm text-label-sm text-primary-container bg-primary-fixed/40 px-2 py-0.5 rounded-full font-semibold">
+                {profile?.skills?.length ?? 0} Listed
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(profile?.skills ?? []).map(skill => (
+                <div key={skill} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low text-on-surface font-label-md text-label-md shadow-sm">
+                  <span>{skill}</span>
+                  <span className="material-symbols-outlined text-primary-container text-[15px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                </div>
+              ))}
+              <button id="add-skill-btn" onClick={() => setIsEditing(true)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-surface-container text-on-surface-variant font-label-md text-label-md hover:text-on-surface transition-colors">
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                <span>Add Skill</span>
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* ── Account info ─────────────────────────────────────────────────── */}
         <section className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-3">
             <span className="material-symbols-outlined text-primary-container text-[20px]">manage_accounts</span>
@@ -236,8 +316,8 @@ export default function ProfilePage() {
           </div>
           <div className="space-y-2">
             {[
-              { label: 'Email', value: profile?.email, icon: 'alternate_email' },
-              { label: 'Role', value: profile?.role, icon: 'badge' },
+              { label: 'Email',  value: profile?.email,  icon: 'alternate_email' },
+              { label: 'Role',   value: profile?.role,   icon: 'badge' },
               { label: 'Status', value: profile?.status, icon: 'circle' },
             ].map(({ label, value, icon }) => (
               <div key={label} className="flex items-center justify-between py-2 border-b border-surface-container-high last:border-0">
@@ -253,7 +333,7 @@ export default function ProfilePage() {
 
       </main>
 
-      {/* ── Edit Modal ────────────────────────────────────────────────── */}
+      {/* ── Edit Modal ──────────────────────────────────────────────────────── */}
       {isEditing && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-inverse-surface/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-md bg-surface-container-lowest rounded-2xl p-6 shadow-2xl flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
@@ -264,37 +344,41 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            {/* Skills editor */}
-            <div>
-              <label className="font-label-lg text-label-lg text-on-surface mb-2 block">Skills</label>
-              <div className="flex gap-2 mb-3">
-                <input
-                  id="skill-input"
-                  value={skillInput}
-                  onChange={e => setSkillInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-                  placeholder="Type a skill and press Enter"
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-                <button onClick={addSkill} className="px-4 py-2.5 rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg hover:opacity-90 active:scale-95 transition-all">
-                  Add
-                </button>
+            {/* Skills editor — students only */}
+            {!isFaculty && (
+              <div>
+                <label className="font-label-lg text-label-lg text-on-surface mb-2 block">Skills</label>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    id="skill-input"
+                    value={skillInput}
+                    onChange={e => setSkillInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSkill())}
+                    placeholder="Type a skill and press Enter"
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <button onClick={addSkill} className="px-4 py-2.5 rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg hover:opacity-90 active:scale-95 transition-all">
+                    Add
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {editState.skills.map(s => (
+                    <div key={s} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low text-on-surface font-label-md text-label-md">
+                      <span>{s}</span>
+                      <button onClick={() => removeSkill(s)} className="text-outline hover:text-error transition-colors">
+                        <span className="material-symbols-outlined text-[14px]">close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {editState.skills.map(s => (
-                  <div key={s} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low text-on-surface font-label-md text-label-md">
-                    <span>{s}</span>
-                    <button onClick={() => removeSkill(s)} className="text-outline hover:text-error transition-colors">
-                      <span className="material-symbols-outlined text-[14px]">close</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
 
-            {/* Toggles */}
+            {/* Allow invites toggle */}
             <div className="flex items-center justify-between">
-              <span className="font-label-lg text-label-lg text-on-surface">Allow team invites</span>
+              <span className="font-label-lg text-label-lg text-on-surface">
+                {isFaculty ? 'Allow student messages' : 'Allow team invites'}
+              </span>
               <button role="switch" aria-checked={editState.allowInvites}
                 onClick={() => setEditState(p => ({ ...p, allowInvites: !p.allowInvites }))}
                 className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${editState.allowInvites ? 'bg-primary-container' : 'bg-surface-container-high'}`}>
