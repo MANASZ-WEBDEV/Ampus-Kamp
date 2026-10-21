@@ -12,10 +12,15 @@ const RegisterPage = lazy(() => import('@/pages/RegisterPage'));
 const OtpPage      = lazy(() => import('@/pages/OtpPage'));
 const ProfilePage  = lazy(() => import('@/pages/ProfilePage'));
 
+// F-2: Events + Student Home
+const StudentHomePage      = lazy(() => import('@/pages/StudentHomePage'));
+const EventFeedPage        = lazy(() => import('@/features/events/pages/EventFeedPage'));
+const EventDetailPage      = lazy(() => import('@/features/events/pages/EventDetailPage'));
+const FacultyPostEventPage = lazy(() => import('@/features/events/pages/FacultyPostEventPage'));
+const FacultyEditEventPage = lazy(() => import('@/features/events/pages/FacultyEditEventPage'));
+const MyEventsPage         = lazy(() => import('@/features/events/pages/MyEventsPage'));
+
 // Future pages — import here as features are built
-// const EventFeedPage         = lazy(() => import('@/pages/EventFeedPage'));
-// const EventDetailPage       = lazy(() => import('@/pages/EventDetailPage'));
-// const FacultyPostEventPage  = lazy(() => import('@/pages/FacultyPostEventPage'));
 // const TeamPostsPage         = lazy(() => import('@/pages/TeamPostsPage'));
 // const PeopleSearchPage      = lazy(() => import('@/pages/PeopleSearchPage'));
 // const AddAchievementPage    = lazy(() => import('@/pages/AddAchievementPage'));
@@ -71,10 +76,13 @@ export function AppRouter() {
             }
           />
 
-          {/* ── F-2: Events ───────────────────────────────────────────────── */}
-          {/* <Route path="/events"     element={<ProtectedRoute><EventFeedPage /></ProtectedRoute>} /> */}
-          {/* <Route path="/events/:id" element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} /> */}
-          {/* <Route path="/events/new" element={<ProtectedRoute roles={['faculty','admin']}><FacultyPostEventPage /></ProtectedRoute>} /> */}
+          {/* ── F-2: Events + Student Home ──────────────────────────────── */}
+          <Route path="/home"           element={<ProtectedRoute><StudentHomePage /></ProtectedRoute>} />
+          <Route path="/events"          element={<ProtectedRoute><EventFeedPage /></ProtectedRoute>} />
+          <Route path="/events/my"       element={<ProtectedRoute roles={['faculty','dept_head','admin']}><MyEventsPage /></ProtectedRoute>} />
+          <Route path="/events/new"      element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyPostEventPage /></ProtectedRoute>} />
+          <Route path="/events/:id"      element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
+          <Route path="/events/:id/edit" element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyEditEventPage /></ProtectedRoute>} />
 
           {/* ── F-4: Team finder ──────────────────────────────────────────── */}
           {/* <Route path="/teams"       element={<ProtectedRoute><TeamPostsPage /></ProtectedRoute>} /> */}
@@ -95,8 +103,8 @@ export function AppRouter() {
           {/* ── F-10: Admin ───────────────────────────────────────────────── */}
           {/* <Route path="/admin/*" element={<ProtectedRoute roles={['admin']}><AdminDashboardPage /></ProtectedRoute>} /> */}
 
-          {/* ── Root: redirect to login (replaces F-0 scaffold page) ─────── */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* ── Root: authenticated users go to /home ─────────────────── */}
+          <Route path="/" element={<Navigate to="/home" replace />} />
 
           {/* ── Catch-all ─────────────────────────────────────────────────── */}
           <Route path="*" element={<Navigate to="/" replace />} />
