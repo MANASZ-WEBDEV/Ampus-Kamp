@@ -3,9 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { ApiError } from '@/lib/apiClient';
 
+type LoginRole = 'student' | 'faculty';
+
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const [role, setRole] = useState<LoginRole>('student');
   const [form, setForm] = useState({ enrollmentNo: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -28,6 +32,8 @@ export default function LoginPage() {
       setLoading(false);
     }
   }
+
+  const isFaculty = role === 'faculty';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
@@ -97,32 +103,76 @@ export default function LoginPage() {
 
         {/* ── RIGHT PANEL — Login Form ─────────────────────────────────── */}
         <div className="lg:col-span-7 flex flex-col bg-surface-container-lowest rounded-xl p-8 shadow-md">
-          {/* Mode toggle */}
+
+          {/* Role tabs + New Activation */}
           <div className="flex items-center justify-between pb-6">
-            <div className="inline-flex p-1 rounded-xl bg-surface-container-low">
-              <button className="px-4 py-2 rounded-lg font-label-lg text-label-lg bg-surface-container-lowest text-primary shadow-sm">
+            {/* Role tabs — FULLY FUNCTIONAL */}
+            <div className="inline-flex p-1 rounded-xl bg-surface-container-low" role="tablist">
+              <button
+                id="role-student-btn"
+                type="button"
+                role="tab"
+                aria-selected={!isFaculty}
+                onClick={() => setRole('student')}
+                className={`px-4 py-2 rounded-lg font-label-lg text-label-lg transition-all duration-200 ${
+                  !isFaculty
+                    ? 'bg-surface-container-lowest text-primary shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
                 <span className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm">badge</span>Student Portal
+                  <span className="material-symbols-outlined text-sm">badge</span>
+                  Student Portal
                 </span>
               </button>
-              <button className="px-4 py-2 rounded-lg font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface transition-all">
+              <button
+                id="role-faculty-btn"
+                type="button"
+                role="tab"
+                aria-selected={isFaculty}
+                onClick={() => setRole('faculty')}
+                className={`px-4 py-2 rounded-lg font-label-lg text-label-lg transition-all duration-200 ${
+                  isFaculty
+                    ? 'bg-surface-container-lowest text-primary shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
                 <span className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm">assignment_ind</span>Faculty / Admin
+                  <span className="material-symbols-outlined text-sm">assignment_ind</span>
+                  Faculty / Admin
                 </span>
               </button>
             </div>
+
             <Link to="/register" className="px-3 py-1.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-low transition-all">
               New Activation
             </Link>
           </div>
 
-          {/* Heading */}
+          {/* Heading — changes based on role */}
           <div className="mb-6">
-            <h2 className="font-headline-lg text-headline-lg text-on-surface">Institutional Verification & Login</h2>
+            <h2 className="font-headline-lg text-headline-lg text-on-surface">
+              {isFaculty ? 'Faculty & Evaluator Portal Login' : 'Institutional Verification & Login'}
+            </h2>
             <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-              Authenticate through your official campus directory credentials.
+              {isFaculty
+                ? 'Sign in with your faculty employee credentials to access the dashboard.'
+                : 'Authenticate through your official campus directory credentials.'}
             </p>
           </div>
+
+          {/* Faculty context badge */}
+          {isFaculty && (
+            <div className="mb-5 p-3.5 rounded-xl bg-surface-container-low flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+                <span className="material-symbols-outlined text-lg">assignment_ind</span>
+              </div>
+              <div>
+                <p className="font-label-lg text-label-lg text-on-surface">Faculty / Admin Portal</p>
+                <p className="font-body-sm text-body-sm text-on-surface-variant">Use your Employee ID as the Enrollment Number</p>
+              </div>
+            </div>
+          )}
 
           {/* Error banner */}
           {error && (
@@ -137,7 +187,8 @@ export default function LoginPage() {
             {/* Enrollment No */}
             <div>
               <label htmlFor="enrollmentNo" className="font-label-lg text-label-lg text-on-surface mb-1.5 flex items-center gap-1.5">
-                Institutional Roll / Enrollment Number <span className="text-error">*</span>
+                {isFaculty ? 'Employee / Faculty ID' : 'Institutional Roll / Enrollment Number'}
+                <span className="text-error">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline">
@@ -149,7 +200,7 @@ export default function LoginPage() {
                   required
                   value={form.enrollmentNo}
                   onChange={e => setForm(f => ({ ...f, enrollmentNo: e.target.value.toUpperCase() }))}
-                  placeholder="e.g. 22CS0001"
+                  placeholder={isFaculty ? 'e.g. FAC0042 or EMP-001' : 'e.g. 22CS0001'}
                   className="w-full pl-11 pr-4 py-3 bg-surface-container-low text-on-surface font-code-sm text-code-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm"
                 />
               </div>
@@ -196,11 +247,11 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
-                  Validating Student Record…
+                  {isFaculty ? 'Verifying Faculty Record…' : 'Validating Student Record…'}
                 </>
               ) : (
                 <>
-                  <span>Complete Verification & Enter Campus</span>
+                  <span>Complete Verification &amp; Enter Campus</span>
                   <span className="material-symbols-outlined text-xl">arrow_forward</span>
                 </>
               )}
@@ -211,14 +262,19 @@ export default function LoginPage() {
           <div className="mt-auto pt-8 flex items-center justify-between text-on-surface-variant">
             <div className="flex items-center gap-2 font-body-sm text-body-sm">
               <span className="material-symbols-outlined text-base">support_agent</span>
-              <span>New student? <Link to="/register" className="text-primary font-label-sm text-label-sm underline">Activate account</Link></span>
+              {isFaculty ? (
+                <span>New faculty? <Link to="/register" className="text-primary font-label-sm text-label-sm underline">Contact admin</Link></span>
+              ) : (
+                <span>New student? <Link to="/register" className="text-primary font-label-sm text-label-sm underline">Activate account</Link></span>
+              )}
             </div>
             <div className="flex items-center gap-1.5 font-label-sm text-label-sm text-outline">
               <span className="material-symbols-outlined text-base text-secondary-container">security</span>
-              FERPA & AICTE Compliant
+              FERPA &amp; AICTE Compliant
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );

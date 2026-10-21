@@ -8,3 +8,10 @@ Thumbs.db
 
 # ── macOS system files ─────────────────────────────────────────────────────────
 .DS_Store
+
+# ── Generated dev tokens (never commit) ───────────────────────────────────────
+**/scripts/admin-token.txt
+**/scripts/faculty-tokens.txt
+
+/Implementation/scripts/
+/New folder/
