@@ -40,14 +40,26 @@ export default function MyEventsPage() {
               {user?.name} · {stats.total} total event{stats.total !== 1 ? 's' : ''}
             </p>
           </div>
-          <button
-            id="my-events-post-btn"
-            onClick={() => navigate('/events/new')}
-            className="h-10 px-4 rounded-xl bg-primary text-on-primary font-label-lg text-xs font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5"
-          >
-            <span className="material-symbols-outlined text-[18px]">add</span>
-            Post New
-          </button>
+          <div className="flex items-center gap-2">
+            {/* F-3: Paste-to-Post AI entry point */}
+            <button
+              id="my-events-paste-btn"
+              onClick={() => navigate('/events/paste')}
+              className="h-10 px-3 rounded-xl bg-secondary/10 text-secondary border border-secondary/30 font-label-lg text-xs font-bold hover:bg-secondary/20 active:scale-95 transition-all flex items-center gap-1.5"
+              title="Paste an announcement and let AI fill the form"
+            >
+              <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+              AI Paste
+            </button>
+            <button
+              id="my-events-post-btn"
+              onClick={() => navigate('/events/new')}
+              className="h-10 px-4 rounded-xl bg-primary text-on-primary font-label-lg text-xs font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[18px]">add</span>
+              Post New
+            </button>
+          </div>
         </div>
 
         {/* Stats bar */}
