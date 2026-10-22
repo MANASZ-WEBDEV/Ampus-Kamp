@@ -110,3 +110,24 @@ eventsRouter.get(
   requireRole(['student', 'faculty', 'dept_head', 'admin']),
   listTeamPosts,
 );
+
+// ── F-5: Looking flag ─────────────────────────────────────────────────────────
+import { toggleLooking, listLooking } from '@/modules/looking/looking.controller';
+import { upsertLookingSchema, lookingQuerySchema } from '@/modules/looking/looking.schema';
+
+// PUT /api/v1/events/:id/looking — toggle looking flag (student only)
+eventsRouter.put(
+  '/:id/looking',
+  requireAuth,
+  requireRole(['student']),
+  validate(upsertLookingSchema),
+  toggleLooking,
+);
+
+// GET /api/v1/events/:id/looking — list students looking (all authenticated)
+eventsRouter.get(
+  '/:id/looking',
+  requireAuth,
+  validate(lookingQuerySchema, 'query'),
+  listLooking,
+);

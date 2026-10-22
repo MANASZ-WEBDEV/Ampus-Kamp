@@ -6,6 +6,8 @@ import { rosterRouter }  from '@/modules/roster/roster.routes';
 import { eventsRouter }  from '@/modules/events/event.routes';
 import { teamsRouter }   from '@/modules/teams/team.routes';
 import { linksRouter }   from '@/modules/links/link.routes';
+import { peopleRouter }  from '@/modules/people/people.routes';
+import { safetyRouter }  from '@/modules/safety/safety.routes';
 
 /**
  * mountRoutes — registers all feature routers on the app.
@@ -19,7 +21,7 @@ export function mountRoutes(app: Application): void {
     res.status(200).json({
       data: {
         name: 'Campus Innovation Platform — API Server',
-        version: '1.0.0-F4',
+        version: '1.0.0-F5',
         status: 'running',
         hint: 'Open http://localhost:5173 for the web client.',
         endpoints: {
@@ -31,6 +33,10 @@ export function mountRoutes(app: Application): void {
           extraction: 'POST /api/v1/events/extract (faculty+) — AI Paste-to-Post',
           teams:      'GET /api/v1/events/:id/teams | GET /api/v1/teams/my | POST /api/v1/teams | PATCH /api/v1/teams/:id',
           links:      'GET /api/v1/links?box=in|out | POST /api/v1/links | PATCH /api/v1/links/:id',
+          people:     'GET /api/v1/people?skills=&branch=&year=&eventId=',
+          looking:    'PUT /api/v1/events/:id/looking | GET /api/v1/events/:id/looking',
+          blocks:     'GET /api/v1/blocks | POST /api/v1/blocks | DELETE /api/v1/blocks/:blockedUserId',
+          reports:    'POST /api/v1/reports',
         },
       },
     });
@@ -54,9 +60,10 @@ export function mountRoutes(app: Application): void {
   app.use('/api/v1/links', linksRouter);
 
   // ── F-5: People, Looking, Safety ──────────────────────────────────────────
-  // app.use('/api/v1/people', peopleRouter);
-  // app.use('/api/v1/blocks', blocksRouter);
-  // app.use('/api/v1/reports', reportsRouter);
+  app.use('/api/v1/people', peopleRouter);
+  // safety router defines /blocks and /reports paths internally
+  app.use('/api/v1',        safetyRouter);
+  // looking routes mounted on eventsRouter as /:id/looking (in event.routes.ts)
 
   // ── F-6: Registrations ────────────────────────────────────────────────────
   // app.use('/api/v1/registrations', registrationsRouter);
