@@ -131,3 +131,54 @@ eventsRouter.get(
   validate(lookingQuerySchema, 'query'),
   listLooking,
 );
+
+// ── F-6: Registration sub-routes ──────────────────────────────────────────────
+// IMPORTANT route ordering:
+//   /:id/registrations/export  MUST be before  /:id/registrations
+//   /:id/tracking              has no conflict
+import {
+  createRegistration,
+  getRoster,
+  exportRosterCsv,
+  createTracking,
+} from '@/modules/registrations/registration.controller';
+import {
+  createRegistrationSchema,
+  createTrackingSchema,
+  rosterQuerySchema,
+} from '@/modules/registrations/registration.schema';
+
+// GET /api/v1/events/:id/registrations/export — CSV (faculty+ only)
+eventsRouter.get(
+  '/:id/registrations/export',
+  requireAuth,
+  requireRole(['faculty', 'dept_head', 'admin']),
+  exportRosterCsv,
+);
+
+// GET /api/v1/events/:id/registrations — roster (faculty+ only)
+eventsRouter.get(
+  '/:id/registrations',
+  requireAuth,
+  requireRole(['faculty', 'dept_head', 'admin']),
+  validate(rosterQuerySchema, 'query'),
+  getRoster,
+);
+
+// POST /api/v1/events/:id/registrations — create registration (student)
+eventsRouter.post(
+  '/:id/registrations',
+  requireAuth,
+  requireRole(['student']),
+  validate(createRegistrationSchema),
+  createRegistration,
+);
+
+// POST /api/v1/events/:id/tracking — external tracking (student)
+eventsRouter.post(
+  '/:id/tracking',
+  requireAuth,
+  requireRole(['student']),
+  validate(createTrackingSchema),
+  createTracking,
+);

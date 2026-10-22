@@ -6,8 +6,9 @@ import { rosterRouter }  from '@/modules/roster/roster.routes';
 import { eventsRouter }  from '@/modules/events/event.routes';
 import { teamsRouter }   from '@/modules/teams/team.routes';
 import { linksRouter }   from '@/modules/links/link.routes';
-import { peopleRouter }  from '@/modules/people/people.routes';
-import { safetyRouter }  from '@/modules/safety/safety.routes';
+import { peopleRouter }        from '@/modules/people/people.routes';
+import { safetyRouter }        from '@/modules/safety/safety.routes';
+import { registrationsRouter } from '@/modules/registrations/registration.routes';
 
 /**
  * mountRoutes — registers all feature routers on the app.
@@ -21,22 +22,25 @@ export function mountRoutes(app: Application): void {
     res.status(200).json({
       data: {
         name: 'Campus Innovation Platform — API Server',
-        version: '1.0.0-F5',
+        version: '1.0.0-F6',
         status: 'running',
         hint: 'Open http://localhost:5173 for the web client.',
         endpoints: {
           health:     'GET /api/v1/health',
           auth:       'POST /api/v1/auth/register | login | verify-otp | resend-otp | logout',
           users:      'GET /api/v1/users/me | PUT /api/v1/users/me | GET /api/v1/users/:id',
-          roster:     'POST /api/v1/roster/import (admin)',
+          rosterImport: 'POST /api/v1/roster/import (admin)',
           events:     'GET /api/v1/events | GET /api/v1/events/my | GET /api/v1/events/:id | POST /api/v1/events | PUT /api/v1/events/:id | PATCH /api/v1/events/:id/publish | PATCH /api/v1/events/:id/close | DELETE /api/v1/events/:id | POST /api/v1/events/:id/bookmark',
           extraction: 'POST /api/v1/events/extract (faculty+) — AI Paste-to-Post',
           teams:      'GET /api/v1/events/:id/teams | GET /api/v1/teams/my | POST /api/v1/teams | PATCH /api/v1/teams/:id',
           links:      'GET /api/v1/links?box=in|out | POST /api/v1/links | PATCH /api/v1/links/:id',
           people:     'GET /api/v1/people?skills=&branch=&year=&eventId=',
           looking:    'PUT /api/v1/events/:id/looking | GET /api/v1/events/:id/looking',
-          blocks:     'GET /api/v1/blocks | POST /api/v1/blocks | DELETE /api/v1/blocks/:blockedUserId',
-          reports:    'POST /api/v1/reports',
+          blocks:         'GET /api/v1/blocks | POST /api/v1/blocks | DELETE /api/v1/blocks/:blockedUserId',
+          reports:        'POST /api/v1/reports',
+          registrations:  'POST /api/v1/events/:id/registrations | PATCH /api/v1/registrations/:id | PATCH /api/v1/registrations/:id/members/:uid | GET /api/v1/registrations/mine',
+          eventRoster:    'GET /api/v1/events/:id/registrations | GET /api/v1/events/:id/registrations/export (faculty+)',
+          tracking:       'POST /api/v1/events/:id/tracking',
         },
       },
     });
@@ -66,7 +70,9 @@ export function mountRoutes(app: Application): void {
   // looking routes mounted on eventsRouter as /:id/looking (in event.routes.ts)
 
   // ── F-6: Registrations ────────────────────────────────────────────────────
-  // app.use('/api/v1/registrations', registrationsRouter);
+  // /mine, /:id, /:id/members/:uid — student routes
+  // Event-scoped: create/roster/export/tracking live on eventsRouter
+  app.use('/api/v1/registrations', registrationsRouter);
 
   // ── F-7: Credentials & Participations ────────────────────────────────────
   // app.use('/api/v1/courses', coursesRouter);

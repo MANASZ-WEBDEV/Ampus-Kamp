@@ -2,9 +2,10 @@ import http from 'http';
 import { createApp }          from '@/app';
 import { connectDB, disconnectDB } from '@/config/db';
 import { env }                from '@/config/env';
-import { scheduleCloseEvents }    from '@/jobs/closeEvents';
-import { scheduleCloseTeamPosts } from '@/jobs/closeTeamPosts';
-import { scheduleExpireLinks }    from '@/jobs/expireLinks';
+import { scheduleCloseEvents }       from '@/jobs/closeEvents';
+import { scheduleCloseTeamPosts }    from '@/jobs/closeTeamPosts';
+import { scheduleExpireLinks }       from '@/jobs/expireLinks';
+import { scheduleLockRegistrations } from '@/jobs/lockRegistrations';
 
 async function main(): Promise<void> {
   // 1. Connect to MongoDB before accepting requests
@@ -12,9 +13,10 @@ async function main(): Promise<void> {
 
   // 2. Register background jobs
   // Order matters: team posts are closed before links are expired.
-  scheduleCloseEvents();      // 00:05 — close published events past deadline
-  scheduleCloseTeamPosts();   // 00:05 — expire team posts past event deadline
-  scheduleExpireLinks();      // 00:10 — expire pending links past 7-day TTL
+  scheduleCloseEvents();         // 00:05 — close published events past deadline
+  scheduleCloseTeamPosts();      // 00:05 — expire team posts past event deadline
+  scheduleExpireLinks();         // 00:10 — expire pending links past 7-day TTL
+  scheduleLockRegistrations();   // 00:15 — lock submitted registrations past deadline
 
   // 3. Build the Express app
   const app = createApp();
