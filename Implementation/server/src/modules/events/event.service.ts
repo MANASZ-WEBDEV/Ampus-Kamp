@@ -394,6 +394,10 @@ export async function createEvent(actor: AuthUser, body: CreateEventBody): Promi
     registrationDeadline,
     postedBy: actor.id,
     status: 'draft',
+    // ── F-3: stored only when event was created via Paste-to-Post ────────────
+    // rawMessage is NEVER sent back to students (excluded in toEventCard).
+    ...(body.rawMessage ? { rawMessage: body.rawMessage } : {}),
+    ...(body.extraction ? { extraction: body.extraction } : {}),
   });
 
   const populated = await Event.findById(event._id)
@@ -405,9 +409,10 @@ export async function createEvent(actor: AuthUser, body: CreateEventBody): Promi
       populated as unknown as IEvent & { postedBy: { _id: mongoose.Types.ObjectId; name: string } },
       false,
     ),
-    rawMessage: undefined,
+    rawMessage: undefined, // never expose to client on create response
   };
 }
+
 
 // ── PUT /api/v1/events/:id ────────────────────────────────────────────────────
 

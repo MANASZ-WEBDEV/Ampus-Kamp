@@ -61,7 +61,24 @@ export const createEventSchema = z
     registrationMode: z.enum(['in_app', 'external']).default('external'),
     registrationDeadline: isoDate,
 
-    // rawMessage is set only by the F-3 extraction endpoint — not accepted here
+    // ── F-3: Paste-to-Post metadata (optional — only set when creating via extraction) ──
+    // rawMessage: the full original announcement text pasted by faculty.
+    //   Stored on the Event for audit. NEVER sent back to students.
+    rawMessage: z
+      .string()
+      .max(10000, 'rawMessage must not exceed 10,000 characters')
+      .trim()
+      .optional(),
+
+    // extraction: metadata about the AI extraction that produced this event.
+    extraction: z
+      .object({
+        model:         z.string().optional(),          // LLM model name
+        promptVersion: z.string().optional(),          // e.g. 'v1'
+        editedFields:  z.array(z.string()).default([]),// fields faculty edited after extraction
+        usedFallback:  z.boolean().default(false),     // true = regex fallback was used
+      })
+      .optional(),
   })
   .refine(
     (body) => {

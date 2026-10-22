@@ -17,7 +17,7 @@ export function mountRoutes(app: Application): void {
     res.status(200).json({
       data: {
         name: 'Campus Innovation Platform — API Server',
-        version: '1.0.0-F2',
+        version: '1.0.0-F3',
         status: 'running',
         hint: 'Open http://localhost:5173 for the web client.',
         endpoints: {
@@ -26,6 +26,7 @@ export function mountRoutes(app: Application): void {
           users: 'GET /api/v1/users/me | PUT /api/v1/users/me | GET /api/v1/users/:id',
           roster: 'POST /api/v1/roster/import (admin)',
           events: 'GET /api/v1/events | GET /api/v1/events/my | GET /api/v1/events/:id | POST /api/v1/events | PUT /api/v1/events/:id | PATCH /api/v1/events/:id/publish | PATCH /api/v1/events/:id/close | DELETE /api/v1/events/:id | POST /api/v1/events/:id/bookmark',
+          extraction: 'POST /api/v1/events/extract (faculty+) — AI Paste-to-Post',
         },
       },
     });
