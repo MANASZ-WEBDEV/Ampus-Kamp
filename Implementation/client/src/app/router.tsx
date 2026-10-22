@@ -20,6 +20,9 @@ const FacultyPostEventPage = lazy(() => import('@/features/events/pages/FacultyP
 const FacultyEditEventPage = lazy(() => import('@/features/events/pages/FacultyEditEventPage'));
 const MyEventsPage         = lazy(() => import('@/features/events/pages/MyEventsPage'));
 
+// F-3: Paste-to-Post AI Extraction
+const PasteToPostPage = lazy(() => import('@/features/events/pages/PasteToPostPage'));
+
 // Future pages — import here as features are built
 // const TeamPostsPage         = lazy(() => import('@/pages/TeamPostsPage'));
 // const PeopleSearchPage      = lazy(() => import('@/pages/PeopleSearchPage'));
@@ -76,11 +79,15 @@ export function AppRouter() {
             }
           />
 
-          {/* ── F-2: Events + Student Home ──────────────────────────────── */}
+          {/* ── F-2: Events + Student Home ──────────────────────────────────────────── */}
           <Route path="/home"           element={<ProtectedRoute><StudentHomePage /></ProtectedRoute>} />
           <Route path="/events"          element={<ProtectedRoute><EventFeedPage /></ProtectedRoute>} />
           <Route path="/events/my"       element={<ProtectedRoute roles={['faculty','dept_head','admin']}><MyEventsPage /></ProtectedRoute>} />
           <Route path="/events/new"      element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyPostEventPage /></ProtectedRoute>} />
+
+          {/* ── F-3: Paste-to-Post — MUST be before /events/:id ─────────────────────── */}
+          <Route path="/events/paste"    element={<ProtectedRoute roles={['faculty','dept_head','admin']}><PasteToPostPage /></ProtectedRoute>} />
+
           <Route path="/events/:id"      element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
           <Route path="/events/:id/edit" element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyEditEventPage /></ProtectedRoute>} />
 
