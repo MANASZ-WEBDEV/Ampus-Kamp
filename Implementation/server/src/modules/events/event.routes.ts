@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { requireAuth, requireRole, validate } from '@/shared/middleware';
 import { createEventSchema, updateEventSchema, listEventsSchema } from './event.schema';
+import { extractRequestSchema } from './extraction/extraction.schema';
+import { extractEvent } from './extraction/extraction.controller';
 import * as ctrl from './event.controller';
 
 export const eventsRouter = Router();
@@ -86,6 +88,14 @@ eventsRouter.post(
   ctrl.toggleBookmark,
 );
 
-// ── F-3 hook (do not remove this comment) ────────────────────────────────────
-// POST /api/v1/events/extract   ← will be mounted here by F-3 (Paste-to-Post AI Extraction)
-// It must be added BEFORE /:id to prevent Express matching "extract" as an :id param.
+// ── F-3: Paste-to-Post AI Extraction ────────────────────────────────────────
+// IMPORTANT: This route MUST remain before /:id — Express matches routes in order,
+// and "extract" would otherwise be captured as an :id param.
+
+eventsRouter.post(
+  '/extract',
+  requireAuth,
+  requireRole(['faculty', 'dept_head', 'admin']),
+  validate(extractRequestSchema),
+  extractEvent,
+);
