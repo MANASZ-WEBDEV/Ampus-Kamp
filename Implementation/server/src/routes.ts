@@ -1,9 +1,11 @@
 import type { Application } from 'express';
-import { healthRouter } from '@/modules/health/health.routes';
-import { authRouter } from '@/modules/auth/auth.routes';
-import { usersRouter } from '@/modules/users/user.routes';
-import { rosterRouter } from '@/modules/roster/roster.routes';
-import { eventsRouter } from '@/modules/events/event.routes';
+import { healthRouter }  from '@/modules/health/health.routes';
+import { authRouter }    from '@/modules/auth/auth.routes';
+import { usersRouter }   from '@/modules/users/user.routes';
+import { rosterRouter }  from '@/modules/roster/roster.routes';
+import { eventsRouter }  from '@/modules/events/event.routes';
+import { teamsRouter }   from '@/modules/teams/team.routes';
+import { linksRouter }   from '@/modules/links/link.routes';
 
 /**
  * mountRoutes — registers all feature routers on the app.
@@ -17,16 +19,18 @@ export function mountRoutes(app: Application): void {
     res.status(200).json({
       data: {
         name: 'Campus Innovation Platform — API Server',
-        version: '1.0.0-F3',
+        version: '1.0.0-F4',
         status: 'running',
         hint: 'Open http://localhost:5173 for the web client.',
         endpoints: {
-          health: 'GET /api/v1/health',
-          auth: 'POST /api/v1/auth/register | login | verify-otp | resend-otp | logout',
-          users: 'GET /api/v1/users/me | PUT /api/v1/users/me | GET /api/v1/users/:id',
-          roster: 'POST /api/v1/roster/import (admin)',
-          events: 'GET /api/v1/events | GET /api/v1/events/my | GET /api/v1/events/:id | POST /api/v1/events | PUT /api/v1/events/:id | PATCH /api/v1/events/:id/publish | PATCH /api/v1/events/:id/close | DELETE /api/v1/events/:id | POST /api/v1/events/:id/bookmark',
+          health:     'GET /api/v1/health',
+          auth:       'POST /api/v1/auth/register | login | verify-otp | resend-otp | logout',
+          users:      'GET /api/v1/users/me | PUT /api/v1/users/me | GET /api/v1/users/:id',
+          roster:     'POST /api/v1/roster/import (admin)',
+          events:     'GET /api/v1/events | GET /api/v1/events/my | GET /api/v1/events/:id | POST /api/v1/events | PUT /api/v1/events/:id | PATCH /api/v1/events/:id/publish | PATCH /api/v1/events/:id/close | DELETE /api/v1/events/:id | POST /api/v1/events/:id/bookmark',
           extraction: 'POST /api/v1/events/extract (faculty+) — AI Paste-to-Post',
+          teams:      'GET /api/v1/events/:id/teams | GET /api/v1/teams/my | POST /api/v1/teams | PATCH /api/v1/teams/:id',
+          links:      'GET /api/v1/links?box=in|out | POST /api/v1/links | PATCH /api/v1/links/:id',
         },
       },
     });
@@ -45,9 +49,9 @@ export function mountRoutes(app: Application): void {
 
   // ── F-3: Extraction (mounted on /events/extract inside eventsRouter) ──────
 
-  // ── F-4: Teams ────────────────────────────────────────────────────────────
-  // app.use('/api/v1/teams', teamsRouter);
-  // app.use('/api/v1/links', linksRouter);
+  // ── F-4: Team Finder — Posts & Requests ──────────────────────────────────
+  app.use('/api/v1/teams', teamsRouter);
+  app.use('/api/v1/links', linksRouter);
 
   // ── F-5: People, Looking, Safety ──────────────────────────────────────────
   // app.use('/api/v1/people', peopleRouter);

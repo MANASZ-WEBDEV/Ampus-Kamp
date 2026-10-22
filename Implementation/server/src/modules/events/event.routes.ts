@@ -99,3 +99,14 @@ eventsRouter.post(
   validate(extractRequestSchema),
   extractEvent,
 );
+
+// ── F-4: Team posts per event ─────────────────────────────────────────────────
+// GET /api/v1/events/:id/teams — list open/full team posts for a specific event
+import { listTeamPosts } from '@/modules/teams/team.controller';
+
+eventsRouter.get(
+  '/:id/teams',
+  requireAuth,
+  requireRole(['student', 'faculty', 'dept_head', 'admin']),
+  listTeamPosts,
+);
