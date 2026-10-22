@@ -13,6 +13,9 @@ export type {
   UpdateEventInput,
   EventsQuery,
   EventFeedPage,
+  // F-3
+  ExtractedFields,
+  ExtractionResult,
 } from './types';
 
 // ── API ───────────────────────────────────────────────────────────────────────
@@ -26,6 +29,8 @@ export {
   closeEvent,
   deleteEvent,
   toggleBookmark,
+  // F-3
+  extractEvent,
 } from './api/events.api';
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
@@ -39,9 +44,13 @@ export {
   useDeleteEvent,
 } from './hooks/useCreateEvent';
 export { useBookmark } from './hooks/useBookmark';
+export { useExtraction } from './hooks/useExtraction'; // F-3
 
 // ── Components ────────────────────────────────────────────────────────────────
 export { EventCardComponent, EventCardSkeleton } from './components/EventCard';
 export { EventTypeBadge, EventStatusBadge, DeadlineCountdown } from './components/EventStatusBadge';
 export { BookmarkButton } from './components/BookmarkButton';
 export { EventFilterBar } from './components/EventFilterBar';
+export { UncertainBadge } from './components/UncertainBadge';             // F-3
+export { ExtractionConfirmForm } from './components/ExtractionConfirmForm'; // F-3
+

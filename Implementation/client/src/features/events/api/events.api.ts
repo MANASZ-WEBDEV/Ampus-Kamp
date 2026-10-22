@@ -94,3 +94,20 @@ export async function registerForEvent(id: string, body: Record<string, unknown>
   const res = await apiClient.post<{ data: { success: boolean } }>(`/events/${id}/register`, body);
   return res.data.data;
 }
+
+// ── F-3: Paste-to-Post AI Extraction ─────────────────────────────────────────
+
+import type { ExtractionResult } from '../types';
+
+/**
+ * extractEvent — POST /events/extract
+ *
+ * Sends rawMessage to the server's AI pipeline.
+ * Returns extracted fields + list of uncertain field names.
+ * Never sends PII — only the raw announcement text.
+ */
+export async function extractEvent(rawMessage: string): Promise<ExtractionResult> {
+  const res = await apiClient.post<{ data: ExtractionResult }>('/events/extract', { rawMessage });
+  return res.data.data;
+}
+

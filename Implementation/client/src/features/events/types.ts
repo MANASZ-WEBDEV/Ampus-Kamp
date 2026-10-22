@@ -80,6 +80,17 @@ export interface CreateEventInput {
   summary?: string;
   registrationMode?: RegistrationMode;
   registrationDeadline?: string;
+
+  // ── F-3: Paste-to-Post metadata (only set when created via extraction) ──────
+  /** Original pasted announcement text — stored server-side, never shown to students */
+  rawMessage?: string;
+  /** AI extraction metadata for audit / research */
+  extraction?: {
+    model?: string;
+    promptVersion?: string;
+    editedFields: string[];
+    usedFallback: boolean;
+  };
 }
 
 export type UpdateEventInput = Partial<CreateEventInput>;
@@ -99,4 +110,34 @@ export interface EventFeedPage {
   items: EventCard[];
   nextCursor?: string;
   hasMore: boolean;
+}
+
+// ── F-3: Extraction types ─────────────────────────────────────────────────────
+
+/** Fields that the AI extraction can populate — mirrors ExtractedEventFields on server */
+export interface ExtractedFields {
+  title?: string | null;
+  type?: EventType | null;
+  organizer?: string | null;
+  deadline?: string | null;      // ISO8601
+  eventDate?: string | null;     // ISO8601
+  eligibility?: {
+    branches: string[];
+    years: number[];
+  } | null;
+  teamSize?: {
+    min: number;
+    max: number;
+  } | null;
+  fee?: string | null;
+  link?: string | null;
+  summary?: string | null;
+}
+
+/** Result returned by POST /api/v1/events/extract */
+export interface ExtractionResult {
+  extracted: ExtractedFields;
+  uncertainFields: string[];   // field names that are null / uncertain
+  usedFallback: boolean;       // true if LLM failed and regex was used
+  regexExtracted?: ExtractedFields; // for research comparison (optional)
 }
