@@ -27,8 +27,11 @@ const PasteToPostPage = lazy(() => import('@/features/events/pages/PasteToPostPa
 const TeamPostsPage = lazy(() => import('@/features/teams/pages/TeamPostsPage'));
 const LinkInboxPage = lazy(() => import('@/features/teams/pages/LinkInboxPage'));
 
+// F-5: People, Looking, Safety
+const PeopleSearchPage = lazy(() => import('@/features/teams/pages/PeopleSearchPage'));
+const LookingListPage  = lazy(() => import('@/features/teams/pages/LookingListPage'));
+
 // Future pages — import here as features are built
-// const PeopleSearchPage      = lazy(() => import('@/pages/PeopleSearchPage'));
 // const AddAchievementPage    = lazy(() => import('@/pages/AddAchievementPage'));
 // const DepartmentDashboard   = lazy(() => import('@/pages/DepartmentDashboardPage'));
 // const LeaderboardPage       = lazy(() => import('@/pages/LeaderboardPage'));
@@ -105,8 +108,16 @@ export function AppRouter() {
             element={<ProtectedRoute roles={['student']}><LinkInboxPage /></ProtectedRoute>}
           />
 
-          {/* ── F-5: People search ────────────────────────────────────────── */}
-          {/* <Route path="/people" element={<ProtectedRoute><PeopleSearchPage /></ProtectedRoute>} /> */}
+          {/* ── F-5: People, Looking, Safety ────────────────────────────────── */}
+          {/* IMPORTANT: /events/:id/looking must be before /events/:id ─────── */}
+          <Route
+            path="/events/:id/looking"
+            element={<ProtectedRoute roles={['student']}><LookingListPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/teams/people"
+            element={<ProtectedRoute roles={['student']}><PeopleSearchPage /></ProtectedRoute>}
+          />
 
           {/* ── F-7: Achievements ─────────────────────────────────────────── */}
           {/* <Route path="/achievements/add" element={<ProtectedRoute><AddAchievementPage /></ProtectedRoute>} /> */}

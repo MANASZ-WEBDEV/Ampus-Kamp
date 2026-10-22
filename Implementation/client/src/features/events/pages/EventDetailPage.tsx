@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useEvent } from '../hooks/useEvent';
+import { useEvent }    from '../hooks/useEvent';
 import { useRegister } from '../hooks/useRegister';
 import { useBookmark } from '../hooks/useBookmark';
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { useAuth }     from '@/features/auth/context/AuthContext';
 import { DeadlineCountdown } from '../components/EventStatusBadge';
-import { AppBar } from '@/components/layout/AppBar';
-import { BottomNav } from '@/components/layout/BottomNav';
+import { AppBar }     from '@/components/layout/AppBar';
+import { BottomNav }  from '@/components/layout/BottomNav';
+import { LookingToggle } from '@/features/teams/components/LookingToggle';
 
 const GRADIENT: Record<string, string> = {
   hackathon:   'from-[#221eb5] to-[#3e3ecb]',
@@ -468,7 +469,20 @@ export default function EventDetailPage() {
                     <span className="material-symbols-outlined text-[16px]">post_add</span>
                     Post Open Role
                   </button>
+                  <button onClick={() => navigate(`/teams/people?eventId=${id}`)}
+                    className="col-span-2 py-2 px-3 rounded-lg bg-surface-container hover:bg-surface-container-low text-on-surface font-label-md text-[12px] transition-all shadow-sm flex items-center justify-center gap-1">
+                    <span className="material-symbols-outlined text-[16px] text-outline">person_search</span>
+                    Find People
+                  </button>
                 </div>
+
+                {/* Looking for a team toggle — only for students */}
+                {user?.role === 'student' && (
+                  <LookingToggle
+                    eventId={id!}
+                    isLooking={false}
+                  />
+                )}
               </section>
             )}
 

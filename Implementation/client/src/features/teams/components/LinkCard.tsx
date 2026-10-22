@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useRespondLink } from '../hooks/useTeams';
+import { BlockReportMenu } from './BlockReportMenu';
 import type { TeamLink } from '../types';
 import { isContactReveal } from '../types';
 
@@ -24,21 +26,29 @@ interface LinkCardProps {
 
 export function LinkCard({ link, box }: LinkCardProps) {
   const { mutate: respond, isPending } = useRespondLink();
+  const [showSafety, setShowSafety]    = useState(false);
   const cfg = STATUS_LABELS[link.status];
 
   const otherPerson = box === 'in' ? link.from : link.to;
-  const canAccept   = box === 'in' && link.status === 'pending';
-  const canDecline  = box === 'in' && link.status === 'pending';
+  const canAccept   = box === 'in'  && link.status === 'pending';
+  const canDecline  = box === 'in'  && link.status === 'pending';
   const canWithdraw = box === 'out' && link.status === 'pending';
+  // Block / Report accessible only on incoming links
+  const canReport   = box === 'in';
+
+  const daysLeft = Math.ceil(
+    (new Date(link.expiresAt).getTime() - Date.now()) / 86_400_000,
+  );
 
   return (
-    <article className={`bg-surface-container-lowest rounded-2xl border border-outline-variant/20
-                         p-4 flex flex-col gap-3 transition-all
-                         ${link.status === 'accepted' ? 'border-primary/20 bg-primary/5' : ''}`}>
-
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-2">
-        <div>
+    <>
+      <article
+        className={`bg-surface-container-lowest rounded-2xl border border-outline-variant/20
+                    p-4 flex flex-col gap-3 transition-all
+                    ${link.status === 'accepted' ? 'border-primary/20 bg-primary/5' : ''}`}
+      >
+        {/* ── Header ───────────────────────────────────────────────────── */}
+        <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-[16px] text-primary">person</span>
@@ -53,93 +63,108 @@ export function LinkCard({ link, box }: LinkCardProps) {
               </p>
             </div>
           </div>
-        </div>
 
-        {/* Status chip */}
-        <span className={`flex items-center gap-1 font-label-sm text-[10px] ${cfg.color} shrink-0`}>
-          <span className="material-symbols-outlined text-[14px]">{cfg.icon}</span>
-          {cfg.label}
-        </span>
-      </div>
-
-      {/* ── Message ────────────────────────────────────────────────────── */}
-      {link.message && (
-        <div className="p-3 rounded-xl bg-surface-container border border-outline-variant/20">
-          <p className="font-body-sm text-xs text-on-surface-variant italic">
-            "{link.message}"
-          </p>
-        </div>
-      )}
-
-      {/* ── Contact reveal (accepted only) ──────────────────────────── */}
-      {link.status === 'accepted' && link.contact && (
-        <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
-            {isContactReveal(link.contact) ? 'phone' : 'info'}
-          </span>
-          <div>
-            <p className="font-label-lg text-xs font-semibold text-primary">
-              {isContactReveal(link.contact) ? 'Contact Revealed' : 'Contact Info'}
-            </p>
-            <p className="font-body-sm text-xs text-on-surface mt-0.5">
-              {isContactReveal(link.contact) ? link.contact.phone : link.contact.hint}
-            </p>
+          {/* Status chip + safety overflow (incoming only) */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className={`flex items-center gap-1 font-label-sm text-[10px] ${cfg.color}`}>
+              <span className="material-symbols-outlined text-[14px]">{cfg.icon}</span>
+              {cfg.label}
+            </span>
+            {canReport && (
+              <button
+                id={`link-safety-${link.id}`}
+                onClick={() => setShowSafety(true)}
+                title="Report or block"
+                className="w-7 h-7 rounded-lg flex items-center justify-center
+                           text-on-surface-variant hover:bg-surface-container-high transition-all"
+              >
+                <span className="material-symbols-outlined text-[16px]">more_vert</span>
+              </button>
+            )}
           </div>
         </div>
-      )}
 
-      {/* ── Expiry warning ────────────────────────────────────────────── */}
-      {link.status === 'pending' && (() => {
-        const daysLeft = Math.ceil((new Date(link.expiresAt).getTime() - Date.now()) / 86_400_000);
-        return daysLeft <= 2 ? (
-          <p className="font-label-sm text-[10px] text-warning flex items-center gap-1">
+        {/* ── Message ──────────────────────────────────────────────────── */}
+        {link.message && (
+          <div className="p-3 rounded-xl bg-surface-container border border-outline-variant/20">
+            <p className="font-body-sm text-xs text-on-surface-variant italic">
+              &ldquo;{link.message}&rdquo;
+            </p>
+          </div>
+        )}
+
+        {/* ── Contact reveal (accepted only) ───────────────────────────── */}
+        {link.status === 'accepted' && link.contact && (
+          <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
+              {isContactReveal(link.contact) ? 'phone' : 'info'}
+            </span>
+            <div>
+              <p className="font-label-lg text-xs font-semibold text-primary">
+                {isContactReveal(link.contact) ? 'Contact Revealed' : 'Contact Info'}
+              </p>
+              <p className="font-body-sm text-xs text-on-surface mt-0.5">
+                {isContactReveal(link.contact) ? link.contact.phone : link.contact.hint}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Expiry warning (≤ 2 days left) ───────────────────────────── */}
+        {link.status === 'pending' && daysLeft <= 2 && (
+          <p className="font-label-sm text-[10px] text-amber-600 flex items-center gap-1">
             <span className="material-symbols-outlined text-[12px]">warning</span>
             Expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
           </p>
-        ) : null;
-      })()}
+        )}
 
-      {/* ── Actions ────────────────────────────────────────────────────── */}
-      {(canAccept || canDecline || canWithdraw) && (
-        <div className="flex gap-2 pt-1">
-          {canAccept && (
-            <button
-              id={`link-accept-${link.id}`}
-              onClick={() => respond({ id: link.id, action: 'accept' })}
-              disabled={isPending}
-              className="flex-1 py-2 rounded-xl bg-primary text-on-primary
-                         font-label-lg text-sm font-medium
-                         hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50"
-            >
-              Accept
-            </button>
-          )}
-          {canDecline && (
-            <button
-              id={`link-decline-${link.id}`}
-              onClick={() => respond({ id: link.id, action: 'decline' })}
-              disabled={isPending}
-              className="flex-1 py-2 rounded-xl border border-outline-variant/40
-                         font-label-lg text-sm text-on-surface-variant
-                         hover:border-error/40 hover:text-error transition-all disabled:opacity-50"
-            >
-              Decline
-            </button>
-          )}
-          {canWithdraw && (
-            <button
-              id={`link-withdraw-${link.id}`}
-              onClick={() => respond({ id: link.id, action: 'withdraw' })}
-              disabled={isPending}
-              className="flex-1 py-2 rounded-xl border border-outline-variant/40
-                         font-label-lg text-sm text-on-surface-variant
-                         hover:border-outline-variant transition-all disabled:opacity-50"
-            >
-              Withdraw
-            </button>
-          )}
-        </div>
+        {/* ── Actions ──────────────────────────────────────────────────── */}
+        {(canAccept || canDecline || canWithdraw) && (
+          <div className="flex gap-2 pt-1">
+            {canAccept && (
+              <button
+                id={`link-accept-${link.id}`}
+                onClick={() => respond({ id: link.id, action: 'accept' })}
+                disabled={isPending}
+                className="flex-1 py-2 rounded-xl bg-primary text-on-primary
+                           font-label-lg text-sm font-medium
+                           hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                Accept
+              </button>
+            )}
+            {canDecline && (
+              <button
+                id={`link-decline-${link.id}`}
+                onClick={() => respond({ id: link.id, action: 'decline' })}
+                disabled={isPending}
+                className="flex-1 py-2 rounded-xl border border-outline-variant/40
+                           font-label-lg text-sm text-on-surface-variant
+                           hover:border-error/40 hover:text-error transition-all disabled:opacity-50"
+              >
+                Decline
+              </button>
+            )}
+            {canWithdraw && (
+              <button
+                id={`link-withdraw-${link.id}`}
+                onClick={() => respond({ id: link.id, action: 'withdraw' })}
+                disabled={isPending}
+                className="flex-1 py-2 rounded-xl border border-outline-variant/40
+                           font-label-lg text-sm text-on-surface-variant
+                           hover:border-outline-variant transition-all disabled:opacity-50"
+              >
+                Withdraw
+              </button>
+            )}
+          </div>
+        )}
+      </article>
+
+      {/* BlockReportMenu bottom sheet (incoming links only) */}
+      {showSafety && (
+        <BlockReportMenu link={link} onClose={() => setShowSafety(false)} />
       )}
-    </article>
+    </>
   );
 }
