@@ -31,6 +31,9 @@ const LinkInboxPage = lazy(() => import('@/features/teams/pages/LinkInboxPage'))
 const PeopleSearchPage = lazy(() => import('@/features/teams/pages/PeopleSearchPage'));
 const LookingListPage  = lazy(() => import('@/features/teams/pages/LookingListPage'));
 
+// F-6: Registrations
+const FacultyRosterPage = lazy(() => import('@/features/registrations/pages/FacultyRosterPage'));
+
 // Future pages — import here as features are built
 // const AddAchievementPage    = lazy(() => import('@/pages/AddAchievementPage'));
 // const DepartmentDashboard   = lazy(() => import('@/pages/DepartmentDashboardPage'));
@@ -118,8 +121,14 @@ export function AppRouter() {
             path="/teams/people"
             element={<ProtectedRoute roles={['student']}><PeopleSearchPage /></ProtectedRoute>}
           />
+          {/* ── F-6: Registrations ─────────────────────────────────────── */}
+          {/* IMPORTANT: /events/:id/roster must be before /events/:id ──── */}
+          <Route
+            path="/events/:id/roster"
+            element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyRosterPage /></ProtectedRoute>}
+          />
 
-          {/* ── F-7: Achievements ─────────────────────────────────────────── */}
+          {/* ── F-7: Achievements ─────────────────────────────────────── */}
           {/* <Route path="/achievements/add" element={<ProtectedRoute><AddAchievementPage /></ProtectedRoute>} /> */}
 
           {/* ── F-8: Analytics ────────────────────────────────────────────── */}

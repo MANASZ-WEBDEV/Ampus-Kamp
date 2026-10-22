@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useEvent }    from '../hooks/useEvent';
-import { useRegister } from '../hooks/useRegister';
 import { useBookmark } from '../hooks/useBookmark';
 import { useAuth }     from '@/features/auth/context/AuthContext';
 import { DeadlineCountdown } from '../components/EventStatusBadge';
 import { AppBar }     from '@/components/layout/AppBar';
 import { BottomNav }  from '@/components/layout/BottomNav';
-import { LookingToggle } from '@/features/teams/components/LookingToggle';
+import { LookingToggle }          from '@/features/teams/components/LookingToggle';
+import { RegisterButton }         from '@/features/registrations/components/RegisterButton';
+import { RegistrationStatusCard } from '@/features/registrations/components/RegistrationStatusCard';
+import { MemberConfirmBanner }    from '@/features/registrations/components/MemberConfirmBanner';
+import { useMyRegistration, useUpdateRegistration } from '@/features/registrations/hooks/useRegistration';
 
 const GRADIENT: Record<string, string> = {
   hackathon:   'from-[#221eb5] to-[#3e3ecb]',
@@ -43,32 +46,27 @@ export default function EventDetailPage() {
   const { user }  = useAuth();
 
   const { data: event, isLoading, isError } = useEvent(id!);
-  const { mutateAsync: register, isPending: isRegistering } = useRegister(id!);
   const { isBookmarked, toggle: toggleBookmark, isPending: isBookmarking } = useBookmark(
     id!,
     event?.isBookmarked ?? false,
   );
 
-  const [registered, setRegistered] = useState(false);
-  const [shareIcon, setShareIcon]   = useState('share');
+  // ── F-6: Registration ─────────────────────────────────────────────────────
+  const { data: myReg }                    = useMyRegistration(id!);
+  const { mutate: doWithdraw }             = useUpdateRegistration(id!);
+  const alreadyRegistered                  = !!myReg && myReg.status !== 'withdrawn';
+  // Pending invite: current user is invited but hasn't confirmed yet
+  const hasPendingInvite = myReg?.members.some(
+    m => m.userId === user?.id && m.status === 'invited',
+  ) ?? false;
+
+  const [shareIcon, setShareIcon]       = useState('share');
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
 
-  const isFaculty  = user?.role === 'faculty' || user?.role === 'dept_head' || user?.role === 'admin';
-  const isOwner    = isFaculty && event?.postedBy?.id === user?.id;
-  const isClosed   = event?.status === 'closed' || event?.status === 'archived';
-  const isDraft    = event?.status === 'draft';
-
-  async function handleRegister() {
-    if (!event || isClosed || isDraft) return;
-    if (event.registrationMode === 'external' && event.link) {
-      window.open(event.link, '_blank', 'noopener');
-      return;
-    }
-    try {
-      await register({});
-      setRegistered(true);
-    } catch { /* toast would go here */ }
-  }
+  const isFaculty = user?.role === 'faculty' || user?.role === 'dept_head' || user?.role === 'admin';
+  const isOwner   = isFaculty && event?.postedBy?.id === user?.id;
+  const isClosed  = event?.status === 'closed' || event?.status === 'archived';
+  const isDraft   = event?.status === 'draft';
 
   function handleShare() {
     if (navigator.share) {
@@ -81,9 +79,9 @@ export default function EventDetailPage() {
   }
 
   const ctaLabel = () => {
-    if (registered)  return 'Application Started';
-    if (isClosed)    return 'Registration Closed';
-    if (isDraft)     return 'Not Yet Published';
+    if (alreadyRegistered) return 'Registered';
+    if (isClosed)          return 'Registration Closed';
+    if (isDraft)           return 'Not Yet Published';
     if (event?.type === 'seminar')  return 'RSVP for this Talk';
     if (event?.type === 'workshop') return 'Reserve My Spot';
     if (event?.type === 'sports')   return 'Register My Squad';
@@ -608,33 +606,63 @@ export default function EventDetailPage() {
                 </p>
               </div>
 
-              {/* CTAs */}
-              <div className="flex flex-col gap-2">
-                <button
-                  id="sidebar-register-btn"
-                  onClick={handleRegister}
-                  disabled={isClosed || isDraft || isRegistering || registered}
-                  className={`w-full py-3 px-4 rounded-lg font-label-lg text-sm font-bold flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all disabled:opacity-70 ${
-                    registered   ? 'bg-surface-tint text-on-primary'
-                    : isClosed   ? 'bg-surface-container-high text-on-surface-variant'
-                    : 'bg-primary-container hover:bg-primary text-on-primary'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {registered ? 'check_circle' : isRegistering ? 'progress_activity' : 'how_to_reg'}
-                  </span>
-                  {isRegistering ? 'Opening Form…' : ctaLabel()}
-                  {!registered && !isClosed && !isRegistering && (
-                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                  )}
-                </button>
+              {/* ── F-6: Registration CTAs ────────────────────────────────── */}
+              <div id="sidebar-reg-section" className="flex flex-col gap-3">
 
-                {!isClosed && (event.type === 'hackathon' || event.type === 'competition') && (
+                {/* Member invite banner — shown when user has a pending invite */}
+                {hasPendingInvite && myReg && user && (
+                  <MemberConfirmBanner
+                    registration={myReg}
+                    currentUserId={user.id}
+                    eventId={id!}
+                  />
+                )}
+
+                {/* Registration status card — if already registered */}
+                {alreadyRegistered && myReg && user && !hasPendingInvite && (
+                  <RegistrationStatusCard
+                    registration={myReg}
+                    currentUserId={user.id}
+                    onWithdraw={() => doWithdraw({ regId: myReg.id, input: { action: 'withdraw' } })}
+                  />
+                )}
+
+                {/* Register button — only for students who haven't registered */}
+                {!isFaculty && !alreadyRegistered && !isClosed && !isDraft && (
+                  <RegisterButton
+                    eventId={id!}
+                    registrationMode={event.registrationMode as 'in_app' | 'external'}
+                    eventLink={event.link}
+                    teamSizeMin={event.teamSize?.min ?? 1}
+                    teamSizeMax={event.teamSize?.max ?? 1}
+                    alreadyRegistered={false}
+                  />
+                )}
+
+                {/* Closed / draft state label */}
+                {(isClosed || isDraft) && !isFaculty && (
+                  <div className="flex items-center justify-center gap-2 py-3 rounded-xl
+                                  bg-surface-container border border-outline-variant/20">
+                    <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+                      {isClosed ? 'lock' : 'visibility_off'}
+                    </span>
+                    <span className="font-label-lg text-sm text-on-surface-variant">
+                      {ctaLabel()}
+                    </span>
+                  </div>
+                )}
+
+                {/* Faculty: roster link */}
+                {isFaculty && (
                   <button
-                    onClick={() => navigate('/teams')}
-                    className="w-full py-2.5 px-4 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-lg text-sm transition-all flex items-center justify-center gap-2">
-                    <span className="material-symbols-outlined text-[18px] text-outline">person_add</span>
-                    Register as Individual Free Agent
+                    id="sidebar-roster-btn"
+                    onClick={() => navigate(`/events/${id}/roster`)}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
+                               border border-outline-variant/40 font-label-lg text-sm text-on-surface-variant
+                               hover:border-primary/40 hover:text-primary transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">group</span>
+                    View Roster
                   </button>
                 )}
               </div>
@@ -722,21 +750,35 @@ export default function EventDetailPage() {
             {isBookmarked ? 'bookmark' : 'bookmark_border'}
           </span>
         </button>
-        <button
-          id="mobile-register-btn"
-          onClick={handleRegister}
-          disabled={isClosed || isDraft || isRegistering || registered}
-          className={`flex-1 h-12 rounded-lg font-label-lg text-sm font-bold flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-70 ${
-            registered   ? 'bg-surface-tint text-on-primary'
-            : isClosed   ? 'bg-surface-container-high text-on-surface-variant'
-            : 'bg-primary-container hover:bg-primary text-on-primary'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[20px]">
-            {registered ? 'check_circle' : isRegistering ? 'progress_activity' : 'how_to_reg'}
-          </span>
-          {isRegistering ? 'Opening Form…' : ctaLabel()}
-        </button>
+        {/* Mobile CTA: scroll-to-register or show status */}
+        {!isFaculty ? (
+          <button
+            id="mobile-register-btn"
+            onClick={() => document.getElementById('sidebar-reg-section')?.scrollIntoView({ behavior: 'smooth' })}
+            disabled={isClosed || isDraft}
+            className={`flex-1 h-12 rounded-lg font-label-lg text-sm font-bold flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-70 ${
+              alreadyRegistered ? 'bg-primary/10 text-primary border border-primary/20'
+              : isClosed        ? 'bg-surface-container-high text-on-surface-variant'
+              : 'bg-primary-container hover:bg-primary text-on-primary'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[20px]"
+              style={alreadyRegistered ? { fontVariationSettings: "'FILL' 1" } : {}}>
+              {alreadyRegistered ? 'how_to_reg' : isClosed ? 'lock' : 'app_registration'}
+            </span>
+            {ctaLabel()}
+          </button>
+        ) : (
+          <button
+            id="mobile-roster-btn"
+            onClick={() => navigate(`/events/${id}/roster`)}
+            className="flex-1 h-12 rounded-lg font-label-lg text-sm font-medium flex items-center justify-center gap-2
+                       border border-outline-variant/40 text-on-surface-variant hover:border-primary/40 hover:text-primary transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px]">group</span>
+            View Roster
+          </button>
+        )}
       </div>
 
       <BottomNav />
