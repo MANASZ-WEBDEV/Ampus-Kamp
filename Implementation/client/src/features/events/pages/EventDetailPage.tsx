@@ -458,12 +458,12 @@ export default function EventDetailPage() {
 
                 {/* Grid of squad postings */}
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => navigate('/teams')}
+                  <button onClick={() => navigate(`/events/${id}/teams`)}
                     className="py-2 px-3 rounded-lg bg-surface-container-lowest hover:bg-surface-container-low text-primary font-label-md text-[12px] font-semibold transition-all shadow-sm flex items-center justify-center gap-1">
                     <span className="material-symbols-outlined text-[16px]">group_search</span>
                     Find Squad
                   </button>
-                  <button onClick={() => navigate('/teams')}
+                  <button onClick={() => navigate(`/events/${id}/teams`)}
                     className="py-2 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-[12px] font-semibold transition-all shadow-sm flex items-center justify-center gap-1">
                     <span className="material-symbols-outlined text-[16px]">post_add</span>
                     Post Open Role
@@ -661,8 +661,8 @@ export default function EventDetailPage() {
                       </div>
                       <div className="flex items-center justify-between text-outline text-[10px] pt-0.5">
                         <span>Open listing</span>
-                        <button onClick={() => navigate('/teams')} className="text-primary hover:underline font-semibold text-[11px]">
-                          Request Invite
+                        <button onClick={() => navigate(`/events/${id}/teams`)} className="text-primary hover:underline font-semibold text-[11px]">
+                          View Posts
                         </button>
                       </div>
                     </div>

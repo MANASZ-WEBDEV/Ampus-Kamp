@@ -23,8 +23,11 @@ const MyEventsPage         = lazy(() => import('@/features/events/pages/MyEvents
 // F-3: Paste-to-Post AI Extraction
 const PasteToPostPage = lazy(() => import('@/features/events/pages/PasteToPostPage'));
 
+// F-4: Team Finder
+const TeamPostsPage = lazy(() => import('@/features/teams/pages/TeamPostsPage'));
+const LinkInboxPage = lazy(() => import('@/features/teams/pages/LinkInboxPage'));
+
 // Future pages — import here as features are built
-// const TeamPostsPage         = lazy(() => import('@/pages/TeamPostsPage'));
 // const PeopleSearchPage      = lazy(() => import('@/pages/PeopleSearchPage'));
 // const AddAchievementPage    = lazy(() => import('@/pages/AddAchievementPage'));
 // const DepartmentDashboard   = lazy(() => import('@/pages/DepartmentDashboardPage'));
@@ -91,9 +94,16 @@ export function AppRouter() {
           <Route path="/events/:id"      element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
           <Route path="/events/:id/edit" element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyEditEventPage /></ProtectedRoute>} />
 
-          {/* ── F-4: Team finder ──────────────────────────────────────────── */}
-          {/* <Route path="/teams"       element={<ProtectedRoute><TeamPostsPage /></ProtectedRoute>} /> */}
-          {/* <Route path="/teams/inbox" element={<ProtectedRoute><LinkInboxPage /></ProtectedRoute>} /> */}
+          {/* ── F-4: Team Finder ──────────────────────────────────────────── */}
+          {/* IMPORTANT: /events/:eventId/teams must be before /events/:id ── */}
+          <Route
+            path="/events/:eventId/teams"
+            element={<ProtectedRoute roles={['student']}><TeamPostsPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/teams/inbox"
+            element={<ProtectedRoute roles={['student']}><LinkInboxPage /></ProtectedRoute>}
+          />
 
           {/* ── F-5: People search ────────────────────────────────────────── */}
           {/* <Route path="/people" element={<ProtectedRoute><PeopleSearchPage /></ProtectedRoute>} /> */}
