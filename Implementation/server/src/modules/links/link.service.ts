@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { TeamLink, type ITeamLink } from '@/models/teamLink.model';
 import { TeamPost }  from '@/models/teamPost.model';
 import { Block }     from '@/models/block.model';
+import { User }      from '@/models/user.model';
 import { Setting }   from '@/models/setting.model';
 import type { AuthUser } from '@/shared/types';
 import type { SendLinkBody, LinksQuery } from './link.schema';
@@ -117,6 +118,17 @@ export async function sendLink(actor: AuthUser, body: SendLinkBody): Promise<Lin
   } else {
     // invite / connect
     toUserId = body.toUserId!;
+
+    // ── allowInvites check (F-5) ─────────────────────────────────────────
+    // Server-side enforcement — not just hidden in the UI.
+    // Only the allowInvites field is fetched — no other user data needed.
+    const target = await User.findById(toUserId).select('allowInvites').lean();
+    if (!target) throw new NotFoundError('User');
+    if (!target.allowInvites) {
+      throw new ForbiddenError(
+        'This student is not accepting invites or connection requests at this time.',
+      );
+    }
   }
 
   // ── 2. Block check ───────────────────────────────────────────────────────
