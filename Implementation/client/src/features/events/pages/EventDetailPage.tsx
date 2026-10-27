@@ -21,6 +21,11 @@ const GRADIENT: Record<string, string> = {
   other:       'from-slate-700 to-slate-500',
 };
 
+// Default event cover — used when no event-specific image is stored.
+// Flip this one constant to change the platform-wide fallback.
+const DEFAULT_EVENT_IMG =
+  'https://images.unsplash.com/photo-1761727799924-ec68d218df5e?q=80&w=1374&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=NHwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+
 const TYPE_BADGE: Record<string, string> = {
   hackathon:   'bg-tertiary-container text-on-tertiary',
   competition: 'bg-surface-tint text-on-primary',
@@ -205,6 +210,14 @@ export default function EventDetailPage() {
             {/* Hero Banner — full-bleed image with gradient overlay */}
             <section className="relative rounded-xl overflow-hidden bg-surface-container-lowest shadow-md flex flex-col">
               <div className={`relative w-full h-52 lg:h-80 overflow-hidden bg-gradient-to-br ${gradient}`}>
+                {/* Default event background image */}
+                <img
+                  src={DEFAULT_EVENT_IMG}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay"
+                  loading="lazy"
+                />
                 {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-inverse-surface/95 via-inverse-surface/30 to-transparent" />
 
