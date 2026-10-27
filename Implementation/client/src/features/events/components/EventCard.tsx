@@ -26,6 +26,10 @@ const BANNER_GRADIENT: Record<string, string> = {
   other:       'from-slate-700/90 to-slate-500/70',
 };
 
+// Default event cover — same as EventDetailPage (single source of truth).
+const DEFAULT_EVENT_IMG =
+  'https://images.unsplash.com/photo-1761727799924-ec68d218df5e?q=80&w=1374&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=NHwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+
 // ── CTA label/icon ────────────────────────────────────────────────────────────
 
 function ctaLabel(event: EventCard): string {
@@ -76,6 +80,14 @@ export function EventCardComponent({ event }: EventCardProps) {
           tabIndex={0}
           aria-label={`View ${event.title}`}
         >
+          {/* Default event background image */}
+          <img
+            src={DEFAULT_EVENT_IMG}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-overlay"
+            loading="lazy"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
 
           {/* Category badge — top left */}
