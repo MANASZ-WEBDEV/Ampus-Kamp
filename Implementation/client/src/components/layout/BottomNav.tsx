@@ -18,13 +18,15 @@ interface QuickAction {
 }
 
 const FACULTY_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'qa-post-event', label: 'Post Event',    icon: 'campaign',  to: '/events/new', color: 'bg-primary',             textColor: 'text-on-primary' },
-  { id: 'qa-my-events',  label: 'My Events',     icon: 'event_note',to: '/events/my',  color: 'bg-primary-fixed',        textColor: 'text-on-primary-fixed-variant' },
+  { id: 'qa-post-event',    label: 'Post Event',     icon: 'campaign',       to: '/events/new', color: 'bg-primary',             textColor: 'text-on-primary' },
+  { id: 'qa-my-events',     label: 'My Events',      icon: 'event_note',     to: '/events/my',  color: 'bg-primary-fixed',        textColor: 'text-on-primary-fixed-variant' },
+  { id: 'qa-verify-queue',  label: 'Verify Queue',   icon: 'verified_user',  to: '/verify',     color: 'bg-secondary',            textColor: 'text-on-secondary' },
 ];
 
 const STUDENT_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'qa-bookmarks',  label: 'Saved Events',  icon: 'bookmark',  to: '/events?saved=1', color: 'bg-primary-container',  textColor: 'text-on-primary' },
-  { id: 'qa-browse',     label: 'Browse All',    icon: 'explore',   to: '/events',         color: 'bg-surface-container-high', textColor: 'text-on-surface' },
+  { id: 'qa-add-achievement', label: 'Add Certificate', icon: 'add_task',  to: '/achievements/add',    color: 'bg-primary',            textColor: 'text-on-primary' },
+  { id: 'qa-bookmarks',       label: 'Saved Events',   icon: 'bookmark',  to: '/events?saved=1',      color: 'bg-primary-container',  textColor: 'text-on-primary' },
+  { id: 'qa-browse',          label: 'Browse All',     icon: 'explore',   to: '/events',              color: 'bg-surface-container-high', textColor: 'text-on-surface' },
 ];
 
 /**

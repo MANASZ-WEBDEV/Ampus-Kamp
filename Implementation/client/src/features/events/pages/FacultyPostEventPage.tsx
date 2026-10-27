@@ -4,6 +4,12 @@ import { useCreateEvent } from '../hooks/useCreateEvent';
 import type { CreateEventInput, EventType, RegistrationMode } from '../types';
 import { AppBar } from '@/components/layout/AppBar';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Feature flag — set to `true` when the AI Paste-to-Post (F-3) feature is
+// ready to be shown to faculty. Flip this single constant to re-enable.
+// ─────────────────────────────────────────────────────────────────────────────
+const SHOW_AI_BANNER = false;
+
 const EVENT_TYPES: { value: EventType; label: string; icon: string; color: string }[] = [
   { value: 'hackathon',   label: 'Hackathon',   icon: 'bolt',          color: 'bg-tertiary-fixed text-on-tertiary-fixed' },
   { value: 'competition', label: 'Competition', icon: 'trophy',        color: 'bg-primary-fixed text-on-primary-fixed-variant' },
@@ -79,7 +85,20 @@ export default function FacultyPostEventPage() {
     e.preventDefault();
     setError('');
     try {
-      await createEvent(form);
+      // The server schema uses z.string().datetime() which requires a full
+      // ISO 8601 string. <input type="date"> returns 'YYYY-MM-DD'.
+      // Convert: treat the local date as midnight UTC.
+      const toISO = (d?: string) =>
+        d ? new Date(d + 'T00:00:00.000Z').toISOString() : undefined;
+
+      const payload: CreateEventInput = {
+        ...form,
+        deadline:             toISO(form.deadline),
+        eventDate:            toISO(form.eventDate),
+        registrationDeadline: toISO((form as unknown as Record<string, unknown>).registrationDeadline as string | undefined),
+      };
+
+      await createEvent(payload);
       navigate('/events/my');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create event. Please try again.');
@@ -110,42 +129,46 @@ export default function FacultyPostEventPage() {
           </button>
         </div>
 
-        {/* ── F-3: AI Paste-to-Post banner ──────────────────────────────── */}
-        <button
-          type="button"
-          id="post-event-ai-paste-banner"
-          onClick={() => navigate('/events/paste')}
-          className="w-full mb-4 p-3 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10
-                     border border-primary/20 flex items-center gap-3
-                     hover:from-primary/15 hover:to-secondary/15 hover:border-primary/40
-                     active:scale-[0.99] transition-all group text-left"
-        >
-          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0
-                          group-hover:bg-primary/25 transition-all">
-            <span className="material-symbols-outlined text-[22px] text-primary">auto_awesome</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-label-lg text-sm text-on-surface font-bold">
-              Have an announcement? Let AI fill this form
-            </p>
-            <p className="font-body-sm text-xs text-on-surface-variant mt-0.5">
-              Paste a 500–1500 word notice → Gemini AI extracts all fields → you review &amp; confirm
-            </p>
-          </div>
-          <span className="material-symbols-outlined text-[20px] text-primary shrink-0
-                           group-hover:translate-x-0.5 transition-transform">
-            arrow_forward
-          </span>
-        </button>
+        {/* ── F-3: AI Paste-to-Post banner (feature-flagged) ─────────────── */}
+        {SHOW_AI_BANNER && (
+          <>
+            <button
+              type="button"
+              id="post-event-ai-paste-banner"
+              onClick={() => navigate('/events/paste')}
+              className="w-full mb-4 p-3 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10
+                         border border-primary/20 flex items-center gap-3
+                         hover:from-primary/15 hover:to-secondary/15 hover:border-primary/40
+                         active:scale-[0.99] transition-all group text-left"
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0
+                              group-hover:bg-primary/25 transition-all">
+                <span className="material-symbols-outlined text-[22px] text-primary">auto_awesome</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-label-lg text-sm text-on-surface font-bold">
+                  Have an announcement? Let AI fill this form
+                </p>
+                <p className="font-body-sm text-xs text-on-surface-variant mt-0.5">
+                  Paste a 500–1500 word notice → Gemini AI extracts all fields → you review &amp; confirm
+                </p>
+              </div>
+              <span className="material-symbols-outlined text-[20px] text-primary shrink-0
+                               group-hover:translate-x-0.5 transition-transform">
+                arrow_forward
+              </span>
+            </button>
 
-        {/* ── Divider ────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 h-px bg-outline-variant/30" />
-          <span className="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">
-            or fill manually
-          </span>
-          <div className="flex-1 h-px bg-outline-variant/30" />
-        </div>
+            {/* ── Divider ─────────────────────────────────────────────────── */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-outline-variant/30" />
+              <span className="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">
+                or fill manually
+              </span>
+              <div className="flex-1 h-px bg-outline-variant/30" />
+            </div>
+          </>
+        )}
 
         {/* ── Step indicator ────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 mb-5">

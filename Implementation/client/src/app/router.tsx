@@ -34,8 +34,13 @@ const LookingListPage  = lazy(() => import('@/features/teams/pages/LookingListPa
 // F-6: Registrations
 const FacultyRosterPage = lazy(() => import('@/features/registrations/pages/FacultyRosterPage'));
 
+// F-7: Credentials & Achievements
+const MyAchievementsPage            = lazy(() => import('@/features/credentials/pages/MyAchievementsPage'));
+const AddAchievementPage            = lazy(() => import('@/features/credentials/pages/AddAchievementPage'));
+const AddParticipationPage          = lazy(() => import('@/features/credentials/pages/AddParticipationPage'));
+const FacultyVerificationQueuePage  = lazy(() => import('@/features/credentials/pages/FacultyVerificationQueuePage'));
+
 // Future pages — import here as features are built
-// const AddAchievementPage    = lazy(() => import('@/pages/AddAchievementPage'));
 // const DepartmentDashboard   = lazy(() => import('@/pages/DepartmentDashboardPage'));
 // const LeaderboardPage       = lazy(() => import('@/pages/LeaderboardPage'));
 // const NotificationsPage     = lazy(() => import('@/pages/NotificationsPage'));
@@ -128,8 +133,11 @@ export function AppRouter() {
             element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyRosterPage /></ProtectedRoute>}
           />
 
-          {/* ── F-7: Achievements ─────────────────────────────────────── */}
-          {/* <Route path="/achievements/add" element={<ProtectedRoute><AddAchievementPage /></ProtectedRoute>} /> */}
+          {/* ── F-7: Credentials & Achievements ──────────────────────── */}
+          <Route path="/badges"              element={<ProtectedRoute><MyAchievementsPage /></ProtectedRoute>} />
+          <Route path="/achievements/add"    element={<ProtectedRoute><AddAchievementPage /></ProtectedRoute>} />
+          <Route path="/participations/add"  element={<ProtectedRoute roles={['student']}><AddParticipationPage /></ProtectedRoute>} />
+          <Route path="/verify"              element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyVerificationQueuePage /></ProtectedRoute>} />
 
           {/* ── F-8: Analytics ────────────────────────────────────────────── */}
           {/* <Route path="/analytics" element={<ProtectedRoute roles={['faculty','dept_head','admin']}><DepartmentDashboard /></ProtectedRoute>} /> */}
