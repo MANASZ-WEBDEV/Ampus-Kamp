@@ -40,9 +40,11 @@ const AddAchievementPage            = lazy(() => import('@/features/credentials/
 const AddParticipationPage          = lazy(() => import('@/features/credentials/pages/AddParticipationPage'));
 const FacultyVerificationQueuePage  = lazy(() => import('@/features/credentials/pages/FacultyVerificationQueuePage'));
 
+// F-8: Analytics & Department Ranking
+const DepartmentRankingPage = lazy(() => import('@/features/analytics/pages/DepartmentRankingPage'));
+const BreakdownPage         = lazy(() => import('@/features/analytics/pages/BreakdownPage'));
+
 // Future pages — import here as features are built
-// const DepartmentDashboard   = lazy(() => import('@/pages/DepartmentDashboardPage'));
-// const LeaderboardPage       = lazy(() => import('@/pages/LeaderboardPage'));
 // const NotificationsPage     = lazy(() => import('@/pages/NotificationsPage'));
 // const AdminDashboardPage    = lazy(() => import('@/pages/AdminDashboardPage'));
 
@@ -140,7 +142,24 @@ export function AppRouter() {
           <Route path="/verify"              element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyVerificationQueuePage /></ProtectedRoute>} />
 
           {/* ── F-8: Analytics ────────────────────────────────────────────── */}
-          {/* <Route path="/analytics" element={<ProtectedRoute roles={['faculty','dept_head','admin']}><DepartmentDashboard /></ProtectedRoute>} /> */}
+          {/* /analytics/:deptId MUST be its own route — no wildcard — so both slug */}
+          {/* and the index /analytics render their respective pages.              */}
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute roles={['dept_head', 'admin']}>
+                <DepartmentRankingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics/:deptId"
+            element={
+              <ProtectedRoute roles={['dept_head', 'admin']}>
+                <BreakdownPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* ── F-9: Notifications ────────────────────────────────────────── */}
           {/* <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} /> */}
