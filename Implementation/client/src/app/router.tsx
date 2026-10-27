@@ -47,8 +47,14 @@ const BreakdownPage         = lazy(() => import('@/features/analytics/pages/Brea
 // F-9: Notifications
 const NotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'));
 
-// Future pages — import here as features are built
-// const AdminDashboardPage    = lazy(() => import('@/pages/AdminDashboardPage'));
+// F-10: Admin
+const AdminDashboardPage   = lazy(() => import('@/features/admin/pages/AdminDashboardPage'));
+const UserManagementPage   = lazy(() => import('@/features/admin/pages/UserManagementPage'));
+const CourseAliasQueuePage = lazy(() => import('@/features/admin/pages/CourseAliasQueuePage'));
+const SettingsPage         = lazy(() => import('@/features/admin/pages/SettingsPage'));
+const SafetyReportsPage    = lazy(() => import('@/features/admin/pages/SafetyReportsPage'));
+const AuditLogPage         = lazy(() => import('@/features/admin/pages/AuditLogPage'));
+
 
 // ── Loading fallback ──────────────────────────────────────────────────────────
 
@@ -167,7 +173,12 @@ export function AppRouter() {
           <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
 
           {/* ── F-10: Admin ───────────────────────────────────────────────── */}
-          {/* <Route path="/admin/*" element={<ProtectedRoute roles={['admin']}><AdminDashboardPage /></ProtectedRoute>} /> */}
+          <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminDashboardPage /></ProtectedRoute>} />
+          <Route path="/admin/users" element={<ProtectedRoute roles={['admin']}><UserManagementPage /></ProtectedRoute>} />
+          <Route path="/admin/courses/queue" element={<ProtectedRoute roles={['admin']}><CourseAliasQueuePage /></ProtectedRoute>} />
+          <Route path="/admin/settings" element={<ProtectedRoute roles={['admin']}><SettingsPage /></ProtectedRoute>} />
+          <Route path="/admin/reports" element={<ProtectedRoute roles={['admin']}><SafetyReportsPage /></ProtectedRoute>} />
+          <Route path="/admin/audit" element={<ProtectedRoute roles={['admin']}><AuditLogPage /></ProtectedRoute>} />
 
           {/* ── Root: authenticated users go to /home ─────────────────── */}
           <Route path="/" element={<Navigate to="/home" replace />} />

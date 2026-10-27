@@ -25,6 +25,14 @@ const FACULTY_QUICK_ACTIONS: QuickAction[] = [
   { id: 'qa-analytics',     label: 'Analytics',      icon: 'bar_chart',      to: '/analytics',   color: 'bg-tertiary',             textColor: 'text-on-tertiary' },
 ];
 
+const ADMIN_QUICK_ACTIONS: QuickAction[] = [
+  { id: 'qa-post-event',    label: 'Post Event',     icon: 'campaign',       to: '/events/new',  color: 'bg-primary',             textColor: 'text-on-primary' },
+  { id: 'qa-verify-queue',  label: 'Verify Queue',   icon: 'verified_user',  to: '/verify',      color: 'bg-secondary',            textColor: 'text-on-secondary' },
+  { id: 'qa-analytics',     label: 'Analytics',      icon: 'bar_chart',      to: '/analytics',   color: 'bg-tertiary',             textColor: 'text-on-tertiary' },
+  { id: 'qa-admin',         label: 'Admin Panel',    icon: 'admin_panel_settings', to: '/admin', color: 'bg-error',               textColor: 'text-on-error' },
+];
+
+
 const STUDENT_QUICK_ACTIONS: QuickAction[] = [
   { id: 'qa-add-achievement', label: 'Add Certificate', icon: 'add_task',  to: '/achievements/add',    color: 'bg-primary',            textColor: 'text-on-primary' },
   { id: 'qa-bookmarks',       label: 'Saved Events',   icon: 'bookmark',  to: '/events?saved=1',      color: 'bg-primary-container',  textColor: 'text-on-primary' },
@@ -50,8 +58,11 @@ export function BottomNav({ active }: Props) {
   const [fabOpen, setFabOpen] = useState(false);
 
   const current    = active ?? (location.pathname.split('/')[1] as NavKey || 'home');
-  const isFaculty  = user?.role === 'faculty' || user?.role === 'dept_head' || user?.role === 'admin';
-  const quickActions = isFaculty ? FACULTY_QUICK_ACTIONS : STUDENT_QUICK_ACTIONS;
+  const isAdmin    = user?.role === 'admin';
+  const isFaculty  = user?.role === 'faculty' || user?.role === 'dept_head';
+  const quickActions = isAdmin ? ADMIN_QUICK_ACTIONS
+    : isFaculty ? FACULTY_QUICK_ACTIONS
+    : STUDENT_QUICK_ACTIONS;
 
   // Unread notifications flag — drives the red dot on the Profile tab
   const { data: homeData } = useHome();
