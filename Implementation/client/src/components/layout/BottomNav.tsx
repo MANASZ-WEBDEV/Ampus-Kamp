@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { useHome } from '@/features/home/hooks/useHome';
 
 type NavKey = 'home' | 'events' | 'teams' | 'badges' | 'profile';
 
@@ -51,6 +52,10 @@ export function BottomNav({ active }: Props) {
   const current    = active ?? (location.pathname.split('/')[1] as NavKey || 'home');
   const isFaculty  = user?.role === 'faculty' || user?.role === 'dept_head' || user?.role === 'admin';
   const quickActions = isFaculty ? FACULTY_QUICK_ACTIONS : STUDENT_QUICK_ACTIONS;
+
+  // Unread notifications flag — drives the red dot on the Profile tab
+  const { data: homeData } = useHome();
+  const hasUnread = homeData?.unreadNotificationsFlag ?? false;
 
   // Close FAB menu on outside click
   useEffect(() => {
@@ -121,7 +126,7 @@ export function BottomNav({ active }: Props) {
             </div>
 
             <NavItem to="/badges"  navKey="badges"  current={current} icon="military_tech" label="Badges" />
-            <NavItem to="/profile" navKey="profile" current={current} icon="person"        label="Profile" />
+            <NavItem to="/profile" navKey="profile" current={current} icon="person" label="Profile" unreadDot={hasUnread} />
           </div>
         </div>
       </nav>
@@ -132,10 +137,10 @@ export function BottomNav({ active }: Props) {
 // ── NavItem ───────────────────────────────────────────────────────────────────
 
 function NavItem({
-  to, navKey, current, icon, label,
+  to, navKey, current, icon, label, unreadDot,
 }: {
   to: string; navKey: NavKey; current: NavKey;
-  icon: string; label: string;
+  icon: string; label: string; unreadDot?: boolean;
 }) {
   const isActive = current === navKey;
 
@@ -152,10 +157,13 @@ function NavItem({
         <span className="absolute top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
       )}
       <span
-        className="material-symbols-outlined text-[24px] transition-all"
+        className="material-symbols-outlined text-[24px] transition-all relative"
         style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}
       >
         {icon}
+        {unreadDot && (
+          <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-error border border-surface" />
+        )}
       </span>
       <span className={`font-label-sm text-[10px] leading-none font-${isActive ? 'bold' : 'medium'}`}>
         {label}

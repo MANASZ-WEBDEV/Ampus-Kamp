@@ -13,7 +13,7 @@ const OtpPage      = lazy(() => import('@/pages/OtpPage'));
 const ProfilePage  = lazy(() => import('@/pages/ProfilePage'));
 
 // F-2: Events + Student Home
-const StudentHomePage      = lazy(() => import('@/pages/StudentHomePage'));
+const HomePage             = lazy(() => import('@/features/home/pages/HomePage'));
 const EventFeedPage        = lazy(() => import('@/features/events/pages/EventFeedPage'));
 const EventDetailPage      = lazy(() => import('@/features/events/pages/EventDetailPage'));
 const FacultyPostEventPage = lazy(() => import('@/features/events/pages/FacultyPostEventPage'));
@@ -44,8 +44,10 @@ const FacultyVerificationQueuePage  = lazy(() => import('@/features/credentials/
 const DepartmentRankingPage = lazy(() => import('@/features/analytics/pages/DepartmentRankingPage'));
 const BreakdownPage         = lazy(() => import('@/features/analytics/pages/BreakdownPage'));
 
+// F-9: Notifications
+const NotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'));
+
 // Future pages — import here as features are built
-// const NotificationsPage     = lazy(() => import('@/pages/NotificationsPage'));
 // const AdminDashboardPage    = lazy(() => import('@/pages/AdminDashboardPage'));
 
 // ── Loading fallback ──────────────────────────────────────────────────────────
@@ -96,7 +98,7 @@ export function AppRouter() {
           />
 
           {/* ── F-2: Events + Student Home ──────────────────────────────────────────── */}
-          <Route path="/home"           element={<ProtectedRoute><StudentHomePage /></ProtectedRoute>} />
+          <Route path="/home"           element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/events"          element={<ProtectedRoute><EventFeedPage /></ProtectedRoute>} />
           <Route path="/events/my"       element={<ProtectedRoute roles={['faculty','dept_head','admin']}><MyEventsPage /></ProtectedRoute>} />
           <Route path="/events/new"      element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyPostEventPage /></ProtectedRoute>} />
@@ -162,7 +164,7 @@ export function AppRouter() {
           />
 
           {/* ── F-9: Notifications ────────────────────────────────────────── */}
-          {/* <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} /> */}
+          <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
 
           {/* ── F-10: Admin ───────────────────────────────────────────────── */}
           {/* <Route path="/admin/*" element={<ProtectedRoute roles={['admin']}><AdminDashboardPage /></ProtectedRoute>} /> */}
