@@ -1,0 +1,652 @@
+# F-9: Notifications & Home Feed — Implementation Plan (Revised)
+
+> **Requirements:** FR-29, FR-30, FR-31, FR-39, FR-40, FR-S3
+> **Decision:** Email-only notifications. No web push, no VAPID, no PushSubscription.
+> **Pre-conditions:** F-8 merged and green (`tsc --noEmit` = 0 errors).
+
+---
+
+## What already exists (do NOT recreate)
+
+| Asset | Location | Notes |
+|-------|----------|-------|
+| `email.service.ts` | `server/src/services/email.service.ts` | `sendOtpEmail` exists; F-9 **extends** with `sendNotificationEmail` |
+| `User.email` field | `user.model.ts` | Students' registered email addresses — already stored from F-1 |
+| `firstEventOpenedAt` | `user.model.ts` line 26 | Already on User — no model change needed |
+| Workbox offline rules | `client/vite.config.ts` lines 56–73 | Event feed (60s) + profile (30s) offline cache = **FR-S3 done** |
+| `shared/cache.ts` | `server/src/shared/cache.ts` | F-8 cache wrapper — reused for 30s home cache |
+| `node-cron` | `server/package.json` | Already installed |
+| `nodemailer` | `server/package.json` | Already installed |
+| Route stubs | `server/src/routes.ts` | F-9 commented stubs already present |
+
+---
+
+## No new dependencies
+
+> `web-push` is **not installed**. Email is handled by the existing nodemailer
+> transporter in `email.service.ts`.
+
+---
+
+## Email strategy (SDE3: conservative, not spammy)
+
+Email is higher-friction than push. Emailing for every in-app event will cause
+unsubscribes and spam-folder routing. Only send email for genuinely actionable,
+high-value events:
+
+| Notification type | In-app | Email | Rationale |
+|-------------------|--------|-------|-----------|
+| `event_new` | ✅ | ✅ | Student needs to register before deadline |
+| `deadline` 48h | ✅ | ✅ | Enough lead time to act |
+| `deadline` 4h | ✅ | ❌ | Too late for email to be useful; in-app only |
+| `credential_update` | ✅ | ✅ | Student needs to know if cert was rejected |
+| `link_received` | ✅ | ❌ | Team-finder is casual; email would feel spammy |
+| `link_update` | ✅ | ❌ | In-app is sufficient for accept/decline |
+| `link_expiring` | ✅ | ❌ | In-app only; expiry is low-urgency |
+
+**Rule:** Email is a transactional notification, not a real-time alert.
+
+---
+
+## Server — 1 new model
+
+### `models/notification.model.ts`
+
+```ts
+type NotificationType =
+  | 'event_new'          // new published event matching student's dept/year
+  | 'deadline'           // 48h and 4h before event deadline
+  | 'link_received'      // team request/invite received
+  | 'link_update'        // link accepted or declined
+  | 'credential_update'  // credential verified or rejected
+  | 'link_expiring';     // pending link expires tomorrow
+
+interface INotification {
+  userId:    Types.ObjectId;             // ref → User
+  type:      NotificationType;
+  payload:   Record<string, unknown>;    // Mixed — type safety in service via discriminated union
+  readAt?:   Date;
+  createdAt: Date;
+}
+
+// Compound index: fast unread-first list per user
+notificationSchema.index({ userId: 1, readAt: 1, createdAt: -1 });
+```
+
+---
+
+## Server — 10 new files
+
+### 1. `modules/notifications/notification.service.ts`
+
+Core of F-9. Two responsibilities: write in-app notification + optionally send email.
+
+**Discriminated union for type safety:**
+```ts
+type NotifPayload =
+  | { type: 'event_new';         eventId: string; eventTitle: string }
+  | { type: 'deadline';          eventId: string; eventTitle: string; hoursLeft: 48 | 4 }
+  | { type: 'link_received';     linkId: string;  fromName: string }
+  | { type: 'link_update';       linkId: string;  status: 'accepted' | 'declined' }
+  | { type: 'credential_update'; credId: string;  status: 'verified' | 'rejected' }
+  | { type: 'link_expiring';     linkId: string };
+```
+
+**`sendNotification(userId, payload): void` — fire-and-forget**
+
+The function is synchronous from the caller's perspective (`void` return — not `async`).
+Spec: "notification sending is async — never blocks API response."
+
+```ts
+export function sendNotification(userId: string, payload: NotifPayload): void {
+  void _send(userId, payload);   // Promise dropped intentionally
+}
+
+async function _send(userId: string, payload: NotifPayload): Promise<void> {
+  // 1. Always: write in-app notification
+  await Notification.create({ userId, type: payload.type, payload });
+
+  // 2. Email — only for high-value types
+  if (shouldEmail(payload.type)) {
+    const user = await User.findById(userId).select('email name').lean();
+    if (user) {
+      await sendNotificationEmail({
+        to:       user.email,
+        name:     user.name,
+        ...buildEmailPayload(payload),
+      });
+    }
+  }
+}
+
+function shouldEmail(type: NotificationType): boolean {
+  return ['event_new', 'credential_update'].includes(type)
+    || (type === 'deadline' && /* hoursLeft === 48 — checked via payload */);
+}
+```
+
+**Email payload per type:**
+
+| Type | Subject | Body | CTA |
+|------|---------|------|-----|
+| `event_new` | "New event: {title}" | Your dept has a new event. Register before the deadline. | View Event |
+| `deadline` 48h | "Deadline in 48h: {title}" | Registration closes in 48 hours. | Register Now |
+| `credential_update` verified | "Certificate Verified ✓" | Your {course} certificate has been verified. | View Badges |
+| `credential_update` rejected | "Certificate Needs Attention" | Your {course} certificate needs review. Reason: {reason}. | View Badges |
+
+**`getNotifications(userId, cursor?, limit?)`**
+```ts
+// Cursor-based pagination (ObjectId cursor — stable on fast-inserting collection)
+const query = cursor
+  ? { userId, _id: { $lt: cursor } }  // older than cursor
+  : { userId };
+return Notification.find(query).sort({ createdAt: -1 }).limit(limit + 1);
+// If results.length > limit: pop last → set nextCursor
+```
+
+**`markRead(userId, notificationId)`**
+```ts
+// findOneAndUpdate with userId guard — prevents marking another user's notification
+Notification.findOneAndUpdate(
+  { _id: notificationId, userId, readAt: null },
+  { readAt: new Date() }
+)
+// No-op if not found or already read
+```
+
+---
+
+### 2. `modules/notifications/notification.schema.ts`
+
+```ts
+listQuerySchema:  { cursor?: z.string().optional(); limit?: z.coerce.number().int().min(1).max(50).default(20) }
+idParamSchema:    { id: objectId('id') }
+```
+
+### 3. `modules/notifications/notification.controller.ts`
+
+```ts
+listNotifications(req, res, next):
+  // userId from req.user.id ONLY — never req.query
+  // parse listQuerySchema
+  // respond 200 { data: { notifications, nextCursor } }
+
+markNotificationRead(req, res, next):
+  // userId from req.user.id
+  // parse idParamSchema
+  // respond 200 {}
+```
+
+### 4. `modules/notifications/notification.routes.ts`
+
+```ts
+GET   /notifications          — requireAuth (all roles)
+PATCH /notifications/:id/read — requireAuth (all roles)
+```
+
+### 5. `modules/home/home.service.ts`
+
+**One parallel `Promise.all` — single round-trip:**
+```ts
+export async function getHomeData(userId: string): Promise<HomeData> {
+  const CACHE_KEY = `home:${userId}`;
+  const cached = getCache<HomeData>(CACHE_KEY);
+  if (cached) return cached;
+
+  const user = await User.findById(userId).populate('department', 'name').lean();
+  if (!user) throw new NotFoundError('User');
+
+  // All parallel — no sequential waterfalls
+  const [
+    verifiedBadgeCount,
+    pendingRequestCount,
+    closingSoon,
+    teamPosts,
+    unreadFlag,
+  ] = await Promise.all([
+    Credential.countDocuments({ studentId: userId, 'verification.status': 'verified' }),
+
+    TeamLink.countDocuments({
+      $or: [{ from: userId }, { to: userId }],
+      status: 'pending',
+    }),
+
+    Event.find({
+      deadline: { $gte: new Date(), $lt: new Date(Date.now() + 48 * 3600 * 1000) },
+      status: 'published',
+    }).sort({ deadline: 1 }).limit(5).lean(),
+
+    // Skills match → fallback to dept + year
+    (user.skills?.length
+      ? TeamPost.find({ requiredSkills: { $in: user.skills }, status: 'open' }).limit(5).lean()
+      : TeamPost.find({ department: user.department, status: 'open' }).limit(5).lean()
+    ),
+
+    Notification.exists({ userId, readAt: null }),
+  ]);
+
+  // Empty-key omission — spec: "empty arrays omitted from response"
+  const data: HomeData = {
+    user: {
+      name:               user.name,
+      branch:             (user as { department: { name?: string } }).department?.name ?? '',
+      year:               user.year ?? null,
+      verifiedBadgeCount,
+    },
+    unreadNotificationsFlag: !!unreadFlag,
+  };
+  if (pendingRequestCount > 0)  data.pendingRequestCount  = pendingRequestCount;
+  if (closingSoon.length)       data.closingSoonEvents    = closingSoon;
+  if (teamPosts.length)         data.matchedTeamPosts     = teamPosts;
+
+  setCache(CACHE_KEY, data, 30);  // 30s TTL
+  return data;
+}
+```
+
+### 6. `modules/home/home.controller.ts`
+
+```ts
+getHome(req, res, next):
+  userId from req.user.id ONLY
+  200 { data: await getHomeData(userId) }
+```
+
+### 7. `modules/home/home.routes.ts`
+
+```ts
+GET /home — requireAuth (all roles)
+```
+
+### 8. `jobs/deadlineReminders.ts`
+
+```ts
+// Cron: '0 * * * *'  (every hour, on the hour)
+// Finds events with deadlines in [now+47h, now+49h] (48h window)
+//                           and [now+3h,  now+5h]  (4h window)
+//
+// Double-send dedup — AuditLog query (not an Event field; keeps Event model clean):
+//   AuditLog.exists({
+//     action:          'deadline_reminder',
+//     'meta.eventId':  eventId,
+//     'meta.hoursLeft': hoursLeft,
+//     createdAt:       { $gte: new Date(Date.now() - 2 * 3600 * 1000) }
+//   }) → skip if found
+//
+// Fan-out:
+//   Registration.find({ eventId, status: 'registered' })
+//   for each registrant → void sendNotification(userId, { type:'deadline', ... })
+//
+// After fan-out: AuditLog.create({ action:'deadline_reminder', meta:{ eventId, hoursLeft } })
+```
+
+### 9. `config/env.ts` extension
+
+No new file — add to existing `env` validation:
+```ts
+// Email already configured. No new env vars for F-9.
+// (No VAPID keys — web push removed)
+```
+
+---
+
+## Server — 6 modified files
+
+### `services/email.service.ts`
+Add `sendNotificationEmail` alongside existing `sendOtpEmail`:
+
+```ts
+interface NotificationEmailPayload {
+  to:        string;
+  name:      string;
+  subject:   string;
+  bodyText:  string;
+  ctaUrl?:   string;   // absolute URL
+  ctaLabel?: string;
+}
+
+export async function sendNotificationEmail(
+  payload: NotificationEmailPayload
+): Promise<void> {
+  // Same transporter, same dev-fallback (console.info) pattern as sendOtpEmail
+  // HTML: branded card (Manrope font, campus green #004541 header)
+  //       + bodyText paragraph + CTA button (if ctaUrl provided)
+}
+```
+
+### `modules/events/event.service.ts`
+In `createEvent()` / `publishEvent()` after save:
+```ts
+invalidateCachePrefix('home:');   // all home caches stale
+
+// Async fan-out — non-blocking
+void notifyMatchingStudents(event);
+
+async function notifyMatchingStudents(event: IEvent): Promise<void> {
+  const students = await User.find({
+    department: event.department,
+    status:     'active',
+    role:       'student',
+  }).select('_id').lean();
+  for (const s of students) {
+    void sendNotification(s._id.toString(), {
+      type:       'event_new',
+      eventId:    event._id.toString(),
+      eventTitle: event.title,
+    });
+  }
+}
+```
+
+### `modules/credentials/credential.service.ts`
+In `verifyCredential()`, after existing `invalidateCachePrefix('analytics:')`:
+```ts
+void sendNotification(cred.studentId.toString(), {
+  type:   'credential_update',
+  credId: cred._id.toString(),
+  status: body.verdict,  // 'verified' | 'rejected'
+});
+```
+
+### `modules/links/link.service.ts`
+- On link **created**: `void sendNotification(recipientId, { type:'link_received', linkId, fromName })`
+  + `invalidateCache('home:${recipientId}')`
+- On link **updated** (accepted/declined): `void sendNotification(requesterId, { type:'link_update', linkId, status })`
+  + `invalidateCache('home:${requesterId}')`
+
+### `server.ts`
+Register deadline reminder cron:
+```ts
+import { scheduleDeadlineReminders } from '@/jobs/deadlineReminders';
+// After DB connect:
+scheduleDeadlineReminders();
+```
+
+### `routes.ts`
+```ts
+import { homeRouter }          from '@/modules/home/home.routes';
+import { notificationsRouter } from '@/modules/notifications/notification.routes';
+
+app.use('/api/v1/home',          homeRouter);
+app.use('/api/v1/notifications', notificationsRouter);
+// Remove: push router (not needed)
+// version: '1.0.0-F9'
+```
+
+---
+
+## Client — 8 new files
+
+### `features/home/types.ts`
+```ts
+export interface HomeUser {
+  name:               string;
+  branch:             string;
+  year:               number | null;
+  verifiedBadgeCount: number;
+}
+
+export interface HomeData {
+  user:                    HomeUser;
+  pendingRequestCount?:    number;
+  closingSoonEvents?:      EventSummary[];
+  matchedTeamPosts?:       TeamPostSummary[];
+  unreadNotificationsFlag: boolean;
+}
+
+// Minimal shapes — only fields used in HomePage UI
+export interface EventSummary  { _id: string; title: string; deadline: string; banner?: string }
+export interface TeamPostSummary { _id: string; eventId: string; title: string; requiredSkills: string[] }
+```
+
+### `features/home/api/home.api.ts`
+```ts
+import { apiClient } from '@/lib/apiClient';
+import type { HomeData } from '../types';
+
+export async function getHomeData(): Promise<HomeData> {
+  const res = await apiClient.get<{ data: HomeData }>('/home');
+  return res.data.data;
+}
+```
+
+### `features/home/hooks/useHome.ts`
+```ts
+export function useHome() {
+  return useQuery({
+    queryKey:             ['home'],
+    queryFn:              getHomeData,
+    staleTime:            30_000,      // mirrors server 30s cache
+    refetchOnWindowFocus: true,        // refresh on tab focus
+  });
+}
+```
+
+### `features/home/pages/HomePage.tsx`  `/home`
+
+Replaces `StudentHomePage`. Four conditional blocks:
+
+**GreetingBlock** (always):
+- Gradient header card (`from-primary to-primary/80`).
+- "Hi, {name} 👋" + year/branch subtitle.
+- Trophy chip: "{n} verified badges" → `/badges`.
+- Unread dot on bell icon → `/notifications` (if `unreadNotificationsFlag`).
+
+**PendingBanner** (if `pendingRequestCount > 0`):
+- Amber `bg-tertiary-container` card: "{n} pending team requests".
+- Tap → `/teams/inbox`.
+
+**ClosingSoonSection** (if `closingSoonEvents?.length`):
+- Section header with `schedule` icon.
+- Horizontal scroll row of event cards.
+- Each card: event title + countdown chip (`Xh left`).
+- Tap → `/events/:id`.
+
+**MatchedTeamPostsSection** (if `matchedTeamPosts?.length`):
+- Section header: "Based on your skills" OR "Based on your branch & year".
+  (Distinguish by checking if skills were used — pass `hasSkillsMatch: boolean` from service.)
+- Vertical list of team post cards.
+- Tap → `/events/:eventId/teams`.
+
+**Loading:** `useHome().isLoading` → skeleton blocks (same heights).
+**Empty state** (all sections absent): illustration + "All caught up!".
+
+---
+
+### `features/notifications/types.ts`
+```ts
+export type NotifType =
+  | 'event_new' | 'deadline' | 'link_received'
+  | 'link_update' | 'credential_update' | 'link_expiring';
+
+export interface AppNotification {
+  _id:       string;
+  type:      NotifType;
+  payload:   Record<string, unknown>;
+  readAt?:   string;
+  createdAt: string;
+}
+```
+
+### `features/notifications/api/notifications.api.ts`
+```ts
+export async function getNotifications(cursor?: string, limit = 20)
+  : Promise<{ notifications: AppNotification[]; nextCursor?: string }>
+
+export async function markRead(id: string): Promise<void>
+```
+
+### `features/notifications/hooks/useNotifications.ts`
+```ts
+// Cursor-based infinite scroll
+export function useNotifications() {
+  return useInfiniteQuery({
+    queryKey: ['notifications'],
+    queryFn:  ({ pageParam }) => getNotifications(pageParam, 20),
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: undefined as string | undefined,
+    staleTime: 30_000,
+  });
+}
+
+export function useMarkRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: markRead,
+    onSuccess:  () => {
+      void qc.invalidateQueries({ queryKey: ['notifications'] });
+      void qc.invalidateQueries({ queryKey: ['home'] });  // clears unread dot
+    },
+  });
+}
+```
+
+### `features/notifications/pages/NotificationsPage.tsx`  `/notifications`
+
+- `useInfiniteQuery` via `useNotifications()`.
+- IntersectionObserver on last visible item → `fetchNextPage()`.
+- Per notification:
+  - Left icon per type (Material Symbols: `event`, `schedule`, `group`, `check_circle`, `workspace_premium`, `hourglass_empty`).
+  - Bold title + derived body text (from `payload` via a `formatNotification(n)` helper).
+  - `Intl.RelativeTimeFormat` relative timestamp.
+  - Unread: `bg-primary-container/30` highlight; tap → `useMarkRead().mutate(id)`.
+- **Empty state:** bell outline icon + "No notifications yet".
+- **Loading:** 5 skeleton rows.
+
+---
+
+## Client — 2 modified files
+
+### `app/router.tsx`
+```tsx
+// Replace existing StudentHomePage reference
+const HomePage          = lazy(() => import('@/features/home/pages/HomePage'));
+const NotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'));
+
+// Replace /home route:
+<Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+
+// Add:
+<Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+```
+**Delete `StudentHomePage`** — it is fully replaced by `HomePage`. No fallback needed.
+
+### `components/layout/BottomNav.tsx`
+Add unread indicator to Profile nav tab:
+```tsx
+const { data } = useHome();
+const hasUnread = data?.unreadNotificationsFlag ?? false;
+
+// In the Profile tab icon:
+<div className="relative">
+  <span className="material-symbols-outlined">person</span>
+  {hasUnread && (
+    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-error border-2 border-surface" />
+  )}
+</div>
+```
+
+---
+
+## FR-S3 Status — ✅ Pre-satisfied
+
+| Requirement | Implementation | Location |
+|-------------|----------------|----------|
+| Cache event feed offline | `StaleWhileRevalidate`, 60s | `vite.config.ts` L56–63 |
+| Cache own profile offline | `StaleWhileRevalidate`, 30s | `vite.config.ts` L64–72 |
+| PWA service worker | `registerType: 'autoUpdate'` + Workbox | `vite.config.ts` |
+
+**No changes to `vite.config.ts` or service worker.**
+
+---
+
+## Key design decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Email-only, no web push | Simpler, no VAPID key management, no PushSubscription model, works on all browsers including iOS immediately |
+| Conservative email (3 types, not 7) | Email is high-friction; spamming causes unsubscribes + spam-folder routing. Push is real-time; email is not |
+| `deadline` 4h → in-app only | 4h before deadline, email is too slow to be actionable |
+| `sendNotification()` is `void` not `async` | Spec: "notification sending never blocks API response" |
+| Emails use `user.email` from User model | Students' emails are already stored from F-1 registration — no separate storage needed |
+| `AuditLog` for deadline dedup, not Event field | Reuses indexed model; keeps Event schema free of scheduling concerns (SRP) |
+| Cursor pagination on Notification | Offset pagination loses rows on fast-inserting collections; ObjectId cursor is stable and monotonic |
+| `invalidateCachePrefix('home:')` on new event | All students could be affected; prefix-wipe is O(k) in-process where k = active user count |
+| `invalidateCache('home:${userId}')` on link events | Targeted — only the affected user's home invalidated |
+| Delete `StudentHomePage` | It is fully superseded; keeping it invites confusion and dead code |
+| `useHome().data?.unreadNotificationsFlag` drives BottomNav dot | `useHome` is already called on mount and staleTime=30s; free signal, no extra query |
+
+---
+
+## Full file list
+
+**New — server:**
+```
+server/src/models/notification.model.ts
+server/src/modules/notifications/notification.schema.ts
+server/src/modules/notifications/notification.service.ts
+server/src/modules/notifications/notification.controller.ts
+server/src/modules/notifications/notification.routes.ts
+server/src/modules/home/home.service.ts
+server/src/modules/home/home.controller.ts
+server/src/modules/home/home.routes.ts
+server/src/jobs/deadlineReminders.ts
+```
+
+**Modified — server:**
+```
+server/src/services/email.service.ts              (+sendNotificationEmail)
+server/src/modules/events/event.service.ts        (+notifyMatchingStudents + home cache invalidation)
+server/src/modules/credentials/credential.service.ts (+credential_update notification)
+server/src/modules/links/link.service.ts          (+link_received/link_update + home cache)
+server/src/server.ts                              (+scheduleDeadlineReminders())
+server/src/routes.ts                              (+2 mounts + version 1.0.0-F9)
+```
+
+**New — client:**
+```
+client/src/features/home/types.ts
+client/src/features/home/api/home.api.ts
+client/src/features/home/hooks/useHome.ts
+client/src/features/home/pages/HomePage.tsx
+client/src/features/notifications/types.ts
+client/src/features/notifications/api/notifications.api.ts
+client/src/features/notifications/hooks/useNotifications.ts
+client/src/features/notifications/pages/NotificationsPage.tsx
+```
+
+**Deleted — client:**
+```
+client/src/pages/StudentHomePage.tsx   (replaced by HomePage)
+```
+
+**Modified — client:**
+```
+client/src/app/router.tsx                           (replace StudentHomePage, add NotificationsPage)
+client/src/components/layout/BottomNav.tsx          (unread dot on Profile tab)
+```
+
+---
+
+## Implementation order
+
+```
+1.  models/notification.model.ts
+2.  services/email.service.ts (+sendNotificationEmail)
+3.  modules/notifications/notification.service.ts
+4.  modules/notifications/schema + controller + routes
+5.  modules/home/home.service.ts
+6.  modules/home/home.controller.ts + home.routes.ts
+7.  jobs/deadlineReminders.ts
+8.  server.ts — register cron
+9.  event.service.ts — notifyMatchingStudents + home cache invalidation
+10. credential.service.ts — credential_update notification (1 line)
+11. link.service.ts — link notifications + home cache invalidation
+12. routes.ts — 2 mounts + version bump
+13. client: home/types + api + useHome
+14. client: HomePage.tsx (delete StudentHomePage.tsx)
+15. client: notifications/types + api + useNotifications
+16. client: NotificationsPage.tsx
+17. client: router.tsx + BottomNav.tsx
+18. tsc --noEmit (both) → 0 errors
+```

@@ -1,0 +1,121 @@
+# F-9 — Notifications & Home Feed · Commit Plan
+
+> Both `npx tsc --noEmit` clean (server ✓, client ✓)
+> **25 code files changed** (+ 3 doc/md files excluded below).
+
+---
+
+## Files Changed — Full Inventory
+
+### Server — New Files (11)
+
+| # | File | Purpose |
+|---|------|---------|
+| 1 | `server/src/models/notification.model.ts` | `Notification` Mongoose model — 6 types, Mixed payload, compound index `{ userId, readAt, createdAt }` |
+| 2 | `server/src/modules/notifications/notification.schema.ts` | Zod schemas — list query (cursor + limit) and `:id` param |
+| 3 | `server/src/modules/notifications/notification.service.ts` | `sendNotification` (fire-and-forget worker), `getNotifications` (cursor-based), `markRead` (idempotent) |
+| 4 | `server/src/modules/notifications/notification.controller.ts` | `GET /` + `PATCH /:id/read` — thin, delegates to service |
+| 5 | `server/src/modules/notifications/notification.routes.ts` | Router — both routes behind `requireAuth` |
+| 6 | `server/src/modules/home/home.service.ts` | `getHomeData` — 30s per-user cache, `Promise.all` across 5 queries, skill-match → dept/year fallback, empty-key omission |
+| 7 | `server/src/modules/home/home.controller.ts` | `GET /home` — thin controller |
+| 8 | `server/src/modules/home/home.routes.ts` | Router — `requireAuth` only |
+| 9 | `server/src/jobs/deadlineReminders.ts` | Hourly cron — 48h + 4h windows, `AuditLog` dedup (2h window), fan-out to all non-declined members |
+
+### Server — Modified Files (6)
+
+| # | File | Change |
+|---|------|--------|
+| 10 | `server/src/services/email.service.ts` | Added `sendNotificationEmail()` + shared `buildHtml()` wrapper. Existing `sendOtpEmail` unchanged. |
+| 11 | `server/src/modules/credentials/credential.service.ts` | `verifyCredential` fires `credential_update` notification after `AuditLog.create` (fire-and-forget) |
+| 12 | `server/src/modules/links/link.service.ts` | `sendLink` → fires `link_received` + `invalidateHomeCache(recipientId)`. `respondLink` → fires `link_update` + invalidates both sides. |
+| 13 | `server/src/modules/events/event.service.ts` | `publishEvent` → fires `notifyMatchingStudents` (all active students, campus-wide) + `invalidateAllHomeCaches()`. Removed `department` param from function (IEvent has no dept field). |
+| 14 | `server/src/server.ts` | Registers `scheduleDeadlineReminders()` alongside existing 5 cron jobs |
+| 15 | `server/src/routes.ts` | Mounts `homeRouter` (`/api/v1/home`) + `notificationsRouter` (`/api/v1/notifications`); version bumped to `1.0.0-F9` |
+
+### Client — New Files (8)
+
+| # | File | Purpose |
+|---|------|---------|
+| 16 | `client/src/features/home/types.ts` | `HomeData`, `HomeUser`, `EventSummary`, `TeamPostSummary` interfaces |
+| 17 | `client/src/features/home/api/home.api.ts` | `getHomeData()` — wraps `GET /api/v1/home` via `apiClient` |
+| 18 | `client/src/features/home/hooks/useHome.ts` | `useHome` — 30s staleTime, refetchOnWindowFocus; mirrors server cache TTL |
+| 19 | `client/src/features/home/pages/HomePage.tsx` | Personalised home: gradient greeting card, pending-requests banner, closing-soon horizontal scroll, matched team posts, all-caught-up empty state, skeleton loading |
+| 20 | `client/src/features/notifications/types.ts` | `AppNotification`, `NotifType`, `NotificationsPage` interfaces |
+| 21 | `client/src/features/notifications/api/notifications.api.ts` | `getNotifications(cursor?, limit)` + `markNotificationRead(id)` |
+| 22 | `client/src/features/notifications/hooks/useNotifications.ts` | `useNotifications` (infinite cursor query) + `useMarkRead` (invalidates notifications + home on success) |
+| 23 | `client/src/features/notifications/pages/NotificationsPage.tsx` | Infinite scroll via `IntersectionObserver`, per-type icon/title/body, `Intl.RelativeTimeFormat` timestamps, unread highlight + mark-read on tap, skeleton/empty/error states |
+
+### Client — Modified Files (2)
+
+| # | File | Change |
+|---|------|--------|
+| 24 | `client/src/app/router.tsx` | Replaces `StudentHomePage` lazy import with `HomePage`; activates `/notifications` route (was commented out); adds `NotificationsPage` import |
+| 25 | `client/src/components/layout/BottomNav.tsx` | Imports `useHome`; Profile tab renders a red unread dot when `homeData.unreadNotificationsFlag = true` |
+
+---
+
+> **Total: 25 code files** (9 server new + 6 server modified + 8 client new + 2 client modified)
+
+---
+
+## Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Email for 3 types only** (`event_new`, `deadline`-48h, `credential_update`) | Conservative — avoids spam. Link events are frequent and in-app only. |
+| **Fire-and-forget `sendNotification`** | Notification failures must never block or degrade the primary API response. Errors logged to stderr. |
+| **AuditLog dedup for deadline reminders** | Avoids adding a `lastRemindedAt` field to the Event model (SRP). The `(action, meta.eventId, meta.hoursLeft)` triple is a natural dedup key. |
+| **Fan-out 4h window emails suppressed** | 4h reminder is in-app only — too close to deadline to act on email. |
+| **Cursor-based pagination** | ObjectId cursors are stable (no skipping on fast inserts), cheaper than `skip`/`count`, consistent under concurrent writes. |
+| **`useHome` drives unread dot in BottomNav** | Single source of truth — no separate API call. Re-uses the cached 30s home data. |
+| **Campus-wide `event_new` notifications** | `IEvent` has no `department` field. Eligibility scoping is a feed concern; notifications are discovery signals. |
+| **Registration fan-out via `members[]`** | `Registration` has no top-level `userId` — registrants live in `members[].userId`. Fan-out skips `declined` members. |
+
+---
+
+## Suggested Commits (3)
+
+```bash
+# ── Commit 1 ─────────────────────────────────────────────────────────────────
+# Server: new notification + home feed infrastructure
+git add \
+  server/src/models/notification.model.ts \
+  server/src/modules/notifications/notification.schema.ts \
+  server/src/modules/notifications/notification.service.ts \
+  server/src/modules/notifications/notification.controller.ts \
+  server/src/modules/notifications/notification.routes.ts \
+  server/src/modules/home/home.service.ts \
+  server/src/modules/home/home.controller.ts \
+  server/src/modules/home/home.routes.ts \
+  server/src/jobs/deadlineReminders.ts \
+  server/src/services/email.service.ts \
+  server/src/server.ts \
+  server/src/routes.ts
+
+git commit -m "feat(server/F-9): notifications model, home feed API, deadline cron, email"
+
+# ── Commit 2 ─────────────────────────────────────────────────────────────────
+# Server: wire notification triggers into existing services
+git add \
+  server/src/modules/credentials/credential.service.ts \
+  server/src/modules/links/link.service.ts \
+  server/src/modules/events/event.service.ts
+
+git commit -m "feat(server/F-9): wire notification triggers in credential, link, event services"
+
+# ── Commit 3 ─────────────────────────────────────────────────────────────────
+# Client: HomePage, NotificationsPage, BottomNav unread dot, router
+git add \
+  client/src/features/home/types.ts \
+  client/src/features/home/api/home.api.ts \
+  client/src/features/home/hooks/useHome.ts \
+  client/src/features/home/pages/HomePage.tsx \
+  client/src/features/notifications/types.ts \
+  client/src/features/notifications/api/notifications.api.ts \
+  client/src/features/notifications/hooks/useNotifications.ts \
+  client/src/features/notifications/pages/NotificationsPage.tsx \
+  client/src/app/router.tsx \
+  client/src/components/layout/BottomNav.tsx
+
+git commit -m "feat(client/F-9): HomePage, NotificationsPage, unread dot in BottomNav"
+```

@@ -1,0 +1,510 @@
+# F-9: Notifications & Home Feed — Git Commit Plan
+
+> **Branch:** `main`
+> **Format:** Conventional Commits
+> **`tsc --noEmit` → 0 errors** on both server and client confirmed before push.
+> **25 code files changed** (9 server new · 6 server modified · 8 client new · 2 client modified)
+
+---
+
+## Commit 1 — Notification Mongoose model
+
+```
+feat(server/F-9): add Notification model — 6 types, Mixed payload, compound index
+
+models/notification.model.ts:
+
+  INotification interface:
+    userId:    Types.ObjectId  (ref → User)
+    type:      enum 6 values:
+                 event_new | deadline | link_received |
+                 link_update | credential_update | link_expiring
+    payload:   Schema.Types.Mixed  — discriminated per type; stored as-is
+    readAt?:   Date              — null = unread; Date = read timestamp
+    createdAt: Date              (timestamps: true)
+
+  Indexes:
+    { userId: 1, readAt: 1, createdAt: -1 }  — compound (named 'user_notifications')
+      Drives GET /notifications (user's unread-first list, cursor-based).
+      readAt included so MongoDB can use index for unread-only filter.
+
+  Design decisions:
+    Mixed payload — avoids a discriminated union of 6 sub-schemas.
+      Trade-off: no Mongo-level schema enforcement per type.
+      Acceptable: payload shape is enforced in notification.service (TS types).
+    No TTL index — notifications are kept indefinitely (user's history).
+      Can add TTL (e.g. 90 days) in F-10 hardening if needed.
+
+Refs: FR-29, FR-30
+```
+
+**Git commands:**
+```bash
+git add Implementation/server/src/models/notification.model.ts
+git commit -m "feat(server/F-9): add Notification model — 6 types, Mixed payload, compound index { userId, readAt, createdAt }"
+```
+
+---
+
+## Commit 2 — Notification service, schema, controller, routes + email helper
+
+```
+feat(server/F-9): notification service (fire-and-forget, cursor pagination, mark-read) + email helper
+
+modules/notifications/notification.schema.ts:
+  listQuerySchema: cursor? (string), limit? (coerce int 1–50 default 20)
+  notifIdParamSchema: id → objectId validation
+
+modules/notifications/notification.service.ts:
+
+  sendNotification(userId, payload) — FIRE-AND-FORGET:
+    Writes Notification document, then conditionally sends email.
+    Email sent for: event_new, deadline (hoursLeft=48 only), credential_update.
+    4h deadline reminder is in-app only — too close to deadline to act on email.
+    Pattern: void asyncWorker() — never awaited by caller.
+      Ensures notification failures NEVER block or degrade the primary API response.
+
+  getNotifications(userId, cursor?, limit):
+    Cursor-based pagination — ObjectId cursor, not skip/offset.
+    ObjectId cursors are stable under concurrent inserts; skip() is not.
+    Filter: { userId, _id: { $lt: cursor } } sorted { createdAt: -1 }.
+    Returns: { notifications, nextCursor? } — nextCursor absent on last page.
+
+  markRead(userId, notifId):
+    Idempotent — already-read notification returns 200 silently.
+    Guard: userId must match notification.userId → 403 if mismatch.
+    Sets readAt = new Date() on the document.
+
+modules/notifications/notification.controller.ts:
+  GET  /               → 200 { data: { notifications, nextCursor? } }
+  PATCH /:id/read      → 200 { data: { id, readAt } }
+  Both thin — parse Zod, call service, next(err).
+
+modules/notifications/notification.routes.ts:
+  router.use(requireAuth) — both routes need auth; no role restriction
+    (students and faculty can both receive notifications).
+
+services/email.service.ts (MODIFIED):
+  Added: buildHtml(title, body, cta?) — shared branded HTML wrapper.
+    Teal gradient header, white card body, optional CTA button.
+  Added: sendNotificationEmail(to, type, payload) — maps 3 types to HTML.
+  Existing sendOtpEmail() and SMTP transport setup unchanged.
+
+Refs: FR-29, FR-30, FR-31
+```
+
+**Git commands:**
+```bash
+git add Implementation/server/src/modules/notifications/notification.schema.ts
+git add Implementation/server/src/modules/notifications/notification.service.ts
+git add Implementation/server/src/modules/notifications/notification.controller.ts
+git add Implementation/server/src/modules/notifications/notification.routes.ts
+git add Implementation/server/src/services/email.service.ts
+git commit -m "feat(server/F-9): notification service (fire-and-forget, cursor pagination, mark-read) + email helper"
+```
+
+---
+
+## Commit 3 — Home feed service
+
+```
+feat(server/F-9): home feed service — 30s per-user cache, skill-match fallback, empty-key omission
+
+modules/home/home.service.ts:
+
+  getHomeData(userId):
+    Cache key: home:{userId}  TTL: 30s
+      Per-user (not global) — each student sees personalised data.
+      30s matches the plan spec; short enough for near-real-time feel,
+      long enough to absorb repeated tab switches.
+      Invalidated explicitly by sendLink(), respondLink(), publishEvent().
+
+    Single Promise.all — 5 parallel queries, no serial waterfalls:
+      1. User.findById (name, branch, year, skills, department)
+      2. Notification.exists({ userId, readAt: null }) → unreadNotificationsFlag
+      3. TeamLink.countDocuments({ toId: userId, status: 'pending' }) → pendingRequestCount
+      4. Event.find({ status:'published', deadline: { $lte: now+48h } })
+           .sort({ deadline: 1 }).limit(5) → closingSoonEvents
+      5a. Skill-match: TeamPost.find({ rolesNeeded: { $in: user.skills }, status:'open' }).limit(5)
+      5b. Fallback (no skills): TeamPost.find({ status:'open' }).limit(5)
+          (dept/year fallback — ITeamPost has no dept field; fallback is generic open posts)
+
+    Empty-key omission:
+      pendingRequestCount=0 → key absent from response (not 0).
+      closingSoonEvents=[] → key absent.
+      matchedTeamPosts=[]  → key absent.
+      Client never renders empty blocks; avoids conditional checks on empty arrays.
+
+    Cache invalidation helpers (exported):
+      invalidateHomeCache(userId): invalidateCache('home:' + userId)
+      invalidateAllHomeCaches(): invalidateCachePrefix('home:')
+
+Refs: FR-39, FR-40
+```
+
+**Git commands:**
+```bash
+git add Implementation/server/src/modules/home/home.service.ts
+git commit -m "feat(server/F-9): home feed service — 30s per-user cache, Promise.all across 5 queries, skill-match → dept/year fallback, empty-key omission"
+```
+
+---
+
+## Commit 4 — Home feed HTTP layer + mount both routers + version bump
+
+```
+feat(server/F-9): home feed controller + routes; mount /home and /notifications; version → 1.0.0-F9
+
+modules/home/home.controller.ts:
+  GET /home → requireAuth → 200 { data: HomeData }
+  Thin: reads req.user.id, calls getHomeData, sends response.
+
+modules/home/home.routes.ts:
+  Single route: GET / — requireAuth only.
+  No role restriction — faculty also benefits from the home feed in future.
+
+routes.ts (MODIFIED):
+  Mount homeRouter         at /api/v1/home
+  Mount notificationsRouter at /api/v1/notifications
+  Version string bumped: '1.0.0-F8' → '1.0.0-F9'
+  Root info endpoint updated with new endpoint entries.
+
+server.ts (MODIFIED):
+  Registers scheduleDeadlineReminders() alongside existing 5 cron jobs.
+  Import: import { scheduleDeadlineReminders } from '@/jobs/deadlineReminders'.
+  Call placed after DB connection confirmed (startup order preserved).
+
+Refs: FR-39, FR-40
+```
+
+**Git commands:**
+```bash
+git add Implementation/server/src/modules/home/home.controller.ts
+git add Implementation/server/src/modules/home/home.routes.ts
+git add Implementation/server/src/routes.ts
+git add Implementation/server/src/server.ts
+git commit -m "feat(server/F-9): home feed controller + routes; mount /home and /notifications; version → 1.0.0-F9"
+```
+
+---
+
+## Commit 5 — Deadline reminder hourly cron
+
+```
+feat(server/F-9): hourly deadline reminder cron — 48h/4h windows, AuditLog dedup, fan-out via members[]
+
+jobs/deadlineReminders.ts:
+
+  scheduleDeadlineReminders():
+    node-cron '0 * * * *' — every hour on the hour.
+    Two parallel windows per tick (Promise.all):
+      48h: events with deadline ∈ [now+47h, now+49h]  → in-app + email
+       4h: events with deadline ∈ [now+3h,  now+5h]   → in-app only
+
+    ±1h window (not exact match):
+      Handles timing drift from the hourly cron without double-sending.
+      AuditLog dedup provides the safety net.
+
+  isAlreadySent(eventId, hoursLeft):
+    Checks AuditLog for action='deadline_reminder' with meta.eventId + meta.hoursLeft
+    within the last 2 hours.
+    Why AuditLog (not an Event field)?
+      SRP — separates scheduling concern from domain model.
+      AuditLog is already indexed on (action, createdAt).
+
+  Fan-out logic:
+    Registration.find({ eventId, status: { $in: ['submitted','locked'] } })
+      .select('members')
+    Collects unique userIds from members[] where member.status !== 'declined'.
+    (IRegistration has no top-level userId — registrants live in members[].userId)
+    Team: all non-declined members notified, not just the leader.
+
+  Error handling: try/catch wraps processWindow — never crashes the server process.
+
+Refs: FR-31 (deadline reminders)
+```
+
+**Git commands:**
+```bash
+git add Implementation/server/src/jobs/deadlineReminders.ts
+git commit -m "feat(server/F-9): hourly deadline reminder cron — 48h/4h windows, AuditLog dedup, fan-out via Registration.members[]"
+```
+
+---
+
+## Commit 6 — Wire notification triggers into domain services
+
+```
+feat(server/F-9): wire notification triggers — credential_update, link_received/update, event_new + home cache invalidation
+
+credential.service.ts (MODIFIED):
+  verifyCredential() — after cred.save() and AuditLog.create():
+    void sendNotification(cred.studentId, { type: 'credential_update', status, credId })
+  Fire-and-forget — credential verify response not delayed by notification.
+
+link.service.ts (MODIFIED):
+  sendLink() — after TeamLink.create():
+    void sendNotification(toId, { type: 'link_received', fromName, fromId, linkId })
+    invalidateHomeCache(toId.toString())  — recipient's pending count changed
+  respondLink(accept) — after link.save():
+    void sendNotification(link.fromId, { type: 'link_update', status: 'accepted'/'declined', linkId })
+    invalidateHomeCache(fromId)   — sender's home data changed
+    invalidateHomeCache(toId)     — recipient's home data changed
+
+event.service.ts (MODIFIED):
+  publishEvent() — after Event.findByIdAndUpdate({ status:'published' }):
+    void notifyMatchingStudents(eventId, eventTitle) — campus-wide fan-out
+    invalidateAllHomeCaches()  — all students' closing-soon sections may change
+  notifyMatchingStudents() — finds all active students (role:'student', status:'active'),
+    calls sendNotification per student. Fully async — errors logged only.
+  Note: IEvent has no department field → campus-wide notification is correct.
+    Eligibility scoping is a feed concern, not a notification concern.
+
+Refs: FR-29 (notifications), FR-39 (home cache)
+```
+
+**Git commands:**
+```bash
+git add Implementation/server/src/modules/credentials/credential.service.ts
+git add Implementation/server/src/modules/links/link.service.ts
+git add Implementation/server/src/modules/events/event.service.ts
+git commit -m "feat(server/F-9): wire notification triggers — credential_update, link_received/update, event_new + home cache invalidation"
+```
+
+---
+
+## Commit 7 — Client: home feed data layer + HomePage
+
+```
+feat(client/F-9): home feed — types, API wrapper, useHome hook, HomePage
+
+features/home/types.ts:
+  HomeUser:        { name, branch, year, verifiedBadgeCount }
+  EventSummary:    { id, title, deadline (ISO), type }
+  TeamPostSummary: { id, eventId, title, requiredSkills }
+  HomeData:        { user, unreadNotificationsFlag, pendingRequestCount?,
+                     closingSoonEvents?, matchedTeamPosts?, hasSkillsMatch? }
+  Optional fields — server omits empty arrays; client checks with ?. guards.
+
+features/home/api/home.api.ts:
+  getHomeData(): Promise<HomeData>
+    GET /api/v1/home via apiClient. Extracts res.data.data.
+
+features/home/hooks/useHome.ts:
+  useHome(): UseQueryResult<HomeData>
+    queryKey: ['home']
+    staleTime: 30_000 — mirrors server 30s cache TTL.
+      Prevents redundant refetches within the same server cache window.
+    refetchOnWindowFocus: true — data refreshes when user returns to tab.
+
+features/home/pages/HomePage.tsx:
+  Components (all inlined — no separate files):
+    GreetingBlock: teal gradient card, greeting, badge chip, unread bell button.
+      Bell button → navigate('/notifications'). Red dot if unreadNotificationsFlag.
+    PendingBanner: tertiary-container banner → navigate('/teams/inbox').
+      Rendered only if pendingRequestCount > 0.
+    ClosingSoonSection: horizontal snap scroll. hoursLeft computed in client.
+      Each card → navigate('/events/:id'). Error-colored 'Xh left' chip.
+    MatchedTeamPostsSection: vertical list → navigate('/events/:eventId/teams').
+      Label: 'Based on your skills' (hasSkillsMatch) or 'Based on your branch & year'.
+    All-caught-up state: shown when all 3 optional sections are absent.
+  Loading: 4 skeleton pulse blocks (h-36, h-12, h-32, h-28).
+  Error state: cloud_off icon + message.
+
+Refs: FR-39, FR-40
+```
+
+**Git commands:**
+```bash
+git add Implementation/client/src/features/home/types.ts
+git add Implementation/client/src/features/home/api/home.api.ts
+git add Implementation/client/src/features/home/hooks/useHome.ts
+git add Implementation/client/src/features/home/pages/HomePage.tsx
+git commit -m "feat(client/F-9): home feed — types, API wrapper, useHome hook (30s staleTime), HomePage with greeting card / pending banner / closing-soon / matched posts"
+```
+
+---
+
+## Commit 8 — Client: notifications data layer + NotificationsPage
+
+```
+feat(client/F-9): notifications — types, API, useNotifications (infinite), NotificationsPage
+
+features/notifications/types.ts:
+  NotifType: union of 6 string literals
+  AppNotification: { id, type, payload, readAt (ISO|null), createdAt (ISO) }
+  NotificationsPage: { notifications, nextCursor? }
+
+features/notifications/api/notifications.api.ts:
+  getNotifications(cursor?, limit=20): Promise<NotificationsPage>
+    GET /api/v1/notifications with cursor + limit params.
+  markNotificationRead(id): Promise<void>
+    PATCH /api/v1/notifications/:id/read
+
+features/notifications/hooks/useNotifications.ts:
+  useNotifications(): UseInfiniteQueryResult
+    queryKey: ['notifications']
+    getNextPageParam: (lastPage) => lastPage.nextCursor
+    staleTime: 30_000
+  useMarkRead(): UseMutationResult
+    mutationFn: markNotificationRead
+    onSuccess: invalidates ['notifications'] + ['home']
+      Invalidating ['home'] ensures unreadNotificationsFlag updates in BottomNav dot.
+
+features/notifications/pages/NotificationsPage.tsx:
+  Infinite scroll: IntersectionObserver on sentinel <div ref={sentinelRef} />.
+    Triggers fetchNextPage() when sentinel enters viewport and hasNextPage.
+    entry?.isIntersecting (optional chain — TS strict guards against undefined entry).
+  buildContent(notif): { icon, title, body }
+    Maps 6 NotifType values to Material Symbols icon + human-readable title + body.
+    link_update: icon changes on status ('check_circle' vs 'cancel').
+    credential_update: icon changes on status ('workspace_premium' vs 'report').
+  relativeTime(isoString): string
+    Intl.RelativeTimeFormat('en', { numeric:'auto' })
+    Selects unit: seconds → minutes → hours → days based on delta.
+  NotifRow:
+    Unread: primary-container/20 bg, filled icon, bold title, red dot.
+    Read: neutral bg, outline icon, medium weight.
+    Tap → markRead (if unread). Does not navigate — notifications are in-page actions.
+  SkeletonRow: 5 shown while loading.
+  Empty state: notifications_none icon + descriptive message.
+  Error state: cloud_off icon + retry message.
+  End-of-list: 'You're all caught up ✓' text.
+
+Refs: FR-29, FR-30
+```
+
+**Git commands:**
+```bash
+git add Implementation/client/src/features/notifications/types.ts
+git add Implementation/client/src/features/notifications/api/notifications.api.ts
+git add Implementation/client/src/features/notifications/hooks/useNotifications.ts
+git add Implementation/client/src/features/notifications/pages/NotificationsPage.tsx
+git commit -m "feat(client/F-9): notifications — types, API, useNotifications (infinite scroll), NotificationsPage with IntersectionObserver + Intl.RelativeTimeFormat"
+```
+
+---
+
+## Commit 9 — Client: wire F-9 into app shell
+
+```
+feat(client/F-9): activate /notifications route, replace StudentHomePage → HomePage, add unread dot to BottomNav
+
+router.tsx (MODIFIED):
+  Removed: StudentHomePage lazy import (from @/pages/StudentHomePage)
+  Added:   HomePage lazy import (from @/features/home/pages/HomePage)
+  Added:   NotificationsPage lazy import (from @/features/notifications/pages/NotificationsPage)
+  Route /home: now renders <HomePage /> (was <StudentHomePage />)
+  Route /notifications: uncommented and activated (was commented-out stub)
+  Comment updated: '── F-2: Events + Home (F-9 replaces StudentHomePage)'
+
+BottomNav.tsx (MODIFIED):
+  Added import: useHome from @/features/home/hooks/useHome
+  Added in BottomNav body:
+    const { data: homeData } = useHome()
+    const hasUnread = homeData?.unreadNotificationsFlag ?? false
+  NavItem Profile tab: unreadDot={hasUnread}
+  NavItem signature extended: unreadDot?: boolean prop
+  Render: <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-error border border-surface" />
+    inside the icon <span className="...relative">
+  Design: error-colored (red) dot — universally understood unread signal.
+    Size: 8px. Border: 2px surface-colored — "halo" effect so dot is visible on any bg.
+    Position: top-right of icon (not tab), avoids obscuring the label.
+
+  Single source of truth: useHome() is already called for home feed data.
+    No separate API call for unread count — zero extra network requests.
+    Re-uses the 30s cached home query that's already warm on any page.
+
+Refs: FR-29 (unread indicator), FR-39 (home route)
+```
+
+**Git commands:**
+```bash
+git add Implementation/client/src/app/router.tsx
+git add Implementation/client/src/components/layout/BottomNav.tsx
+git commit -m "feat(client/F-9): activate /notifications route, replace StudentHomePage → HomePage, add unread dot to BottomNav Profile tab"
+```
+
+---
+
+## After all commits — push
+
+```bash
+git push
+```
+
+---
+
+## PR Description
+
+```markdown
+## F-9: Notifications & Home Feed
+
+### Summary
+Email-only notifications (no web push/VAPID). Six notification types written
+to MongoDB and optionally emailed for high-value events. Personalised home feed
+(30s per-user cache, single round-trip). Hourly deadline reminder cron with
+AuditLog dedup. Infinite-scroll notifications page. Unread dot in BottomNav
+driven by the already-cached home query — zero extra network requests.
+
+### Changes
+- **1 new server model** (`notification.model.ts`)
+- **4 new server module files** (`notifications/` — schema, service, controller, routes)
+- **3 new server module files** (`home/` — service, controller, routes)
+- **1 new server cron job** (`deadlineReminders.ts`)
+- **5 modified server files** (`email.service`, `credential.service`, `link.service`, `event.service`, `routes.ts`, `server.ts`)
+- **8 new client files** (home: types, API, hook, page · notifications: types, API, hooks, page)
+- **2 modified client files** (`router.tsx`, `BottomNav.tsx`)
+
+### Key Design Decisions (SDE3)
+
+| Decision | Rationale |
+|----------|-----------|
+| Email for 3 types only (`event_new`, `deadline`-48h, `credential_update`) | Conservative — avoids spam. Link events are frequent; 4h reminder too late to act on email |
+| Fire-and-forget `sendNotification` | Notification failures must never block or degrade the primary API response |
+| AuditLog dedup for cron | Avoids adding `lastRemindedAt` to Event model (SRP). `(action, eventId, hoursLeft)` is a natural dedup key |
+| Per-user cache key `home:{userId}` | Global cache would serve wrong user's data after invalidation |
+| Empty-key omission in home response | Client never renders empty blocks; avoids all `if (arr.length > 0)` checks |
+| Cursor-based pagination | ObjectId cursors are stable under concurrent inserts; `skip()` is not |
+| `useHome()` drives BottomNav unread dot | Single source of truth — re-uses 30s warm cache, zero extra requests |
+| Fan-out via `Registration.members[]` | `IRegistration` has no top-level `userId`; all non-declined members notified |
+| Campus-wide `event_new` fan-out | `IEvent` has no `department` field; eligibility is a feed concern, not notification's |
+
+### Security Checklist
+- [x] `/home` reads `userId` from JWT only — never from query params
+- [x] `markRead` verifies `notification.userId === req.user.id` before updating
+- [x] Notification sending is async — never surfaces errors to API caller
+- [x] Deadline cron guarded by AuditLog dedup — no double-sends on drift
+
+### Testing Checklist
+- [ ] `GET /home` responds < 500ms on seed data
+- [ ] Closing-soon events correct (deadline < now+48h)
+- [ ] No-skill student gets generic open-post fallback (not empty)
+- [ ] Empty pendingRequestCount/closingSoonEvents/matchedTeamPosts absent from response
+- [ ] Verify credential → student notified (in-app + email)
+- [ ] Accept/decline link → both parties notified in-app
+- [ ] Publish event → all active students receive in-app notification
+- [ ] 48h and 4h deadline reminders fire without double-sending (AuditLog checked)
+- [ ] `GET /notifications` returns cursor-paginated list
+- [ ] `PATCH /notifications/:id/read` is idempotent
+- [ ] BottomNav unread dot appears when unreadNotificationsFlag = true
+
+### Refs
+FR-29, FR-30, FR-31, FR-39, FR-40
+```
+
+---
+
+## Commit order summary
+
+| # | Commit subject | Key files |
+|---|---------------|-----------|
+| 1 | `feat(server/F-9)` — Notification model | `notification.model.ts` |
+| 2 | `feat(server/F-9)` — notification service + email | `notification.schema/service/controller/routes.ts`, `email.service.ts` |
+| 3 | `feat(server/F-9)` — home service | `home.service.ts` |
+| 4 | `feat(server/F-9)` — home HTTP + wiring | `home.controller/routes.ts`, `routes.ts`, `server.ts` |
+| 5 | `feat(server/F-9)` — deadline cron | `deadlineReminders.ts` |
+| 6 | `feat(server/F-9)` — notification triggers | `credential.service.ts`, `link.service.ts`, `event.service.ts` |
+| 7 | `feat(client/F-9)` — home data layer + page | `home/types.ts`, `home.api.ts`, `useHome.ts`, `HomePage.tsx` |
+| 8 | `feat(client/F-9)` — notifications data layer + page | `notifications/types.ts`, `notifications.api.ts`, `useNotifications.ts`, `NotificationsPage.tsx` |
+| 9 | `feat(client/F-9)` — app shell wiring | `router.tsx`, `BottomNav.tsx` |
