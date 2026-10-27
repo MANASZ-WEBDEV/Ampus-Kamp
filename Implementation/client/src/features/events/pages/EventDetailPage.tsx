@@ -189,6 +189,12 @@ export default function EventDetailPage() {
               </span>
               <span>{isBookmarked ? 'Saved' : 'Bookmark'}</span>
             </button>
+            <button
+              id="detail-circular-btn"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-lg text-sm shadow-md hover:bg-primary-container transition-all active:scale-[0.98]">
+              <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+              <span>Circular (PDF)</span>
+            </button>
             {isOwner && (
               <button
                 id="detail-edit-btn"
@@ -497,16 +503,99 @@ export default function EventDetailPage() {
               </section>
             )}
 
+            {/* Mandatory Sprint Deliverables */}
+            {event.type === 'hackathon' && (
+              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+                      <span className="material-symbols-outlined text-[20px]">checklist</span>
+                    </div>
+                    <h2 className="font-headline-md text-[1.125rem] text-on-surface font-semibold">Mandatory Sprint Deliverables</h2>
+                  </div>
+                  <span className="font-label-sm text-[10px] text-outline uppercase tracking-wider font-semibold">Evaluation Gates</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    { num: '1', icon: 'code_blocks', title: 'Functional MVP Repository', desc: 'Clean GitHub/GitLab repository with verifiable commit timestamps from during sprint hours. Must contain dockerized launch script or live staging URL.', weight: '30% of Gate Score' },
+                    { num: '2', icon: 'slideshow',  title: '5-Minute Jury Pitch Deck',  desc: 'Max 8-slide pitch deck highlighting user personas, quantitative validation, technology stack choice, and campus-to-national scaling roadmap.', weight: '20% of Gate Score' },
+                    { num: '3', icon: 'schema',     title: 'System Architecture Schema', desc: 'Detailed architectural block diagram illustrating data pipelines, cryptographic signatures, cloud backend, and edge sensor endpoints.', weight: '25% of Gate Score' },
+                    { num: '4', icon: 'devices',    title: 'Live Physical / Virtual Demo', desc: 'Zero slide demo! Working breadboard, embedded telemetry bench, or end-to-end user transaction verified live before the jury panel.', weight: '25% of Gate Score' },
+                  ].map(d => (
+                    <div key={d.num} className="p-4 rounded-xl bg-surface-container-low flex flex-col gap-2 hover:shadow-sm transition-shadow">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center">
+                          <span className="material-symbols-outlined text-[18px] text-primary">{d.icon}</span>
+                        </div>
+                        <span className="font-headline-sm text-[13px] text-on-surface font-semibold">{d.num}. {d.title}</span>
+                      </div>
+                      <p className="font-body-sm text-[11px] text-on-surface-variant leading-relaxed">{d.desc}</p>
+                      <span className="font-code-sm text-[10px] text-primary font-semibold">Weight: {d.weight}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Accordions: Rubric, Lab Access, SPOC */}
             <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-3">
-              <h2 className="font-headline-md text-[1.125rem] text-on-surface font-semibold">Technical Protocols & Logistics</h2>
+              <h2 className="font-headline-md text-[1.125rem] text-on-surface font-semibold">Technical Protocols &amp; Logistics</h2>
+
+              {/* Accordion: Evaluation Rubric */}
+              <AccordionItem
+                id="rubric"
+                icon="bar_chart"
+                title="Comprehensive Evaluation Rubric & Weightages"
+                open={openAccordion === 'rubric'}
+                onToggle={() => setOpenAccordion(o => o === 'rubric' ? null : 'rubric')}
+              >
+                <p className="font-body-sm text-[11px] text-on-surface-variant">Evaluation is distributed into 3 milestone checkpoints across the 48 hours:</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                  {[
+                    { label: 'Novelty & Innovation', pct: '30%' },
+                    { label: 'Tech Architecture',    pct: '25%' },
+                    { label: 'Feasibility & Scalability', pct: '25%' },
+                    { label: 'Jury Presentation',    pct: '20%' },
+                  ].map(r => (
+                    <div key={r.label} className="p-3 rounded-lg bg-surface-container-lowest text-center">
+                      <span className="font-headline-sm text-[1.25rem] text-primary font-bold block">{r.pct}</span>
+                      <span className="font-label-sm text-[10px] text-on-surface-variant">{r.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </AccordionItem>
+
+              {/* Accordion: Lab Access */}
+              <AccordionItem
+                id="lab"
+                icon="science"
+                title="Lab Access, Hardware Kits & Overnight Sprint Logistics"
+                open={openAccordion === 'lab'}
+                onToggle={() => setOpenAccordion(o => o === 'lab' ? null : 'lab')}
+              >
+                <div className="flex flex-col gap-2">
+                  {[
+                    { icon: 'memory',   label: 'Hardware Kits',   desc: 'Raspberry Pi 4B, STM32 Dev Boards, Arduino Nano, ESP32, sensor arrays — issued at registration desk.' },
+                    { icon: 'nights_stay', label: 'Overnight Access', desc: 'Innovation Lab B-Wing open 24/7 during sprint. HOD-endorsed duty leave issued on submission.' },
+                    { icon: 'wifi',     label: 'Dedicated Network', desc: 'Isolated gigabit LAN + public WiFi SSID: SIH_GUEST_56. No bandwidth throttling.' },
+                  ].map(l => (
+                    <div key={l.label} className="flex items-start gap-2">
+                      <span className="material-symbols-outlined text-[18px] text-primary shrink-0 mt-0.5">{l.icon}</span>
+                      <div>
+                        <span className="font-label-md text-[12px] text-on-surface font-semibold block">{l.label}</span>
+                        <span className="font-body-sm text-[11px] text-on-surface-variant">{l.desc}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </AccordionItem>
 
               {/* Accordion: Coordinator */}
               {event.postedBy && (
                 <AccordionItem
                   id="spoc"
                   icon="contact_support"
-                  title="Faculty Coordinator & Official Channels"
+                  title="Faculty SPOC Office Hours & Official Comms Channels"
                   open={openAccordion === 'spoc'}
                   onToggle={() => setOpenAccordion(o => o === 'spoc' ? null : 'spoc')}
                 >
@@ -545,9 +634,9 @@ export default function EventDetailPage() {
               <div className="rounded-lg bg-surface-container-low p-4 flex items-start gap-3">
                 <span className="material-symbols-outlined text-[24px] text-primary shrink-0">gavel</span>
                 <div className="flex flex-col gap-1">
-                  <h3 className="font-headline-sm text-[13px] text-on-surface font-semibold">Campus Integrity & Open Source Ethics</h3>
+                  <h3 className="font-headline-sm text-[13px] text-on-surface font-semibold">Campus Integrity &amp; Open Source Ethics</h3>
                   <p className="font-body-sm text-[11px] text-on-surface-variant leading-relaxed">
-                    All submissions must be original work. Use of pre-built components or foundational models is permitted with proper attribution. Violations lead to immediate disqualification by the faculty board.
+                    All code submitted must be written specifically during the 48-hour sprint window. Usage of pre-built third-party components or foundational models (APIs, LangChain, HuggingFace) is permitted provided it is disclosed in the architecture documentation. Violations lead to immediate disqualification by the faculty board.
                   </p>
                 </div>
               </div>
@@ -642,14 +731,24 @@ export default function EventDetailPage() {
 
                 {/* Register button — only for students who haven't registered */}
                 {!isFaculty && !alreadyRegistered && !isClosed && !isDraft && (
-                  <RegisterButton
-                    eventId={id!}
-                    registrationMode={event.registrationMode as 'in_app' | 'external'}
-                    eventLink={event.link}
-                    teamSizeMin={event.teamSize?.min ?? 1}
-                    teamSizeMax={event.teamSize?.max ?? 1}
-                    alreadyRegistered={false}
-                  />
+                  <>
+                    <RegisterButton
+                      eventId={id!}
+                      registrationMode={event.registrationMode as 'in_app' | 'external'}
+                      eventLink={event.link}
+                      teamSizeMin={event.teamSize?.min ?? 1}
+                      teamSizeMax={event.teamSize?.max ?? 1}
+                      alreadyRegistered={false}
+                    />
+                    {/* Secondary: register as individual free agent */}
+                    <button
+                      id="sidebar-free-agent-btn"
+                      className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-outline/20 text-on-surface-variant font-label-md text-[12px] hover:border-primary/30 hover:text-primary transition-all"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">person_pin</span>
+                      Register as Individual Free Agent
+                    </button>
+                  </>
                 )}
 
                 {/* Closed / draft state label */}
@@ -693,35 +792,100 @@ export default function EventDetailPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary text-[20px]">group_add</span>
-                    <h2 className="font-headline-sm text-[14px] text-on-surface font-semibold">Open Recruitment Posts</h2>
+                    <h2 className="font-headline-sm text-[14px] text-on-surface font-semibold">Squad Matchmaking Hub</h2>
                   </div>
-                  <span className="font-label-sm text-[10px] text-primary font-bold">
-                    {event.counters.students > 0 ? `${Math.max(2, Math.floor(event.counters.students / 4))} open` : '3 open'}
+                  <span className="font-code-sm text-[10px] text-primary font-bold bg-surface-container px-2 py-0.5 rounded">
+                    {event.counters.students > 0 ? `${Math.max(2, Math.floor(event.counters.students / 3))} Squads` : '4 Squads'}
                   </span>
                 </div>
 
+                {/* Avatar stack */}
+                <div className="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
+                  <div className="flex items-center -space-x-2">
+                    {['RK', 'ML', 'CS', 'AK'].map((ini, i) => (
+                      <div key={ini} className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shadow-sm ring-2 ring-surface-container-lowest ${
+                        i === 0 ? 'bg-primary-container text-on-primary' :
+                        i === 1 ? 'bg-secondary-container text-on-secondary-container' :
+                        i === 2 ? 'bg-tertiary-container text-on-tertiary' :
+                        'bg-surface-container-highest text-on-surface'
+                      }`}>{ini}</div>
+                    ))}
+                    <div className="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface flex items-center justify-center text-[10px] font-bold shadow-sm ring-2 ring-surface-container-lowest">
+                      +{event.counters.students > 0 ? event.counters.students : 19}
+                    </div>
+                  </div>
+                  <span className="font-label-sm text-[10px] text-on-surface-variant font-medium">
+                    {event.counters.students > 0 ? event.counters.students : 19} peers actively recruiting
+                  </span>
+                </div>
+
+                {/* Named squad cards matching reference */}
                 <div className="flex flex-col gap-2">
                   {[
-                    { name: event.title + ' — ML Lead',  role: 'Computer Vision / PyTorch', spots: '1 Seat Left',  spotBg: 'bg-emerald-100 text-emerald-900' },
-                    { name: event.title + ' — UI Dev',   role: 'React / Tailwind Frontend',  spots: 'Needs Lead',  spotBg: 'bg-amber-100 text-amber-900' },
+                    { name: 'AgriBotics AI',      role: 'ML Engineer',    roleClass: 'bg-tertiary-fixed text-on-tertiary-fixed', desc: 'Seeking: ML / Computer Vision Specialist', lead: 'Lead: Rohan K. (3rd Yr CSE)', badge: '1 Seat Left', badgeCls: 'bg-emerald-50 text-emerald-800' },
+                    { name: 'CyberShield Sentinel', role: 'Needs Lead',    roleClass: 'bg-secondary-fixed text-on-secondary-fixed', desc: 'Seeking: React / Tailwind Frontend Dev', lead: 'Lead: Meera Nair (4th Yr IT)', badge: 'Needs Lead', badgeCls: 'bg-amber-50 text-amber-900' },
+                    { name: 'HydroSense IoT',     role: 'Hardware',        roleClass: 'bg-primary-fixed text-on-primary-fixed', desc: 'Seeking: Embedded C++ / ESP32 Hardware Lead', lead: 'Lead: Devansh V. (3rd Yr Mech)', badge: 'Hardware', badgeCls: 'bg-blue-50 text-blue-800' },
                   ].map(sq => (
-                    <div key={sq.role} className="p-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col gap-1">
+                    <div key={sq.name} className="p-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col gap-1">
                       <div className="flex items-center justify-between">
-                        <span className="font-headline-sm text-[13px] text-on-surface font-semibold line-clamp-1">{sq.name}</span>
-                        <span className={`font-label-sm text-[10px] px-1.5 py-0.5 rounded font-bold ${sq.spotBg}`}>{sq.spots}</span>
+                        <span className="font-label-md text-[12px] text-on-surface font-semibold">{sq.name}</span>
+                        <span className={`font-label-sm text-[10px] px-1.5 py-0.5 rounded font-bold ${sq.roleClass}`}>{sq.role}</span>
                       </div>
-                      <div className="flex items-center gap-1 text-primary font-label-md text-[11px] font-semibold">
-                        <span className="material-symbols-outlined text-[14px]">psychology</span>
-                        <span>Seeking: {sq.role}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-outline text-[10px] pt-0.5">
-                        <span>Open listing</span>
-                        <button onClick={() => navigate(`/events/${id}/teams`)} className="text-primary hover:underline font-semibold text-[11px]">
-                          View Posts
-                        </button>
+                      <span className="font-body-sm text-[11px] text-on-surface-variant">{sq.desc}</span>
+                      <div className="flex items-center justify-between text-outline font-label-sm text-[10px] pt-0.5">
+                        <span>{sq.lead}</span>
+                        <button onClick={() => navigate(`/events/${id}/teams`)} className="text-primary hover:underline font-semibold">Request Invite</button>
                       </div>
                     </div>
                   ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => navigate(`/events/${id}/teams`)}
+                    className="py-2 px-3 rounded-lg bg-surface-container-lowest hover:bg-surface-container-low text-primary font-label-md text-[12px] font-semibold transition-all shadow-sm flex items-center justify-center gap-1">
+                    <span className="material-symbols-outlined text-[16px]">group_search</span>
+                    Find Squad
+                  </button>
+                  <button onClick={() => navigate(`/events/${id}/teams`)}
+                    className="py-2 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-[12px] font-semibold transition-all shadow-sm flex items-center justify-center gap-1">
+                    <span className="material-symbols-outlined text-[16px]">post_add</span>
+                    Post Open Role
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {/* Mentors On Call */}
+            {(event.type === 'hackathon' || event.type === 'competition') && (
+              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="material-symbols-outlined text-[20px] text-primary">support_agent</span>
+                  <h2 className="font-headline-sm text-[14px] text-on-surface font-semibold">Mentors On Call</h2>
+                </div>
+                {[
+                  { initials: 'VR', name: 'Dr. V. Ramanathan', dept: 'Dept of CS • Distributed Systems',    color: 'bg-primary-container text-on-primary' },
+                  { initials: 'AJ', name: 'Prof. Arvind Joshi', dept: 'Director, IoT & Embedded Systems FabLab', color: 'bg-secondary-container text-on-secondary-container' },
+                ].map(m => (
+                  <div key={m.name} className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-label-md text-[13px] font-bold shrink-0 ${m.color}`}>
+                      {m.initials}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-label-md text-[12px] text-on-surface font-semibold">{m.name}</span>
+                      <span className="font-body-sm text-[10px] text-on-surface-variant truncate">{m.dept}</span>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Pre-Hackathon Briefing event card */}
+                <div className="mt-1 p-3 rounded-lg bg-primary-container/30 border border-primary/10 flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-primary">event_upcoming</span>
+                    <span className="font-label-md text-[11px] text-primary font-semibold">Pre-Hackathon Briefing</span>
+                  </div>
+                  <span className="font-body-sm text-[11px] text-on-surface-variant">Oct 26, 4:30 PM IST</span>
+                  <span className="font-body-sm text-[11px] text-on-surface-variant">Auditorium Hall B • Hybrid Live Link</span>
+                  <button className="mt-1 text-primary font-label-md text-[11px] font-semibold hover:underline text-left">Add to Calendar (.ics)</button>
                 </div>
               </section>
             )}
