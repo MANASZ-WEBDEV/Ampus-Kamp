@@ -23,18 +23,18 @@ healthRouter.get('/', (_req, res) => {
     data: {
       status: 'ok',
       env: env.NODE_ENV,
-      version: '1.0.0-F0',
+      version: '1.0.0-F10',
       database: dbStatus,
       timestamp: new Date().toISOString(),
       uptime: Math.floor(process.uptime()),
       // Each scheduled job populates its lastRunAt when it executes (F-2+)
       jobs: {
-        closeEvents: null,
-        expireLinks: null,
-        closeTeamPosts: null,
+        closeEvents:       null,
+        expireLinks:       null,
+        closeTeamPosts:    null,
         lockRegistrations: null,
         deadlineReminders: null,
-        spotCheck: null,
+        spotCheck:         null,
       },
     },
   });

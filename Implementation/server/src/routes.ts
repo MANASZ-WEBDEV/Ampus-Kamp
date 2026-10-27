@@ -16,6 +16,8 @@ import { participationsRouter } from '@/modules/participations/participation.rou
 import { analyticsRouter }     from '@/modules/analytics/analytics.routes';
 import { homeRouter }          from '@/modules/home/home.routes';
 import { notificationsRouter } from '@/modules/notifications/notification.routes';
+import { settingsRouter }      from '@/modules/settings/setting.routes';
+import { adminRouter }         from '@/modules/admin/admin.routes';
 
 /**
  * mountRoutes — registers all feature routers on the app.
@@ -29,7 +31,7 @@ export function mountRoutes(app: Application): void {
     res.status(200).json({
       data: {
         name: 'Campus Innovation Platform — API Server',
-        version: '1.0.0-F9',
+        version: '1.0.0-F10',
         status: 'running',
         hint: 'Open http://localhost:5173 for the web client.',
         endpoints: {
@@ -52,6 +54,10 @@ export function mountRoutes(app: Application): void {
           credentials:    'POST /api/v1/credentials | GET /api/v1/credentials/me | GET /api/v1/credentials/pending (faculty+) | PATCH /api/v1/credentials/:id | PATCH /api/v1/credentials/:id/verify (faculty+)',
           participations: 'POST /api/v1/participations | PATCH /api/v1/participations/:id/verify (faculty+)',
           analytics:      'GET /api/v1/analytics/department-ranking (dept_head+) | GET /api/v1/analytics/breakdown/:deptId (dept_head+) | GET /api/v1/analytics/summary (admin) | GET /api/v1/analytics/export (admin)',
+          home:           'GET /api/v1/home',
+          notifications:  'GET /api/v1/notifications | PATCH /api/v1/notifications/:id/read',
+          settings:       'GET /api/v1/settings (admin) | PUT /api/v1/settings (admin)',
+          admin:          'GET /api/v1/admin/users | PATCH /api/v1/admin/users/:id/approve | PATCH /api/v1/admin/users/:id/suspend | GET /api/v1/admin/courses/queue | PATCH /api/v1/admin/courses/queue/:credId | GET /api/v1/admin/reports | PATCH /api/v1/admin/reports/:id | GET /api/v1/admin/audit',
         },
       },
     });
@@ -101,8 +107,8 @@ export function mountRoutes(app: Application): void {
   app.use('/api/v1/notifications', notificationsRouter);
 
   // ── F-10: Admin & Settings ────────────────────────────────────────────────
-  // app.use('/api/v1/admin', adminRouter);
-  // app.use('/api/v1/settings', settingsRouter);
+  app.use('/api/v1/settings', settingsRouter);
+  app.use('/api/v1/admin',    adminRouter);
 
   // ── 404 for unknown /api/* paths ──────────────────────────────────────────
   app.use('/api/*', (_req, res) => {
