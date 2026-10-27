@@ -7,6 +7,7 @@ import { scheduleCloseTeamPosts }    from '@/jobs/closeTeamPosts';
 import { scheduleExpireLinks }       from '@/jobs/expireLinks';
 import { scheduleLockRegistrations } from '@/jobs/lockRegistrations';
 import { scheduleSpotCheck }         from '@/jobs/spotCheck';
+import { scheduleDeadlineReminders } from '@/jobs/deadlineReminders';
 
 async function main(): Promise<void> {
   // 1. Connect to MongoDB before accepting requests
@@ -19,6 +20,7 @@ async function main(): Promise<void> {
   scheduleExpireLinks();         // 00:10 — expire pending links past 7-day TTL
   scheduleLockRegistrations();   // 00:15 — lock submitted registrations past deadline
   scheduleSpotCheck();           // 1st of month 03:00 — spot-check ~10% of verified credentials
+  scheduleDeadlineReminders();   // hourly — 48h and 4h deadline push notifications
 
   // 3. Build the Express app
   const app = createApp();

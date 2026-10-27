@@ -14,6 +14,8 @@ import { coursesRouter }       from '@/modules/courses/course.routes';
 import { credentialsRouter }   from '@/modules/credentials/credential.routes';
 import { participationsRouter } from '@/modules/participations/participation.routes';
 import { analyticsRouter }     from '@/modules/analytics/analytics.routes';
+import { homeRouter }          from '@/modules/home/home.routes';
+import { notificationsRouter } from '@/modules/notifications/notification.routes';
 
 /**
  * mountRoutes — registers all feature routers on the app.
@@ -27,7 +29,7 @@ export function mountRoutes(app: Application): void {
     res.status(200).json({
       data: {
         name: 'Campus Innovation Platform — API Server',
-        version: '1.0.0-F8',
+        version: '1.0.0-F9',
         status: 'running',
         hint: 'Open http://localhost:5173 for the web client.',
         endpoints: {
@@ -94,10 +96,9 @@ export function mountRoutes(app: Application): void {
   // ── F-8: Analytics ────────────────────────────────────────────────────────
   app.use('/api/v1/analytics', analyticsRouter);
 
-  // ── F-9: Notifications, Push, Home ────────────────────────────────────────
-  // app.use('/api/v1/home', homeRouter);
-  // app.use('/api/v1/notifications', notificationsRouter);
-  // app.use('/api/v1/push', pushRouter);
+  // ── F-9: Notifications & Home Feed ─────────────────────────────────────────
+  app.use('/api/v1/home',          homeRouter);
+  app.use('/api/v1/notifications', notificationsRouter);
 
   // ── F-10: Admin & Settings ────────────────────────────────────────────────
   // app.use('/api/v1/admin', adminRouter);
