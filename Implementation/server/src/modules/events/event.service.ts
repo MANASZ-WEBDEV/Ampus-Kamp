@@ -14,6 +14,8 @@ import type {
   UpdateEventBody,
   ListEventsQuery,
 } from './event.schema';
+import { sendNotification }        from '@/modules/notifications/notification.service';
+import { invalidateAllHomeCaches } from '@/modules/home/home.service';
 
 // ── In-memory cache ──────────────────────────────────────────────────────────
 // 60-second TTL on feed queries; invalidated on publish/close/delete.
@@ -508,6 +510,11 @@ export async function publishEvent(actor: AuthUser, id: string): Promise<EventDe
 
   invalidateFeedCache();
 
+  // Async fan-out — notify all active students (non-blocking).
+  // Eligibility scoping is a feed concern, not a notification concern.
+  void notifyMatchingStudents(id, updated.title);
+  invalidateAllHomeCaches(); // all student home feeds may show this event
+
   return {
     ...toEventCard(
       updated as unknown as IEvent & { postedBy: { _id: mongoose.Types.ObjectId; name: string } },
@@ -517,7 +524,40 @@ export async function publishEvent(actor: AuthUser, id: string): Promise<EventDe
   };
 }
 
+/**
+ * notifyMatchingStudents — fan-out event_new notification to all active students.
+ * Department eligibility is enforced at the feed level; the notification is
+ * campus-wide so students can discover events outside their defaults.
+ * Fully async — errors are logged only, never bubble to the caller.
+ */
+async function notifyMatchingStudents(
+  eventId:    string,
+  eventTitle: string,
+): Promise<void> {
+  try {
+    const { User } = await import('@/models/user.model');
+    const students = await User.find({
+      status: 'active',
+      role:   'student',
+    })
+      .select('_id')
+      .lean();
+
+    for (const s of students) {
+      void sendNotification(s._id.toString(), {
+        type:       'event_new',
+        eventId,
+        eventTitle,
+      });
+    }
+  } catch (err) {
+    console.error('[notifyMatchingStudents] Failed:', err);
+  }
+}
+
+
 // ── PATCH /api/v1/events/:id/close ───────────────────────────────────────────
+
 
 export async function closeEvent(actor: AuthUser, id: string): Promise<EventDetail> {
   if (!mongoose.Types.ObjectId.isValid(id)) {

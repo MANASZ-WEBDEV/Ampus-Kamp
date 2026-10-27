@@ -1,11 +1,12 @@
 import mongoose from 'mongoose';
 import fs from 'fs';
-import { invalidateCachePrefix } from '@/shared/cache';
-import { Credential }          from '@/models/credential.model';
-import { AuditLog }            from '@/models/auditLog.model';
-import { getSetting }          from '@/models/setting.model';
-import { sha256 }              from '@/shared/utils/hash';
-import { runQrPipeline }       from './qr-verify.service';
+import { invalidateCachePrefix }    from '@/shared/cache';
+import { Credential }               from '@/models/credential.model';
+import { AuditLog }                 from '@/models/auditLog.model';
+import { getSetting }               from '@/models/setting.model';
+import { sha256 }                   from '@/shared/utils/hash';
+import { runQrPipeline }            from './qr-verify.service';
+import { sendNotification }         from '@/modules/notifications/notification.service';
 import {
   AppError,
   ConflictError,
@@ -295,6 +296,13 @@ export async function verifyCredential(
       studentId:    cred.studentId.toString(),
       department:   cred.department.toString(),
     },
+  });
+
+  // Notify student — fire-and-forget (never blocks the faculty response)
+  void sendNotification(cred.studentId.toString(), {
+    type:   'credential_update',
+    credId: cred._id.toString(),
+    status: body.verdict,
   });
 
   return cred.toObject();

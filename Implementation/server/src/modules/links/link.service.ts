@@ -6,6 +6,8 @@ import { User }      from '@/models/user.model';
 import { Setting }   from '@/models/setting.model';
 import type { AuthUser } from '@/shared/types';
 import type { SendLinkBody, LinksQuery } from './link.schema';
+import { sendNotification }            from '@/modules/notifications/notification.service';
+import { invalidateHomeCache }         from '@/modules/home/home.service';
 import {
   NotFoundError,
   ForbiddenError,
@@ -215,7 +217,19 @@ export async function sendLink(actor: AuthUser, body: SendLinkBody): Promise<Lin
     .populate<{ toUserId:   { _id: mongoose.Types.ObjectId; name: string; phoneVisible: boolean } }>('toUserId', 'name phoneVisible')
     .lean();
 
-  return shapeLink(populated as unknown as Parameters<typeof shapeLink>[0]);
+  const shaped = shapeLink(populated as unknown as Parameters<typeof shapeLink>[0]);
+
+  // Notify recipient — fire-and-forget
+  const recipientId = shaped.to.id;
+  void sendNotification(recipientId, {
+    type:     'link_received',
+    linkId:   shaped.id,
+    fromName: shaped.from.name,
+  });
+  // Invalidate recipient's home cache (pendingRequestCount changes)
+  invalidateHomeCache(recipientId);
+
+  return shaped;
 }
 
 // ── PATCH /api/v1/links/:id ───────────────────────────────────────────────────
@@ -297,7 +311,23 @@ export async function respondLink(
 
   if (!updatedLink) throw new NotFoundError('Link');
 
-  return shapeLink(updatedLink as unknown as Parameters<typeof shapeLink>[0]);
+  const shaped = shapeLink(updatedLink as unknown as Parameters<typeof shapeLink>[0]);
+
+  // Notify original sender on accept/decline — fire-and-forget
+  // Withdraw is excluded: no need to notify yourself.
+  if (action === 'accept' || action === 'decline') {
+    void sendNotification(shaped.from.id, {
+      type:   'link_update',
+      linkId: shaped.id,
+      status: action === 'accept' ? 'accepted' : 'declined',
+    });
+    // Sender's home pendingRequestCount may change
+    invalidateHomeCache(shaped.from.id);
+  }
+  // Recipient's home pendingRequestCount also changes on any action
+  invalidateHomeCache(shaped.to.id);
+
+  return shaped;
 }
 
 // ── GET /api/v1/links?box=in|out ─────────────────────────────────────────────
