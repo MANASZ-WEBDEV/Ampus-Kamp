@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import fs from 'fs';
+import { invalidateCachePrefix } from '@/shared/cache';
 import { Credential }          from '@/models/credential.model';
 import { AuditLog }            from '@/models/auditLog.model';
 import { getSetting }          from '@/models/setting.model';
@@ -279,6 +280,10 @@ export async function verifyCredential(
   if (body.reason) cred.verification.reason = body.reason;
 
   await cred.save();
+
+  // Invalidate analytics cache — ranking changes whenever a credential is verified/rejected.
+  // Synchronous (node-cache in-process) — no await, no latency impact on the response.
+  invalidateCachePrefix('analytics:');
 
   // Audit trail — required by spec for every verify/reject action
   await AuditLog.create({

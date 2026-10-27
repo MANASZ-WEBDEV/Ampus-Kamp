@@ -13,6 +13,7 @@ import { registrationsRouter } from '@/modules/registrations/registration.routes
 import { coursesRouter }       from '@/modules/courses/course.routes';
 import { credentialsRouter }   from '@/modules/credentials/credential.routes';
 import { participationsRouter } from '@/modules/participations/participation.routes';
+import { analyticsRouter }     from '@/modules/analytics/analytics.routes';
 
 /**
  * mountRoutes — registers all feature routers on the app.
@@ -26,7 +27,7 @@ export function mountRoutes(app: Application): void {
     res.status(200).json({
       data: {
         name: 'Campus Innovation Platform — API Server',
-        version: '1.0.0-F7',
+        version: '1.0.0-F8',
         status: 'running',
         hint: 'Open http://localhost:5173 for the web client.',
         endpoints: {
@@ -48,6 +49,7 @@ export function mountRoutes(app: Application): void {
           courses:        'GET /api/v1/courses | POST /api/v1/courses (admin) | PATCH /api/v1/courses/:id/aliases (admin)',
           credentials:    'POST /api/v1/credentials | GET /api/v1/credentials/me | GET /api/v1/credentials/pending (faculty+) | PATCH /api/v1/credentials/:id | PATCH /api/v1/credentials/:id/verify (faculty+)',
           participations: 'POST /api/v1/participations | PATCH /api/v1/participations/:id/verify (faculty+)',
+          analytics:      'GET /api/v1/analytics/department-ranking (dept_head+) | GET /api/v1/analytics/breakdown/:deptId (dept_head+) | GET /api/v1/analytics/summary (admin) | GET /api/v1/analytics/export (admin)',
         },
       },
     });
@@ -90,7 +92,7 @@ export function mountRoutes(app: Application): void {
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // ── F-8: Analytics ────────────────────────────────────────────────────────
-  // app.use('/api/v1/analytics', analyticsRouter);
+  app.use('/api/v1/analytics', analyticsRouter);
 
   // ── F-9: Notifications, Push, Home ────────────────────────────────────────
   // app.use('/api/v1/home', homeRouter);
