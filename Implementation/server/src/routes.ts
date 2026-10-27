@@ -1,4 +1,5 @@
-import type { Application } from 'express';
+import path from 'path';
+import express, { type Application } from 'express';
 import { healthRouter }  from '@/modules/health/health.routes';
 import { authRouter }    from '@/modules/auth/auth.routes';
 import { usersRouter }   from '@/modules/users/user.routes';
@@ -9,6 +10,9 @@ import { linksRouter }   from '@/modules/links/link.routes';
 import { peopleRouter }        from '@/modules/people/people.routes';
 import { safetyRouter }        from '@/modules/safety/safety.routes';
 import { registrationsRouter } from '@/modules/registrations/registration.routes';
+import { coursesRouter }       from '@/modules/courses/course.routes';
+import { credentialsRouter }   from '@/modules/credentials/credential.routes';
+import { participationsRouter } from '@/modules/participations/participation.routes';
 
 /**
  * mountRoutes — registers all feature routers on the app.
@@ -22,7 +26,7 @@ export function mountRoutes(app: Application): void {
     res.status(200).json({
       data: {
         name: 'Campus Innovation Platform — API Server',
-        version: '1.0.0-F6',
+        version: '1.0.0-F7',
         status: 'running',
         hint: 'Open http://localhost:5173 for the web client.',
         endpoints: {
@@ -41,6 +45,9 @@ export function mountRoutes(app: Application): void {
           registrations:  'POST /api/v1/events/:id/registrations | PATCH /api/v1/registrations/:id | PATCH /api/v1/registrations/:id/members/:uid | GET /api/v1/registrations/mine',
           eventRoster:    'GET /api/v1/events/:id/registrations | GET /api/v1/events/:id/registrations/export (faculty+)',
           tracking:       'POST /api/v1/events/:id/tracking',
+          courses:        'GET /api/v1/courses | POST /api/v1/courses (admin) | PATCH /api/v1/courses/:id/aliases (admin)',
+          credentials:    'POST /api/v1/credentials | GET /api/v1/credentials/me | GET /api/v1/credentials/pending (faculty+) | PATCH /api/v1/credentials/:id | PATCH /api/v1/credentials/:id/verify (faculty+)',
+          participations: 'POST /api/v1/participations | PATCH /api/v1/participations/:id/verify (faculty+)',
         },
       },
     });
@@ -75,9 +82,12 @@ export function mountRoutes(app: Application): void {
   app.use('/api/v1/registrations', registrationsRouter);
 
   // ── F-7: Credentials & Participations ────────────────────────────────────
-  // app.use('/api/v1/courses', coursesRouter);
-  // app.use('/api/v1/credentials', credentialsRouter);
-  // app.use('/api/v1/participations', participationsRouter);
+  app.use('/api/v1/courses',        coursesRouter);
+  app.use('/api/v1/credentials',    credentialsRouter);
+  app.use('/api/v1/participations', participationsRouter);
+
+  // Serve uploaded proof files statically (dev only — use CDN in production)
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // ── F-8: Analytics ────────────────────────────────────────────────────────
   // app.use('/api/v1/analytics', analyticsRouter);
