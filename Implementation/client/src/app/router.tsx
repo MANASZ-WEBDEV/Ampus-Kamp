@@ -24,6 +24,7 @@ const MyEventsPage         = lazy(() => import('@/features/events/pages/MyEvents
 const PasteToPostPage = lazy(() => import('@/features/events/pages/PasteToPostPage'));
 
 // F-4: Team Finder
+const TeamFinderPage = lazy(() => import('@/features/teams/pages/TeamFinderPage'));
 const TeamPostsPage = lazy(() => import('@/features/teams/pages/TeamPostsPage'));
 const LinkInboxPage = lazy(() => import('@/features/teams/pages/LinkInboxPage'));
 
@@ -116,6 +117,11 @@ export function AppRouter() {
           <Route path="/events/:id/edit" element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyEditEventPage /></ProtectedRoute>} />
 
           {/* ── F-4: Team Finder ──────────────────────────────────────────── */}
+          {/* Global squad discovery page (/teams) */}
+          <Route
+            path="/teams"
+            element={<ProtectedRoute><TeamFinderPage /></ProtectedRoute>}
+          />
           {/* IMPORTANT: /events/:eventId/teams must be before /events/:id ── */}
           <Route
             path="/events/:eventId/teams"

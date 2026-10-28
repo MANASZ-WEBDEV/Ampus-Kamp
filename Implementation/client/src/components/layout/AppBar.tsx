@@ -8,11 +8,10 @@ interface AppBarProps {
 }
 
 const NAV_LINKS = [
-  { label: 'Home',    to: '/home',   path: 'home' },
-  { label: 'Events',  to: '/events', path: 'events' },
-  { label: 'Teams',   to: '/teams',  path: 'teams' },
-  { label: 'Badges',  to: '/badges', path: 'badges' },
-  { label: 'Profile', to: '/profile',path: 'profile' },
+  { label: 'Home',         to: '/home',   path: 'home' },
+  { label: 'Events',       to: '/events', path: 'events' },
+  { label: 'Team Finder',  to: '/teams',  path: 'teams' },
+  { label: 'Profile & Credentials', to: '/profile', path: 'profile' },
 ];
 
 /**
