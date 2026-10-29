@@ -24,9 +24,10 @@ const MyEventsPage         = lazy(() => import('@/features/events/pages/MyEvents
 const PasteToPostPage = lazy(() => import('@/features/events/pages/PasteToPostPage'));
 
 // F-4: Team Finder
-const TeamFinderPage = lazy(() => import('@/features/teams/pages/TeamFinderPage'));
-const TeamPostsPage = lazy(() => import('@/features/teams/pages/TeamPostsPage'));
-const LinkInboxPage = lazy(() => import('@/features/teams/pages/LinkInboxPage'));
+const TeamFinderPage     = lazy(() => import('@/features/teams/pages/TeamFinderPage'));
+const TeamCommandHubPage = lazy(() => import('@/features/teams/pages/TeamCommandHubPage'));
+const TeamPostsPage      = lazy(() => import('@/features/teams/pages/TeamPostsPage'));
+const LinkInboxPage      = lazy(() => import('@/features/teams/pages/LinkInboxPage'));
 
 // F-5: People, Looking, Safety
 const PeopleSearchPage = lazy(() => import('@/features/teams/pages/PeopleSearchPage'));
@@ -121,6 +122,11 @@ export function AppRouter() {
           <Route
             path="/teams"
             element={<ProtectedRoute><TeamFinderPage /></ProtectedRoute>}
+          />
+          {/* Team Command Hub — Squad Requests & Applications (/teams/requests) */}
+          <Route
+            path="/teams/requests"
+            element={<ProtectedRoute><TeamCommandHubPage /></ProtectedRoute>}
           />
           {/* IMPORTANT: /events/:eventId/teams must be before /events/:id ── */}
           <Route

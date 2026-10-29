@@ -190,6 +190,7 @@ export default function TeamFinderPage() {
           <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
             <button
               id="team-my-applications-btn"
+              onClick={() => navigate('/teams/requests')}
               className="relative inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-lg text-sm shadow-sm transition-all">
               <span className="material-symbols-outlined text-[18px] text-primary">mark_email_unread</span>
               My Squad Applications
