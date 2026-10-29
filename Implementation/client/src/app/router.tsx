@@ -43,8 +43,9 @@ const AddParticipationPage          = lazy(() => import('@/features/credentials/
 const FacultyVerificationQueuePage  = lazy(() => import('@/features/credentials/pages/FacultyVerificationQueuePage'));
 
 // F-8: Analytics & Department Ranking
-const DepartmentRankingPage = lazy(() => import('@/features/analytics/pages/DepartmentRankingPage'));
-const BreakdownPage         = lazy(() => import('@/features/analytics/pages/BreakdownPage'));
+const DepartmentRankingPage   = lazy(() => import('@/features/analytics/pages/DepartmentRankingPage'));
+const BreakdownPage           = lazy(() => import('@/features/analytics/pages/BreakdownPage'));
+const DepartmentDashboardPage = lazy(() => import('@/features/analytics/pages/DepartmentDashboardPage'));
 
 // F-9: Notifications
 const NotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'));
@@ -161,7 +162,7 @@ export function AppRouter() {
           <Route path="/participations/add"  element={<ProtectedRoute roles={['student']}><AddParticipationPage /></ProtectedRoute>} />
           <Route path="/verify"              element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyVerificationQueuePage /></ProtectedRoute>} />
 
-          {/* ── F-8: Analytics ────────────────────────────────────────────── */}
+          {/* ── F-8: Analytics & Department Dashboard ──────────────────────── */}
           {/* /analytics/:deptId MUST be its own route — no wildcard — so both slug */}
           {/* and the index /analytics render their respective pages.              */}
           <Route
@@ -177,6 +178,15 @@ export function AppRouter() {
             element={
               <ProtectedRoute roles={['dept_head', 'admin']}>
                 <BreakdownPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Screen 11: Department Head Dashboard */}
+          <Route
+            path="/dept/dashboard"
+            element={
+              <ProtectedRoute roles={['dept_head', 'admin']}>
+                <DepartmentDashboardPage />
               </ProtectedRoute>
             }
           />
