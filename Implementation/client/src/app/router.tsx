@@ -46,6 +46,7 @@ const FacultyVerificationQueuePage  = lazy(() => import('@/features/credentials/
 const DepartmentRankingPage   = lazy(() => import('@/features/analytics/pages/DepartmentRankingPage'));
 const BreakdownPage           = lazy(() => import('@/features/analytics/pages/BreakdownPage'));
 const DepartmentDashboardPage = lazy(() => import('@/features/analytics/pages/DepartmentDashboardPage'));
+const CollegeLeaderboardPage  = lazy(() => import('@/features/analytics/pages/CollegeLeaderboardPage'));
 
 // F-9: Notifications
 const NotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'));
@@ -187,6 +188,15 @@ export function AppRouter() {
             element={
               <ProtectedRoute roles={['dept_head', 'admin']}>
                 <DepartmentDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Screen 12: College Leaderboard & Admin Overview */}
+          <Route
+            path="/leaderboard"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <CollegeLeaderboardPage />
               </ProtectedRoute>
             }
           />
