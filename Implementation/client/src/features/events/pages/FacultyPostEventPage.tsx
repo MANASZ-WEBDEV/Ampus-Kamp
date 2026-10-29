@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, useCallback, type FormEvent, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreateEvent } from '../hooks/useCreateEvent';
-import type { CreateEventInput, EventType } from '../types';
+import type { CreateEventInput, EventType, Coordinator } from '../types';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import { AppBar } from '@/components/layout/AppBar';
 import { BottomNav } from '@/components/layout/BottomNav';
 
@@ -41,6 +42,8 @@ export default function FacultyPostEventPage() {
   const navigate = useNavigate();
   const { mutateAsync: createEvent, isPending } = useCreateEvent();
 
+  const { user } = useAuth();
+
   const [form, setForm] = useState<CreateEventInput>({
     title:            'TechNova 2026 National Hackathon',
     type:             'hackathon',
@@ -55,9 +58,64 @@ export default function FacultyPostEventPage() {
     registrationMode: 'external',
   });
 
-  const [error,      setError]      = useState('');
-  const [broadcasts, setBroadcasts] = useState({ push: true, pin: true, calendar: false });
-  const [odPass,     setOdPass]     = useState(true);
+  // ── Coordinator state ────────────────────────────────────────────
+  // Start with one empty manual row so the user always sees at least one pair.
+  const [coordinators,    setCoordinators]    = useState<Coordinator[]>([{ name: '', phone: '' }]);
+  const [isSelfCoord,     setIsSelfCoord]     = useState(false);
+
+  // ── Banner image state (client-only; NOT in CreateEventInput JSON) ────────
+  const [bannerFile,      setBannerFile]      = useState<File | null>(null);
+  const [bannerPreview,   setBannerPreview]   = useState<string | null>(null);
+  const [bannerDragOver,  setBannerDragOver]  = useState(false);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  const [error,           setError]           = useState('');
+  const [broadcasts,      setBroadcasts]      = useState({ push: true, pin: true, calendar: false });
+  const [odPass,          setOdPass]          = useState(true);
+
+  // ── Coordinator helpers ──────────────────────────────────────────
+  const updateCoordinator = useCallback((idx: number, field: keyof Coordinator, val: string) => {
+    setCoordinators(prev => prev.map((c, i) => i === idx ? { ...c, [field]: val } : c));
+  }, []);
+
+  const addCoordinator = useCallback(() => {
+    setCoordinators(prev => [...prev, { name: '', phone: '' }]);
+  }, []);
+
+  const removeCoordinator = useCallback((idx: number) => {
+    setCoordinators(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev);
+  }, []);
+
+  const handleSelfCoordToggle = useCallback((checked: boolean) => {
+    setIsSelfCoord(checked);
+    // When toggling off: keep manual rows as-is; self entry is only merged on submit.
+  }, []);
+
+  // ── Banner image helpers ────────────────────────────────────────
+  const applyBannerFile = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    setBannerFile(file);
+    const url = URL.createObjectURL(file);
+    setBannerPreview(url);
+  }, []);
+
+  const clearBanner = useCallback(() => {
+    if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+    setBannerFile(null);
+    setBannerPreview(null);
+    if (bannerInputRef.current) bannerInputRef.current.value = '';
+  }, [bannerPreview]);
+
+  const handleBannerInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) applyBannerFile(file);
+  }, [applyBannerFile]);
+
+  function formatFileSize(bytes: number) {
+    if (bytes < 1024)     return `${bytes} B`;
+    if (bytes < 1048576)  return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+  }
 
   function setField<K extends keyof CreateEventInput>(key: K, value: CreateEventInput[K]) {
     setForm(f => ({ ...f, [key]: value }));
@@ -82,7 +140,21 @@ export default function FacultyPostEventPage() {
     setError('');
     try {
       const toISO = (d?: string) => d ? new Date(d + 'T00:00:00.000Z').toISOString() : undefined;
-      await createEvent({ ...form, deadline: toISO(form.deadline), eventDate: toISO(form.eventDate) });
+      // Merge self-coordinator (if ticked) at front of manual rows, filter blanks
+      const selfEntry: Coordinator | null =
+        isSelfCoord && user ? { name: user.name, phone: user.phone ?? '' } : null;
+      const allCoordinators: Coordinator[] = [
+        ...(selfEntry ? [selfEntry] : []),
+        ...coordinators.filter(c => c.name.trim() || c.phone.trim()),
+      ];
+      await createEvent({
+        ...form,
+        deadline:     toISO(form.deadline),
+        eventDate:    toISO(form.eventDate),
+        coordinators: allCoordinators.length ? allCoordinators : undefined,
+        // bannerFile is sent separately via FormData in a follow-up media upload;
+        // for now we attach it to the window so the service worker / upload hook can read it.
+      });
       navigate('/events/my');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create event.');
@@ -444,6 +516,158 @@ Respected Faculty & Students, IIT Kharagpur is organizing TechNova 2026 Hackatho
                     className="w-full px-4 py-3 rounded-lg bg-surface-container-low text-on-surface font-body-sm text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
                 </div>
 
+                {/* ── Coordinators ──────────────────────────────────────────────── */}
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-label-sm text-[10px] text-outline uppercase tracking-wider">
+                      Event Coordinators
+                    </label>
+                    <span className="font-label-sm text-[10px] text-on-surface-variant">Point-of-contact shown on event card</span>
+                  </div>
+
+                  {/* Self-coordinator checkbox */}
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none group w-fit">
+                    <span className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${
+                      isSelfCoord ? 'bg-primary border-primary' : 'border-outline-variant bg-surface-container-low group-hover:border-primary/60'
+                    }`}>
+                      {isSelfCoord && <span className="material-symbols-outlined text-on-primary text-[12px] leading-none">check</span>}
+                    </span>
+                    <input type="checkbox" className="sr-only" checked={isSelfCoord}
+                      onChange={e => handleSelfCoordToggle(e.target.checked)} />
+                    <span className="font-body-sm text-[13px] text-on-surface">
+                      I am the coordinator too
+                    </span>
+                    {isSelfCoord && user && (
+                      <span className="ml-1 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-label-sm text-[10px] font-semibold">
+                        <span className="material-symbols-outlined text-[12px]">person</span>
+                        {user.name}{user.phone ? ` • ${user.phone}` : ''}
+                      </span>
+                    )}
+                  </label>
+
+                  {/* Manual coordinator rows */}
+                  <div className="flex flex-col gap-2">
+                    {coordinators.map((coord, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        {/* Name */}
+                        <div className="relative flex-1">
+                          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[15px] pointer-events-none">person</span>
+                          <input
+                            type="text"
+                            placeholder="Coordinator name"
+                            value={coord.name}
+                            onChange={e => updateCoordinator(idx, 'name', e.target.value)}
+                            className="w-full h-9 pl-9 pr-3 rounded-lg bg-surface-container-low text-on-surface font-body-sm text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-outline"
+                          />
+                        </div>
+                        {/* Phone */}
+                        <div className="relative w-44 flex-shrink-0">
+                          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[15px] pointer-events-none">phone</span>
+                          <input
+                            type="tel"
+                            placeholder="Phone / ext."
+                            value={coord.phone}
+                            onChange={e => updateCoordinator(idx, 'phone', e.target.value)}
+                            className="w-full h-9 pl-9 pr-3 rounded-lg bg-surface-container-low text-on-surface font-body-sm text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-outline"
+                          />
+                        </div>
+                        {/* Remove — disabled when only 1 row */}
+                        <button
+                          type="button"
+                          onClick={() => removeCoordinator(idx)}
+                          disabled={coordinators.length === 1}
+                          title={coordinators.length === 1 ? 'At least one coordinator row is required' : 'Remove'}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add more row */}
+                  <button
+                    type="button"
+                    onClick={addCoordinator}
+                    className="self-start flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-outline-variant/50 hover:border-primary/50 hover:bg-primary/5 text-on-surface-variant hover:text-primary font-label-md text-[12px] transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    Add coordinator
+                  </button>
+                </div>
+
+                {/* ── Custom Banner Image (Optional) ────────────────────────────── */}
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <label className="font-label-sm text-[10px] text-outline uppercase tracking-wider">Custom Event Banner</label>
+                      <span className="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-[9px]">Optional</span>
+                    </div>
+                    <span className="font-label-sm text-[10px] text-on-surface-variant">Replaces AI gradient on event card</span>
+                  </div>
+
+                  {bannerPreview ? (
+                    /* Preview strip */
+                    <div className="relative rounded-xl overflow-hidden border border-outline-variant/15">
+                      <img src={bannerPreview} alt="Banner preview" className="w-full h-32 object-cover" />
+                      {/* overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      {/* pill */}
+                      <div className="absolute bottom-2 left-3 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-white text-[14px]">image</span>
+                        <span className="font-label-sm text-[10px] text-white truncate max-w-[180px]">{bannerFile!.name}</span>
+                        <span className="font-label-sm text-[9px] text-white/70">{formatFileSize(bannerFile!.size)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={clearBanner}
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 hover:bg-error/80 flex items-center justify-center text-white transition-colors"
+                        title="Remove custom banner"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">close</span>
+                      </button>
+                    </div>
+                  ) : (
+                    /* Drop zone */
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => bannerInputRef.current?.click()}
+                      onKeyDown={e => e.key === 'Enter' && bannerInputRef.current?.click()}
+                      onDragOver={e => { e.preventDefault(); setBannerDragOver(true); }}
+                      onDragLeave={() => setBannerDragOver(false)}
+                      onDrop={e => {
+                        e.preventDefault();
+                        setBannerDragOver(false);
+                        const file = e.dataTransfer.files[0];
+                        if (file) applyBannerFile(file);
+                      }}
+                      className={`flex flex-col items-center justify-center gap-2 h-24 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
+                        bannerDragOver
+                          ? 'border-primary bg-primary/5 scale-[1.01]'
+                          : 'border-outline-variant/40 hover:border-primary/50 hover:bg-surface-container-low'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[28px] text-outline">add_photo_alternate</span>
+                      <div className="text-center">
+                        <div className="font-label-md text-[12px] text-on-surface-variant">
+                          Drop image here or <span className="text-primary font-semibold">click to browse</span>
+                        </div>
+                        <div className="font-label-sm text-[10px] text-outline mt-0.5">PNG, JPG, WEBP • Max 5 MB • 16:9 recommended</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hidden file input */}
+                  <input
+                    ref={bannerInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    onChange={handleBannerInputChange}
+                  />
+                </div>
+
                 {/* Campus Activity Points Allocation */}
                 <div className="flex items-center gap-3 p-3.5 rounded-lg bg-surface-container">
                   <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -482,14 +706,20 @@ Respected Faculty & Students, IIT Kharagpur is organizing TechNova 2026 Hackatho
               <div className="p-3">
                 {/* Event card preview matching Screen 3 design */}
                 <div className="rounded-lg overflow-hidden border border-outline-variant/10">
-                  <div className="relative h-28 bg-gradient-to-br from-primary to-primary-container">
+                  <div className="relative h-28 overflow-hidden">
+                    {bannerPreview ? (
+                      <img src={bannerPreview} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary to-primary-container" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                     <div className="absolute top-2 right-2 flex gap-1">
                       <span className="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-fixed font-label-sm text-[8px] font-bold">HACKATHON • NATIONAL TIER</span>
                       <span className="px-1.5 py-0.5 rounded bg-error text-on-error font-label-sm text-[8px] font-bold">12 days left</span>
                     </div>
                     <div className="absolute bottom-3 left-3 right-3">
-                      <div className="font-headline-sm text-[13px] text-on-primary font-bold leading-tight">TechNova 2026 National Hackathon</div>
-                      <div className="font-label-sm text-[10px] text-on-primary/80">IIT Kharagpur • Campus Innovation Council</div>
+                      <div className="font-headline-sm text-[13px] text-white font-bold leading-tight">TechNova 2026 National Hackathon</div>
+                      <div className="font-label-sm text-[10px] text-white/80">IIT Kharagpur • Campus Innovation Council</div>
                     </div>
                   </div>
                   <div className="p-3">
@@ -505,6 +735,28 @@ Respected Faculty & Students, IIT Kharagpur is organizing TechNova 2026 Hackatho
                     <p className="font-body-sm text-[10px] text-on-surface-variant leading-relaxed mb-3">
                       A premier 48-hour national collegiate hackathon focused on AI and sustainable…
                     </p>
+                    {/* Coordinator strip — shown on card when coordinators exist */}
+                    {(() => {
+                      const selfEntry = isSelfCoord && user ? { name: user.name, phone: user.phone ?? '' } : null;
+                      const visible = [
+                        ...(selfEntry ? [selfEntry] : []),
+                        ...coordinators.filter(c => c.name.trim()),
+                      ].slice(0, 2); // show max 2 on card preview
+                      return visible.length > 0 ? (
+                        <div className="flex flex-col gap-1 mb-2">
+                          {visible.map((c, i) => (
+                            <div key={i} className="flex items-center gap-1.5 font-label-sm text-[9px] text-on-surface-variant">
+                              <span className="material-symbols-outlined text-[10px]">person</span>
+                              <span className="font-semibold text-on-surface">{c.name}</span>
+                              {c.phone && <><span>•</span><span>{c.phone}</span></>}
+                            </div>
+                          ))}
+                          {(selfEntry ? coordinators.filter(c => c.name.trim()).length : coordinators.filter(c => c.name.trim()).length - 1) > 1 && (
+                            <div className="font-label-sm text-[9px] text-outline">+more coordinators</div>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-1 rounded bg-primary/10 text-primary font-label-sm text-[10px] font-semibold">+4 Activity Pts</span>
                       <span className="px-2 py-1 rounded bg-surface-container text-on-surface font-label-sm text-[10px]">Free</span>

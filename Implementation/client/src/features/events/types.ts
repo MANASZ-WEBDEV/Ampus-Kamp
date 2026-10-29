@@ -12,6 +12,16 @@ export type EventStatus = 'draft' | 'published' | 'closed' | 'archived';
 
 export type RegistrationMode = 'in_app' | 'external';
 
+/**
+ * A single event coordinator — stored alongside the event and surfaced on
+ * event cards / detail pages. NOT the posting faculty; coordinators are the
+ * student / faculty point-of-contact for registrations & queries.
+ */
+export interface Coordinator {
+  name:  string;   // full name
+  phone: string;   // E.164 or local — validated client-side
+}
+
 export interface EventPoster {
   id: string;
   name: string;
@@ -52,6 +62,10 @@ export interface EventCard {
   counters: EventCounters;
   status: EventStatus;
   postedBy: EventPoster;
+  /** Point-of-contact coordinators shown on event cards and detail pages */
+  coordinators?: Coordinator[];
+  /** CDN URL of the manually uploaded banner (takes precedence over AI gradient) */
+  bannerImageUrl?: string;
   isBookmarked: boolean;
   createdAt: string;
   updatedAt: string;
@@ -80,6 +94,13 @@ export interface CreateEventInput {
   summary?: string;
   registrationMode?: RegistrationMode;
   registrationDeadline?: string;
+
+  /**
+   * Coordinators for this event. Stored server-side and shown on event cards.
+   * Client merges the self-coordinator entry (if checkbox is ticked) with the
+   * manually-entered rows before sending.
+   */
+  coordinators?: Coordinator[];
 
   // ── F-3: Paste-to-Post metadata (only set when created via extraction) ──────
   /** Original pasted announcement text — stored server-side, never shown to students */
