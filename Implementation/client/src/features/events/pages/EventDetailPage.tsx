@@ -540,9 +540,10 @@ export default function EventDetailPage() {
                   <RegistrationStatusCard
                     registration={myReg}
                     currentUserId={user.id}
+                    teamSizeMin={event.teamSize?.min ?? 1}
                     onWithdraw={() => doWithdraw({ regId: myReg.id, input: { action: 'withdraw' } })}
                     onConfirm={
-                      myReg.status === 'draft' && myReg.type === 'individual'
+                      myReg.status === 'draft'
                         ? () => doWithdraw({ regId: myReg.id, input: { action: 'submit' } })
                         : undefined
                     }

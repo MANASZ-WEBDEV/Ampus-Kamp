@@ -16,6 +16,7 @@ import {
   ConflictError,
   ValidationError,
 } from '@/shared/errors';
+import { sendNotification } from '@/modules/notifications/notification.service';
 
 // ── Response shapes ───────────────────────────────────────────────────────────
 
@@ -252,7 +253,25 @@ export async function createRegistration(
   }
 
   const populated = await populateReg(reg._id);
-  return shapeReg(populated as unknown as Parameters<typeof shapeReg>[0]);
+  const card = shapeReg(populated as unknown as Parameters<typeof shapeReg>[0]);
+
+  // ── Fire team_invite notifications (fire-and-forget, never blocks response) ──
+  if (!isIndividual && invitedIds.length > 0) {
+    const leader = await User.findById(actor.id).select('name').lean();
+    const leaderName = leader?.name ?? 'Your teammate';
+    for (const invitedId of invitedIds) {
+      sendNotification(invitedId, {
+        type:       'team_invite',
+        regId:      card.id,
+        eventId:    eventId,
+        eventTitle: event.title,
+        teamName:   card.teamName ?? 'Unnamed Team',
+        leaderName,
+      });
+    }
+  }
+
+  return card;
 }
 
 // ── POST /api/v1/events/:id/tracking ─────────────────────────────────────────
@@ -377,6 +396,31 @@ export async function updateRegistration(
         if (existingCount !== validIds.length) {
           throw new NotFoundError('One or more invited users do not exist or are not active students.');
         }
+
+        // ── Conflict check for newly invited members (mirrors createRegistration guard) ──
+        const conflicting = await Registration.find({
+          eventId: reg.eventId,
+          status: { $in: ['draft', 'submitted', 'locked'] },
+          _id: { $ne: new mongoose.Types.ObjectId(regId) }, // exclude this reg
+          'members.userId': { $in: validIds.map(id => new mongoose.Types.ObjectId(id)) },
+        }).select('members').lean();
+
+        if (conflicting.length > 0) {
+          const conflictingUserIds = new Set<string>();
+          for (const r of conflicting) {
+            for (const m of r.members) {
+              const uid = m.userId.toString();
+              if (validIds.includes(uid)) conflictingUserIds.add(uid);
+            }
+          }
+          const conflictNames = (
+            await User.find({ _id: { $in: [...conflictingUserIds] } }).select('name').lean()
+          ).map(u => u.name).join(', ');
+          throw new ConflictError(
+            `${conflictNames} already ${conflictingUserIds.size === 1 ? 'has' : 'have'} an active ` +
+            `registration for this event and cannot be added to another team.`,
+          );
+        }
       }
 
       updates.members = [
@@ -386,8 +430,34 @@ export async function updateRegistration(
           status: 'invited' as const,
         })),
       ];
+
+      const updated = await Registration.findByIdAndUpdate(regId, { $set: updates }, { new: true });
+      if (!updated) throw new NotFoundError('Registration');
+      const populated = await populateReg(updated._id);
+      const card = shapeReg(populated as unknown as Parameters<typeof shapeReg>[0]);
+
+      // ── Fire team_invite for newly added members (fire-and-forget) ───────────
+      if (newInviteIds.length > 0) {
+        const eventDoc   = await Event.findById(reg.eventId).select('title').lean();
+        const leader     = await User.findById(actor.id).select('name').lean();
+        const leaderName = leader?.name ?? 'Your teammate';
+        const eventTitle = eventDoc?.title ?? 'an event';
+        for (const invitedId of newInviteIds) {
+          sendNotification(invitedId, {
+            type:       'team_invite',
+            regId:      card.id,
+            eventId:    reg.eventId.toString(),
+            eventTitle,
+            teamName:   card.teamName ?? 'Unnamed Team',
+            leaderName,
+          });
+        }
+      }
+
+      return card;
     }
 
+    // No memberUserIds change — just save teamName patch and return
     const updated = await Registration.findByIdAndUpdate(regId, { $set: updates }, { new: true });
     if (!updated) throw new NotFoundError('Registration');
     const populated = await populateReg(updated._id);
@@ -556,6 +626,20 @@ export async function respondMember(
         [`members.${memberIndex}.respondedAt`]: new Date(),
       },
     });
+
+    // ── Notify the leader that this member joined ─────────────────────────────
+    const memberUser = await User.findById(targetUid).select('name').lean();
+    const eventDoc   = await Event.findById(reg.eventId).select('title').lean();
+    if (memberUser && eventDoc) {
+      sendNotification(reg.leaderId.toString(), {
+        type:       'team_member_joined',
+        regId:      regId,
+        eventId:    reg.eventId.toString(),
+        eventTitle: eventDoc.title,
+        teamName:   reg.teamName ?? 'your team',
+        memberName: memberUser.name,
+      });
+    }
   } else {
     // Decline → remove member from array entirely (frees slot for replacement invite)
     await Registration.findByIdAndUpdate(regId, {

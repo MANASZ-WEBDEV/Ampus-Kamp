@@ -8,7 +8,9 @@ export type NotificationType =
   | 'link_received'      // team request/invite received
   | 'link_update'        // link accepted or declined
   | 'credential_update'  // credential verified or rejected
-  | 'link_expiring';     // pending link expires tomorrow
+  | 'link_expiring'      // pending link expires tomorrow
+  | 'team_invite'        // invited to join a team registration
+  | 'team_member_joined';// a pending member confirmed their place
 
 export interface INotification {
   _id:      Types.ObjectId;
@@ -27,7 +29,7 @@ const notificationSchema = new Schema<INotification>(
     userId:  { type: Schema.Types.ObjectId, ref: 'User', required: true },
     type: {
       type: String,
-      enum: ['event_new', 'deadline', 'link_received', 'link_update', 'credential_update', 'link_expiring'],
+      enum: ['event_new', 'deadline', 'link_received', 'link_update', 'credential_update', 'link_expiring', 'team_invite', 'team_member_joined'],
       required: true,
     },
     payload: { type: Schema.Types.Mixed, required: true },

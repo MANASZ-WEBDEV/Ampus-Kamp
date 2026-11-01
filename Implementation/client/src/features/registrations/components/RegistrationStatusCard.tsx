@@ -4,8 +4,10 @@ interface RegistrationStatusCardProps {
   registration: Registration;
   currentUserId: string;
   onWithdraw?: () => void;
-  /** For individual draft recovery: submit the registration immediately */
+  /** For draft registrations: submit the registration */
   onConfirm?: () => void;
+  /** Min confirmed members required to submit (from event teamSize.min) */
+  teamSizeMin?: number;
 }
 
 const STATUS_CONFIG = {
@@ -26,16 +28,21 @@ export function RegistrationStatusCard({
   currentUserId,
   onWithdraw,
   onConfirm,
+  teamSizeMin = 1,
 }: RegistrationStatusCardProps) {
-  const cfg       = STATUS_CONFIG[reg.status];
-  const isLeader  = reg.leader.id === currentUserId;
-  const canWithdraw = isLeader && ['draft', 'submitted'].includes(reg.status);
+  const cfg             = STATUS_CONFIG[reg.status];
+  const isLeader        = reg.leader.id === currentUserId;
+  const canWithdraw     = isLeader && ['draft', 'submitted'].includes(reg.status);
+  const confirmedCount  = reg.members.filter(m => m.status === 'confirmed').length;
+  const pendingCount    = reg.members.filter(m => m.status === 'invited').length;
+  // Leader can submit once confirmed members meet the min threshold
+  const canSubmit       = isLeader && reg.status === 'draft' && confirmedCount >= teamSizeMin;
 
   return (
     <div className={`rounded-2xl border border-outline-variant/20 p-4 flex flex-col gap-3 ${cfg.bg}`}>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      {/* Fix 1: min-w-0 on left side prevents long team names from squeezing Withdraw off screen */}
+      {/* min-w-0 on left side prevents long team names from squeezing Withdraw off screen */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <span
@@ -45,7 +52,6 @@ export function RegistrationStatusCard({
             {cfg.icon}
           </span>
           <div className="min-w-0">
-            {/* Fix 2: bumped from text-xs → text-sm, subtitle from text-[10px] → text-xs */}
             <p className={`font-label-lg text-sm font-semibold ${cfg.color}`}>{cfg.label}</p>
             <p className="font-body-sm text-xs text-on-surface-variant capitalize truncate">
               {reg.type} registration
@@ -54,8 +60,8 @@ export function RegistrationStatusCard({
           </div>
         </div>
 
+        {/* shrink-0 prevents button from being squeezed or clipped */}
         {canWithdraw && onWithdraw && (
-          // Fix 1: shrink-0 prevents button from being squeezed or clipped
           <button
             id={`reg-withdraw-${reg.id}`}
             onClick={onWithdraw}
@@ -70,7 +76,6 @@ export function RegistrationStatusCard({
 
       {/* ── Submitted timestamp ────────────────────────────────────────── */}
       {reg.submittedAt && (
-        // Fix 2: text-[10px] → text-xs
         <p className="font-label-sm text-xs text-on-surface-variant">
           Submitted {new Date(reg.submittedAt).toLocaleDateString('en-IN', {
             day: 'numeric', month: 'short', year: 'numeric',
@@ -81,9 +86,8 @@ export function RegistrationStatusCard({
       {/* ── Members ────────────────────────────────────────────────────── */}
       {reg.members.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          {/* Fix 2: text-[9px] → text-[11px] */}
           <p className="font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider">
-            Members ({reg.members.filter(m => m.status === 'confirmed').length} confirmed)
+            Members ({confirmedCount} confirmed)
           </p>
           {reg.members.map(m => (
             <div key={m.userId}
@@ -91,7 +95,6 @@ export function RegistrationStatusCard({
                          bg-surface-container-lowest/60">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                  {/* Fix 2: text-[10px] → text-xs */}
                   <span className="font-label-sm text-xs font-bold text-primary">
                     {m.name.charAt(0).toUpperCase()}
                   </span>
@@ -99,12 +102,10 @@ export function RegistrationStatusCard({
                 <p className="font-body-sm text-sm text-on-surface truncate">
                   {m.name}
                   {m.userId === reg.leader.id && (
-                    // Fix 2: text-[9px] → text-[11px]
                     <span className="ml-1 text-[11px] text-on-surface-variant">(leader)</span>
                   )}
                 </p>
               </div>
-              {/* Fix 2: badge text-[9px] → text-[11px] */}
               <span className={`shrink-0 px-2 py-0.5 rounded-lg font-label-sm text-[11px] capitalize
                                ${MEMBER_STATUS_COLORS[m.status]}`}>
                 {m.status}
@@ -114,11 +115,11 @@ export function RegistrationStatusCard({
         </div>
       )}
 
-      {/* ── Draft reminder ─────────────────────────────────────────────── */}
+      {/* ── Draft actions (leader only) ─────────────────────────────────── */}
       {reg.status === 'draft' && isLeader && (
         reg.type === 'individual' ? (
+          // Individual draft — confirm immediately
           <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/40 flex flex-col gap-2">
-            {/* Fix 2: text-[10px] → text-sm */}
             <p className="font-body-sm text-sm text-amber-700">
               <span className="font-semibold">Registration not confirmed yet.</span>{' '}
               Confirm below to finalise your spot.
@@ -135,12 +136,46 @@ export function RegistrationStatusCard({
             )}
           </div>
         ) : (
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/40">
-            {/* Fix 2: text-[10px] → text-sm */}
-            <p className="font-body-sm text-sm text-amber-700">
-              <span className="font-semibold">Not submitted yet.</span>{' '}
-              Invite members and submit before the deadline.
-            </p>
+          // Team draft — submit when min threshold met; show pending info
+          <div className="flex flex-col gap-2">
+            {pendingCount > 0 && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/40">
+                <p className="font-body-sm text-sm text-amber-700">
+                  <span className="font-semibold">
+                    {pendingCount} invite{pendingCount > 1 ? 's' : ''} pending.
+                  </span>{' '}
+                  {canSubmit
+                    ? 'You can submit now or wait for them to join.'
+                    : 'Waiting for members to accept before you can submit.'}
+                </p>
+              </div>
+            )}
+
+            {canSubmit && onConfirm ? (
+              <button
+                id={`reg-submit-${reg.id}`}
+                onClick={onConfirm}
+                className="w-full py-2.5 rounded-xl bg-primary text-on-primary font-label-lg
+                           text-sm font-medium hover:bg-primary/90 active:scale-[0.98] transition-all
+                           flex items-center justify-center gap-2"
+              >
+                <span
+                  className="material-symbols-outlined text-[16px]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  how_to_reg
+                </span>
+                Submit Team Registration
+              </button>
+            ) : !canSubmit && pendingCount === 0 && (
+              // All confirmed but still below min (edge case: no members yet)
+              <div className="p-3 rounded-xl bg-surface-container border border-outline-variant/20">
+                <p className="font-body-sm text-sm text-on-surface-variant">
+                  <span className="font-semibold">Not submitted yet.</span>{' '}
+                  Invite members and submit before the deadline.
+                </p>
+              </div>
+            )}
           </div>
         )
       )}

@@ -12,7 +12,9 @@ type NotifPayload =
   | { type: 'link_received';     linkId:  string; fromName:   string }
   | { type: 'link_update';       linkId:  string; status: 'accepted' | 'declined' }
   | { type: 'credential_update'; credId:  string; status: 'verified' | 'rejected'; courseName?: string }
-  | { type: 'link_expiring';     linkId:  string };
+  | { type: 'link_expiring';     linkId:  string }
+  | { type: 'team_invite';       regId: string; eventId: string; eventTitle: string; teamName: string; leaderName: string }
+  | { type: 'team_member_joined'; regId: string; eventId: string; eventTitle: string; teamName: string; memberName: string };
 
 // ── Email eligibility ─────────────────────────────────────────────────────────
 
@@ -23,6 +25,7 @@ type NotifPayload =
 function shouldEmail(payload: NotifPayload): boolean {
   if (payload.type === 'event_new')          return true;
   if (payload.type === 'credential_update')  return true;
+  if (payload.type === 'team_invite')        return true;
   if (payload.type === 'deadline')           return payload.hoursLeft === 48;
   return false;
 }
@@ -74,6 +77,17 @@ function buildEmailPayload(
         ctaLabel: 'View Badges',
       };
     }
+
+    case 'team_invite':
+      return {
+        to:       userEmail,
+        name:     userName,
+        subject:  `${payload.leaderName} invited you to team "${payload.teamName}"`,
+        heading:  `You've been invited to join a team!`,
+        body:     `${payload.leaderName} added you to team "${payload.teamName}" for ${payload.eventTitle}. Visit the event page to accept or decline before the deadline.`,
+        ctaUrl:   `/events/${payload.eventId}`,
+        ctaLabel: 'View Invitation',
+      };
 
     // These types never send email — this branch is unreachable due to shouldEmail() guard
     default:
