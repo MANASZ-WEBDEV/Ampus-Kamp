@@ -10,61 +10,55 @@ interface Props {
 }
 
 interface QuickAction {
-  id:    string;
-  label: string;
-  icon:  string;
-  to:    string;
-  color: string;
+  id:        string;
+  label:     string;
+  icon:      string;
+  to:        string;
+  color:     string;
   textColor: string;
 }
 
 const FACULTY_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'qa-post-event',    label: 'Post Event',     icon: 'campaign',       to: '/events/new',  color: 'bg-primary',             textColor: 'text-on-primary' },
-  { id: 'qa-my-events',     label: 'My Events',      icon: 'event_note',     to: '/events/my',   color: 'bg-primary-fixed',        textColor: 'text-on-primary-fixed-variant' },
-  { id: 'qa-verify-queue',  label: 'Verify Queue',   icon: 'verified_user',  to: '/verify',      color: 'bg-secondary',            textColor: 'text-on-secondary' },
-  { id: 'qa-analytics',     label: 'Analytics',      icon: 'bar_chart',      to: '/analytics',   color: 'bg-tertiary',             textColor: 'text-on-tertiary' },
+  { id: 'qa-post-event',   label: 'Post Event',    icon: 'campaign',             to: '/events/new', color: 'bg-primary',              textColor: 'text-on-primary' },
+  { id: 'qa-my-events',    label: 'My Events',     icon: 'event_note',           to: '/events/my',  color: 'bg-primary-fixed',        textColor: 'text-on-primary-fixed-variant' },
+  { id: 'qa-verify-queue', label: 'Verify Queue',  icon: 'verified_user',        to: '/verify',     color: 'bg-secondary',            textColor: 'text-on-secondary' },
+  { id: 'qa-analytics',    label: 'Analytics',     icon: 'bar_chart',            to: '/analytics',  color: 'bg-tertiary',             textColor: 'text-on-tertiary' },
 ];
 
 const ADMIN_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'qa-post-event',    label: 'Post Event',     icon: 'campaign',       to: '/events/new',  color: 'bg-primary',             textColor: 'text-on-primary' },
-  { id: 'qa-verify-queue',  label: 'Verify Queue',   icon: 'verified_user',  to: '/verify',      color: 'bg-secondary',            textColor: 'text-on-secondary' },
-  { id: 'qa-analytics',     label: 'Analytics',      icon: 'bar_chart',      to: '/analytics',   color: 'bg-tertiary',             textColor: 'text-on-tertiary' },
-  { id: 'qa-admin',         label: 'Admin Panel',    icon: 'admin_panel_settings', to: '/admin', color: 'bg-error',               textColor: 'text-on-error' },
+  { id: 'qa-post-event',   label: 'Post Event',    icon: 'campaign',             to: '/events/new', color: 'bg-primary',              textColor: 'text-on-primary' },
+  { id: 'qa-verify-queue', label: 'Verify Queue',  icon: 'verified_user',        to: '/verify',     color: 'bg-secondary',            textColor: 'text-on-secondary' },
+  { id: 'qa-analytics',    label: 'Analytics',     icon: 'bar_chart',            to: '/analytics',  color: 'bg-tertiary',             textColor: 'text-on-tertiary' },
+  { id: 'qa-admin',        label: 'Admin Panel',   icon: 'admin_panel_settings', to: '/admin',      color: 'bg-error',                textColor: 'text-on-error' },
 ];
 
-
 const STUDENT_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'qa-add-achievement', label: 'Add Certificate', icon: 'add_task',  to: '/achievements/add',    color: 'bg-primary',            textColor: 'text-on-primary' },
-  { id: 'qa-bookmarks',       label: 'Saved Events',   icon: 'bookmark',  to: '/events?saved=1',      color: 'bg-primary-container',  textColor: 'text-on-primary' },
-  { id: 'qa-browse',          label: 'Browse All',     icon: 'explore',   to: '/events',              color: 'bg-surface-container-high', textColor: 'text-on-surface' },
+  { id: 'qa-add-achievement', label: 'Add Certificate', icon: 'add_task', to: '/achievements/add', color: 'bg-primary',             textColor: 'text-on-primary' },
+  { id: 'qa-bookmarks',       label: 'Saved Events',    icon: 'bookmark', to: '/events?saved=1',   color: 'bg-primary-container',   textColor: 'text-on-primary' },
+  { id: 'qa-browse',          label: 'Browse All',      icon: 'explore',  to: '/events',           color: 'bg-surface-container-high', textColor: 'text-on-surface' },
 ];
 
 /**
- * BottomNav — fixed mobile bottom navigation.
+ * BottomNav — mobile-only fixed bottom navigation (hidden on lg+ screens).
  *
- * Design references:
- * - Stitch PWA: 5-tab layout with centred FAB (add icon)
- * - New folder desktop: biotech-style icon language, clean labels
- *
+ * On desktop, the AppBar takes over all navigation including the FAB action.
  * Layout: [Events] [Teams] [+FAB] [Badges] [Profile]
- * Active: filled icon + primary-colored label + pill indicator dot
  */
 export function BottomNav({ active }: Props) {
-  const location  = useLocation();
-  const navigate  = useNavigate();
-  const { user }  = useAuth();
-  const fabRef    = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const fabRef   = useRef<HTMLDivElement>(null);
 
   const [fabOpen, setFabOpen] = useState(false);
 
-  const current    = active ?? (location.pathname.split('/')[1] as NavKey || 'home');
-  const isAdmin    = user?.role === 'admin';
-  const isFaculty  = user?.role === 'faculty' || user?.role === 'dept_head';
+  const current      = active ?? (location.pathname.split('/')[1] as NavKey || 'home');
+  const isAdmin      = user?.role === 'admin';
+  const isFaculty    = user?.role === 'faculty' || user?.role === 'dept_head';
   const quickActions = isAdmin ? ADMIN_QUICK_ACTIONS
     : isFaculty ? FACULTY_QUICK_ACTIONS
     : STUDENT_QUICK_ACTIONS;
 
-  // Unread notifications flag — drives the red dot on the Profile tab
   const { data: homeData } = useHome();
   const hasUnread = homeData?.unreadNotificationsFlag ?? false;
 
@@ -81,19 +75,20 @@ export function BottomNav({ active }: Props) {
 
   return (
     <>
-      {/* FAB backdrop */}
+      {/* FAB backdrop — mobile only (the nav itself is hidden on lg+) */}
       {fabOpen && (
         <div
-          className="fixed inset-0 z-30 bg-inverse-surface/20 backdrop-blur-[2px]"
+          className="fixed inset-0 z-30 bg-inverse-surface/20 backdrop-blur-[2px] lg:hidden"
           onClick={() => setFabOpen(false)}
         />
       )}
 
+      {/* ── Mobile-only nav — hidden on lg+ ─────────────────────────────── */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 pb-safe"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        {/* ── Quick-actions dropup ──────────────────────────────────────── */}
+        {/* Quick-actions dropup */}
         {fabOpen && (
           <div
             className="flex flex-col items-center gap-2.5 pb-4 px-6"
@@ -104,18 +99,26 @@ export function BottomNav({ active }: Props) {
                 key={qa.id}
                 id={qa.id}
                 onClick={() => { setFabOpen(false); navigate(qa.to); }}
-                className={`flex items-center gap-3 w-52 h-12 px-5 rounded-2xl ${qa.color} ${qa.textColor} font-label-lg text-sm font-bold shadow-lg active:scale-95 transition-all`}
+                className={`flex items-center gap-3 w-52 h-12 px-5 rounded-2xl
+                            ${qa.color} ${qa.textColor}
+                            font-label-lg text-sm font-bold shadow-lg
+                            active:scale-95 transition-all`}
               >
-                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>{qa.icon}</span>
+                <span className="material-symbols-outlined text-[20px]"
+                      style={{ fontVariationSettings: "'FILL' 1" }}>
+                  {qa.icon}
+                </span>
                 {qa.label}
               </button>
             ))}
           </div>
         )}
 
-        {/* ── Nav bar ───────────────────────────────────────────────────── */}
-        <div className="bg-surface/95 backdrop-blur-xl shadow-[0_-4px_16px_rgba(0,0,0,0.05)] border-t border-outline-variant/20">
-          <div className="h-16 flex items-stretch justify-around px-1 max-w-2xl mx-auto" ref={fabRef}>
+        {/* Nav bar */}
+        <div className="bg-surface/95 backdrop-blur-xl shadow-[0_-4px_16px_rgba(0,0,0,0.05)]
+                        border-t border-outline-variant/20">
+          <div className="h-16 flex items-stretch justify-around px-1 max-w-2xl mx-auto"
+               ref={fabRef}>
 
             <NavItem to="/events"  navKey="events"  current={current} icon="explore"      label="Events" />
             <NavItem to="/teams"   navKey="teams"   current={current} icon="group"        label="Teams" />
@@ -126,18 +129,22 @@ export function BottomNav({ active }: Props) {
                 id="fab-quick-action"
                 aria-label={fabOpen ? 'Close actions' : 'Quick actions'}
                 onClick={() => setFabOpen(o => !o)}
-                className={`w-[52px] h-[52px] -mt-4 rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(17,94,89,0.35)] transition-all duration-200 active:scale-95 ${
-                  fabOpen
-                    ? 'bg-error text-on-error rotate-45'
-                    : 'bg-primary-container text-on-primary'
-                }`}
+                className={`w-[52px] h-[52px] -mt-4 rounded-full flex items-center justify-center
+                            shadow-[0_8px_20px_rgba(17,94,89,0.35)]
+                            transition-all duration-200 active:scale-95 ${
+                              fabOpen
+                                ? 'bg-error text-on-error rotate-45'
+                                : 'bg-primary-container text-on-primary'
+                            }`}
               >
-                <span className="material-symbols-outlined text-[26px] transition-transform duration-200">add</span>
+                <span className="material-symbols-outlined text-[26px] transition-transform duration-200">
+                  add
+                </span>
               </button>
             </div>
 
             <NavItem to="/badges"  navKey="badges"  current={current} icon="military_tech" label="Badges" />
-            <NavItem to="/profile" navKey="profile" current={current} icon="person" label="Profile" unreadDot={hasUnread} />
+            <NavItem to="/profile" navKey="profile" current={current} icon="person"        label="Profile" unreadDot={hasUnread} />
           </div>
         </div>
       </nav>
@@ -159,11 +166,13 @@ function NavItem({
     <Link
       to={to}
       id={`nav-${navKey}`}
-      className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2 transition-colors relative ${
-        isActive ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'
-      }`}
+      className={`flex flex-col items-center justify-center flex-1 gap-0.5 py-2
+                  transition-colors relative ${
+                    isActive
+                      ? 'text-primary'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
     >
-      {/* Active indicator dot */}
       {isActive && (
         <span className="absolute top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
       )}

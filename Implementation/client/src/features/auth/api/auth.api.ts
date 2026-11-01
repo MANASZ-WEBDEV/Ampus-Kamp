@@ -37,7 +37,7 @@ export interface MeProfile extends AuthUser {
 
 export async function register(body: {
   enrollmentNo: string;
-  collegeId: string;
+  email: string;
   password: string;
 }): Promise<{ userId: string; message: string }> {
   const res = await apiClient.post<{ data: { userId: string; message: string } }>(

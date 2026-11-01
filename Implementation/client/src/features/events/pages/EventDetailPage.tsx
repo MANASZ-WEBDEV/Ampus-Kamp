@@ -3,7 +3,6 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useEvent }    from '../hooks/useEvent';
 import { useBookmark } from '../hooks/useBookmark';
 import { useAuth }     from '@/features/auth/context/AuthContext';
-import { DeadlineCountdown } from '../components/EventStatusBadge';
 import { AppBar }     from '@/components/layout/AppBar';
 import { BottomNav }  from '@/components/layout/BottomNav';
 import { LookingToggle }          from '@/features/teams/components/LookingToggle';
@@ -11,6 +10,8 @@ import { RegisterButton }         from '@/features/registrations/components/Regi
 import { RegistrationStatusCard } from '@/features/registrations/components/RegistrationStatusCard';
 import { MemberConfirmBanner }    from '@/features/registrations/components/MemberConfirmBanner';
 import { useMyRegistration, useUpdateRegistration } from '@/features/registrations/hooks/useRegistration';
+
+// ── Static maps ───────────────────────────────────────────────────────────────
 
 const GRADIENT: Record<string, string> = {
   hackathon:   'from-[#221eb5] to-[#3e3ecb]',
@@ -21,8 +22,6 @@ const GRADIENT: Record<string, string> = {
   other:       'from-slate-700 to-slate-500',
 };
 
-// Default event cover — used when no event-specific image is stored.
-// Flip this one constant to change the platform-wide fallback.
 const DEFAULT_EVENT_IMG =
   'https://images.unsplash.com/photo-1761727799924-ec68d218df5e?q=80&w=1374&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=NHwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
@@ -44,11 +43,33 @@ const TYPE_ICON: Record<string, string> = {
   other:       'event',
 };
 
+// Type-aware date label — avoids "Sprint Dates" on a seminar
+const DATE_LABEL: Record<string, string> = {
+  hackathon:   'Sprint Date',
+  competition: 'Event Date',
+  sports:      'Match Date',
+  workshop:    'Workshop Date',
+  seminar:     'Talk Date',
+  other:       'Event Date',
+};
+
+// Type-aware team size label
+const TEAM_LABEL: Record<string, string> = {
+  hackathon:   'Team Size',
+  competition: 'Team Size',
+  sports:      'Squad Size',
+  workshop:    'Participation',
+  seminar:     'Participation',
+  other:       'Team Size',
+};
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 /** EventDetailPage — /events/:id */
 export default function EventDetailPage() {
-  const { id }    = useParams<{ id: string }>();
-  const navigate  = useNavigate();
-  const { user }  = useAuth();
+  const { id }   = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const { data: event, isLoading, isError } = useEvent(id!);
   const { isBookmarked, toggle: toggleBookmark, isPending: isBookmarking } = useBookmark(
@@ -56,22 +77,28 @@ export default function EventDetailPage() {
     event?.isBookmarked ?? false,
   );
 
-  // ── F-6: Registration ─────────────────────────────────────────────────────
-  const { data: myReg }                    = useMyRegistration(id!);
-  const { mutate: doWithdraw }             = useUpdateRegistration(id!);
-  const alreadyRegistered                  = !!myReg && myReg.status !== 'withdrawn';
-  // Pending invite: current user is invited but hasn't confirmed yet
-  const hasPendingInvite = myReg?.members.some(
+  // F-6: Registration
+  const { data: myReg }        = useMyRegistration(id!);
+  const { mutate: doWithdraw } = useUpdateRegistration(id!);
+  const alreadyRegistered      = !!myReg && myReg.status !== 'withdrawn';
+  const hasPendingInvite       = myReg?.members.some(
     m => m.userId === user?.id && m.status === 'invited',
   ) ?? false;
 
-  const [shareIcon, setShareIcon]       = useState('share');
-  const [openAccordion, setOpenAccordion] = useState<string | null>(null);
+  const [shareIcon, setShareIcon] = useState('share');
 
-  const isFaculty = user?.role === 'faculty' || user?.role === 'dept_head' || user?.role === 'admin';
-  const isOwner   = isFaculty && event?.postedBy?.id === user?.id;
-  const isClosed  = event?.status === 'closed' || event?.status === 'archived';
-  const isDraft   = event?.status === 'draft';
+  const isFaculty  = user?.role === 'faculty' || user?.role === 'dept_head' || user?.role === 'admin';
+  const isOwner    = isFaculty && event?.postedBy?.id === user?.id;
+  const isClosed   = event?.status === 'closed' || event?.status === 'archived';
+  const isDraft    = event?.status === 'draft';
+  const isTeamEvent = event?.type === 'hackathon' || event?.type === 'competition' || event?.type === 'sports';
+  // Deadline enforcement — derived from timestamp, not just event.status.
+  // A published event whose deadline has passed should show "Closed" to students.
+  const deadlinePassedMs  = event?.registrationDeadline
+    ? new Date(event.registrationDeadline).getTime()
+    : null;
+  const isDeadlinePassed  = deadlinePassedMs !== null && Date.now() > deadlinePassedMs;
+  const isRegClosed       = isClosed || isDeadlinePassed; // gate used for all CTAs
 
   function handleShare() {
     if (navigator.share) {
@@ -84,30 +111,31 @@ export default function EventDetailPage() {
   }
 
   const ctaLabel = () => {
-    if (alreadyRegistered) return 'Registered';
-    if (isClosed)          return 'Registration Closed';
-    if (isDraft)           return 'Not Yet Published';
+    if (alreadyRegistered)          return 'Registered';
+    if (isClosed || isDeadlinePassed) return 'Registration Closed';
+    if (isDraft)                    return 'Not Yet Published';
     if (event?.type === 'seminar')  return 'RSVP for this Talk';
     if (event?.type === 'workshop') return 'Reserve My Spot';
     if (event?.type === 'sports')   return 'Register My Squad';
     return `Apply to ${event?.type === 'hackathon' ? 'Hackathon' : 'Event'}`;
   };
 
-  // ── Loading skeleton ────────────────────────────────────────────────────────
+  // ── Loading ─────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <AppBar />
-        <div className="pt-16 max-w-7xl mx-auto px-4 lg:px-8 pb-12">
-          <div className="h-6 w-64 bg-surface-container rounded-full my-4 animate-pulse" />
+        <div className="pt-16 max-w-5xl mx-auto px-4 lg:px-8 pb-12">
+          <div className="h-5 w-48 bg-surface-container rounded-full my-4 animate-pulse" />
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-8 flex flex-col gap-4">
-              <div className="h-80 bg-surface-container rounded-xl animate-pulse" />
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-24 bg-surface-container rounded-xl animate-pulse" />
+              <div className="h-64 bg-surface-container rounded-xl animate-pulse" />
+              <div className="grid grid-cols-4 gap-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-20 bg-surface-container rounded-xl animate-pulse" />
                 ))}
               </div>
+              <div className="h-32 bg-surface-container rounded-xl animate-pulse" />
             </div>
             <div className="lg:col-span-4">
               <div className="h-64 bg-surface-container rounded-xl animate-pulse" />
@@ -119,7 +147,7 @@ export default function EventDetailPage() {
     );
   }
 
-  // ── Error state ─────────────────────────────────────────────────────────────
+  // ── Error ───────────────────────────────────────────────────────────────────
   if (isError || !event) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
@@ -133,585 +161,373 @@ export default function EventDetailPage() {
     );
   }
 
+  // ── Derived values ──────────────────────────────────────────────────────────
+
   const gradient  = GRADIENT[event.type]  ?? GRADIENT.other;
   const typeBadge = TYPE_BADGE[event.type] ?? TYPE_BADGE.other;
   const typeIcon  = TYPE_ICON[event.type]  ?? TYPE_ICON.other;
+  const dateLabel = DATE_LABEL[event.type] ?? 'Event Date';
+  const teamLabel = TEAM_LABEL[event.type] ?? 'Team Size';
 
   const eligBranches = event.eligibility?.branches ?? [];
   const eligYears    = event.eligibility?.years ?? [];
+  const eligNotes    = event.eligibility?.notes ?? '';
+  const coordinators = event.coordinators ?? [];
 
-  const daysLeft = event.deadline
-    ? Math.ceil((new Date(event.deadline).getTime() - Date.now()) / 86400000)
+  // Deadline — actual date + time from DB, not a hardcoded "11:59 PM"
+  // Use registrationDeadline (server field) falling back to deadline (display field)
+  const regDeadlineRaw    = event.registrationDeadline ?? event.deadline;
+  const deadlineMs        = regDeadlineRaw ? new Date(regDeadlineRaw).getTime() : null;
+  const daysLeft          = deadlineMs !== null
+    ? Math.ceil((deadlineMs - Date.now()) / 86400000)
     : null;
+  const deadlineFormatted = regDeadlineRaw
+    ? new Date(regDeadlineRaw).toLocaleString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true,
+      })
+    : null;
+  const isUrgent = daysLeft !== null && daysLeft <= 3 && daysLeft >= 0;
 
-  const deadlineLabel = daysLeft === null ? 'Open'
-    : daysLeft <= 0   ? 'Closing today'
-    : daysLeft === 1  ? '1 day left'
-    : `${daysLeft} days left`;
+  // At-a-glance tiles — only rendered when the field is non-null in the event
+  type Tile = { label: string; icon: string; value: string; sub?: string; subCls?: string };
+  const glanceTiles: Tile[] = [
+    ...(event.eventDate ? [{
+      label: dateLabel,
+      icon:  'calendar_today',
+      value: new Date(event.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+      sub:   regDeadlineRaw
+        ? `Reg. closes ${new Date(regDeadlineRaw).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+        : undefined,
+      subCls: isDeadlinePassed
+        ? 'text-error font-semibold'
+        : isUrgent ? 'text-secondary font-semibold' : 'text-on-surface-variant',
+    }] : []),
+    ...(event.teamSize ? [{
+      label: teamLabel,
+      icon:  'group',
+      value: event.teamSize.min === event.teamSize.max
+        ? `${event.teamSize.max} members`
+        : `${event.teamSize.min}–${event.teamSize.max} members`,
+    }] : []),
+    {
+      label: 'Entry Fee',
+      icon:  'payments',
+      value: event.fee ?? 'Free',
+    },
+    {
+      label: 'Mode',
+      icon:  event.registrationMode === 'external' ? 'open_in_new' : 'location_on',
+      value: event.registrationMode === 'external' ? 'External' : 'In-App',
+    },
+  ];
+
+  const gridCols =
+    glanceTiles.length === 1 ? 'grid-cols-1' :
+    glanceTiles.length === 2 ? 'grid-cols-2' :
+    glanceTiles.length === 3 ? 'grid-cols-3' :
+    'grid-cols-2 md:grid-cols-4';
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-background font-body-md text-on-surface antialiased">
       <AppBar />
 
-      <main className="w-full pt-16 max-w-7xl mx-auto px-4 lg:px-8 pb-28 lg:pb-12">
+      <main className="w-full pt-16 max-w-5xl mx-auto px-4 lg:px-8 pb-28 lg:pb-12">
 
-        {/* ── Breadcrumb + Quick Actions ─────────────────────────────────── */}
+        {/* ── Breadcrumb + Quick Actions ───────────────────────────────── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 py-4">
-          <nav className="flex items-center gap-1.5 font-label-md text-sm text-on-surface-variant flex-wrap">
-            <Link to="/home" className="hover:text-primary transition-colors flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">account_balance</span>
-              Campus Ledger
+          <nav className="flex items-center gap-1.5 text-sm text-on-surface-variant flex-wrap">
+            <Link to="/events" className="hover:text-primary transition-colors flex items-center gap-1">
+              <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+              Events
             </Link>
             <span className="material-symbols-outlined text-[14px] text-outline">chevron_right</span>
-            <Link to="/events" className="hover:text-primary transition-colors">Events</Link>
-            <span className="material-symbols-outlined text-[14px] text-outline">chevron_right</span>
-            <span className="text-primary font-semibold font-code-sm text-[11px] bg-surface-container-high px-1.5 py-0.5 rounded line-clamp-1 max-w-[200px]">
-              {event.title}
-            </span>
+            <span className="text-on-surface font-medium line-clamp-1 max-w-[240px]">{event.title}</span>
           </nav>
-          <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-            <button
-              id="detail-share-btn"
-              onClick={handleShare}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-lowest shadow-sm hover:shadow-md text-on-surface font-label-lg text-sm transition-all">
-              <span className="material-symbols-outlined text-[18px] text-primary">{shareIcon}</span>
-              <span>Share</span>
-            </button>
+
+          <div className="flex items-center gap-2 self-start md:self-auto">
             <button
               id="detail-bookmark-btn"
               onClick={() => toggleBookmark()}
               disabled={isBookmarking}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-lowest shadow-sm hover:shadow-md text-on-surface font-label-lg text-sm transition-all disabled:opacity-50">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-lowest shadow-sm hover:shadow-md text-on-surface text-sm transition-all disabled:opacity-50"
+            >
               <span
-                className="material-symbols-outlined text-[18px] text-secondary transition-all"
-                style={isBookmarked ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                className="material-symbols-outlined text-[18px] text-secondary"
+                style={isBookmarked ? { fontVariationSettings: "'FILL' 1" } : {}}
+              >
                 bookmark
               </span>
-              <span>{isBookmarked ? 'Saved' : 'Bookmark'}</span>
+              {isBookmarked ? 'Saved' : 'Save'}
             </button>
+
             <button
-              id="detail-circular-btn"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-lg text-sm shadow-md hover:bg-primary-container transition-all active:scale-[0.98]">
-              <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-              <span>Circular (PDF)</span>
+              id="detail-share-btn"
+              onClick={handleShare}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-lowest shadow-sm hover:shadow-md text-on-surface text-sm transition-all"
+            >
+              <span className="material-symbols-outlined text-[18px] text-primary">{shareIcon}</span>
+              Share
             </button>
+
             {isOwner && (
               <button
                 id="detail-edit-btn"
                 onClick={() => navigate(`/events/${event.id}/edit`)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-fixed text-on-primary-fixed-variant font-label-lg text-sm shadow-sm hover:bg-primary-fixed-dim transition-all">
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-fixed text-on-primary-fixed-variant text-sm shadow-sm hover:bg-primary-fixed-dim transition-all"
+              >
                 <span className="material-symbols-outlined text-[18px]">edit_note</span>
-                <span>Edit</span>
+                Edit
               </button>
             )}
           </div>
         </div>
 
-        {/* ── 12-col Desktop Grid ───────────────────────────────────────── */}
+        {/* ── Page Grid ────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-          {/* ─── LEFT: Main content (8 cols) ─────────────────────────────── */}
-          <div className="lg:col-span-8 flex flex-col gap-6 min-w-0">
+          {/* LEFT: Main content */}
+          <div className="lg:col-span-8 flex flex-col gap-5 min-w-0">
 
-            {/* Hero Banner — full-bleed image with gradient overlay */}
-            <section className="relative rounded-xl overflow-hidden bg-surface-container-lowest shadow-md flex flex-col">
-              <div className={`relative w-full h-52 lg:h-80 overflow-hidden bg-gradient-to-br ${gradient}`}>
-                {/* Default event background image */}
+            {/* Hero */}
+            <section className="rounded-xl overflow-hidden shadow-md">
+              <div className={`relative w-full h-48 lg:h-72 bg-gradient-to-br ${gradient}`}>
                 <img
-                  src={DEFAULT_EVENT_IMG}
+                  src={event.bannerImageUrl ?? DEFAULT_EVENT_IMG}
                   alt=""
                   aria-hidden="true"
                   className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay"
                   loading="lazy"
                 />
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-inverse-surface/95 via-inverse-surface/30 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-inverse-surface/90 via-inverse-surface/20 to-transparent" />
 
-                {/* Floating category badges — top left */}
-                <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-[10px] uppercase tracking-wider shadow-sm ${typeBadge}`}>
+                {/* Type chip — top left */}
+                <div className="absolute top-4 left-4">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-semibold shadow-sm ${typeBadge}`}>
                     <span className="material-symbols-outlined text-[13px]">{typeIcon}</span>
-                    {event.type.toUpperCase()}
-                  </span>
-                  {event.postedBy && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-lowest/90 backdrop-blur-md text-primary font-label-sm text-[10px] font-semibold">
-                      <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-                      Faculty Sponsored
-                    </span>
-                  )}
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary-container text-on-primary font-label-sm text-[10px] font-semibold">
-                    Verified Tier-1
+                    {event.type}
                   </span>
                 </div>
 
-                {/* Bottom metadata row */}
-                <div className="absolute bottom-4 left-5 right-5 flex items-end justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-surface-container-lowest flex items-center justify-center shadow-lg text-primary">
-                      <span className="material-symbols-outlined text-[24px]">{typeIcon}</span>
-                    </div>
-                    <div className="flex flex-col text-inverse-on-surface">
-                      <span className="font-label-sm text-[9px] text-outline-variant uppercase tracking-widest">
-                        {event.organizer ? 'Organized by' : 'Campus Event'}
-                      </span>
-                      <span className="font-headline-sm text-sm font-semibold text-inverse-on-surface">
-                        {event.organizer || 'Innovation Cell'}
-                      </span>
-                    </div>
+                {/* Status chip — top right, only when not published */}
+                {(isClosed || isDraft) && (
+                  <div className="absolute top-4 right-4">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                      isClosed ? 'bg-error-container text-on-error-container' : 'bg-surface-container text-on-surface-variant'
+                    }`}>
+                      <span className="material-symbols-outlined text-[12px]">{isClosed ? 'lock' : 'visibility_off'}</span>
+                      {isClosed ? 'Closed' : 'Draft'}
+                    </span>
                   </div>
-                  {/* Live badge */}
-                  {(event.status as string) === 'open' && (
-                    <div className="hidden sm:flex items-center gap-2 bg-surface-container-lowest/95 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-sm">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="font-label-md text-[11px] text-on-surface font-semibold">Registration Open</span>
-                    </div>
-                  )}
+                )}
+
+                {/* Organizer — bottom left */}
+                <div className="absolute bottom-4 left-5 flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-lg bg-surface-container-lowest/90 flex items-center justify-center shadow-sm text-primary">
+                    <span className="material-symbols-outlined text-[20px]">{typeIcon}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-outline-variant uppercase tracking-widest">
+                      {event.organizer ? 'Organized by' : 'Campus Event'}
+                    </span>
+                    <span className="text-sm font-semibold text-inverse-on-surface">
+                      {event.organizer || 'Innovation Cell'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* Title block */}
-              <div className="p-5 flex flex-col gap-2">
-                <div className="flex flex-col gap-1">
-                  {event.deadline && (
-                    <div className="w-fit mb-1">
-                      <DeadlineCountdown deadline={event.deadline} status={event.status} />
-                    </div>
+              <div className="p-5 bg-surface-container-lowest flex flex-col gap-1.5">
+                <h1 className="font-headline-xl text-[1.75rem] lg:text-[2rem] text-on-surface tracking-tight font-bold leading-tight">
+                  {event.title}
+                </h1>
+                <p className="text-sm text-on-surface-variant flex items-center gap-1.5 flex-wrap">
+                  <span className="material-symbols-outlined text-[16px] text-primary">domain</span>
+                  <span>{event.organizer || 'Innovation Cell'}</span>
+                  {event.postedBy && (
+                    <>
+                      <span className="text-outline">·</span>
+                      <span className="font-medium text-on-surface">{event.postedBy.name}</span>
+                    </>
                   )}
-                  <h1 className="font-headline-xl text-[1.75rem] lg:text-[2rem] text-on-surface tracking-tight font-bold leading-tight">
-                    {event.title}
-                  </h1>
-                  <p className="font-body-md text-sm text-on-surface-variant flex items-center gap-1.5 flex-wrap">
-                    <span className="material-symbols-outlined text-[17px] text-primary">domain</span>
-                    <span>{event.organizer || 'Innovation Cell'}</span>
-                    {event.postedBy && (
-                      <>
-                        <span className="text-outline">•</span>
-                        <span className="font-semibold text-on-surface">{event.postedBy.name}</span>
-                        <span className="text-on-surface-variant">(Faculty Lead)</span>
-                      </>
+                </p>
+              </div>
+            </section>
+
+            {/* At a Glance — only tiles with real data */}
+            {glanceTiles.length > 0 && (
+              <section className={`grid gap-3 ${gridCols}`}>
+                {glanceTiles.map(tile => (
+                  <div key={tile.label} className="p-4 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-outline">
+                      <span className="text-[10px] uppercase tracking-wider font-semibold">{tile.label}</span>
+                      <span className="material-symbols-outlined text-[18px] text-primary">{tile.icon}</span>
+                    </div>
+                    <span className="text-sm text-on-surface font-bold">{tile.value}</span>
+                    {tile.sub && (
+                      <span className={`text-[10px] ${tile.subCls ?? 'text-on-surface-variant'}`}>{tile.sub}</span>
                     )}
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* Bento Stats Grid */}
-            <section className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {/* Sprint Dates */}
-              <div className="p-4 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between text-outline">
-                  <span className="font-label-sm text-[10px] uppercase tracking-wider font-semibold">Sprint Dates</span>
-                  <span className="material-symbols-outlined text-primary text-[20px]">calendar_today</span>
-                </div>
-                <div className="mt-3">
-                  <span className="font-headline-sm text-base text-on-surface font-bold block">
-                    {event.eventDate
-                      ? new Date(event.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })
-                      : 'TBA'}
-                  </span>
-                  {event.deadline && (
-                    <span className="font-code-sm text-[10px] text-primary">
-                      Reg. closes {new Date(event.deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Squad Composition */}
-              <div className="p-4 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between text-outline">
-                  <span className="font-label-sm text-[10px] uppercase tracking-wider font-semibold">Squad Composition</span>
-                  <span className="material-symbols-outlined text-primary text-[20px]">group</span>
-                </div>
-                <div className="mt-3">
-                  <span className="font-headline-sm text-base text-on-surface font-bold block">
-                    {event.teamSize
-                      ? `${event.teamSize.min === event.teamSize.max ? event.teamSize.max : `${event.teamSize.min}–${event.teamSize.max}`} Members`
-                      : 'Individual'}
-                  </span>
-                  <span className="font-label-sm text-[10px] text-secondary font-semibold">
-                    {event.type === 'hackathon' ? 'Min. 1 Female Member Mandatory' : 'Open participation'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Bounty & Advancement */}
-              <div className="p-4 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between text-outline">
-                  <span className="font-label-sm text-[10px] uppercase tracking-wider font-semibold">Bounty & Advancement</span>
-                  <span className="material-symbols-outlined text-secondary-container text-[20px]">workspace_premium</span>
-                </div>
-                <div className="mt-3">
-                  <span className="font-headline-sm text-base text-on-surface font-bold block">
-                    {event.fee ?? '100% Free Entry'}
-                  </span>
-                  <span className="font-code-sm text-[10px] text-secondary font-semibold">
-                    {event.type === 'hackathon' ? '+ Direct National Entry Pass' : 'Academic credit eligible'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Eligibility */}
-              <div className="p-4 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between text-outline">
-                  <span className="font-label-sm text-[10px] uppercase tracking-wider font-semibold">Eligibility</span>
-                  <span className="material-symbols-outlined text-primary text-[20px]">school</span>
-                </div>
-                <div className="mt-3">
-                  <span className="font-headline-sm text-base text-on-surface font-bold block">
-                    {eligBranches.length ? eligBranches.slice(0, 2).join(', ') + (eligBranches.length > 2 ? '…' : '') : '100% Free Entry'}
-                  </span>
-                  <span className="font-label-md text-[10px] text-on-surface-variant">
-                    {eligYears.length ? `${eligYears.map(y => `${y}${['st','nd','rd'][y-1]??'th'} Yr`).join(', ')}` : 'All B.Tech / M.Tech Semesters'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Venue — spans 2 cols */}
-              <div className="col-span-2 p-4 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between text-outline">
-                  <span className="font-label-sm text-[10px] uppercase tracking-wider font-semibold">Venue & Infrastructure</span>
-                  <span className="material-symbols-outlined text-primary text-[20px]">precision_manufacturing</span>
-                </div>
-                <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <span className="font-headline-sm text-base text-on-surface font-bold block">
-                      {event.registrationMode === 'external' ? 'External / Online' : 'Campus Venue'}
-                    </span>
-                    <span className="font-label-md text-[10px] text-on-surface-variant">
-                      {event.registrationMode === 'external' ? 'Register via official link' : '24/7 sprint arena • Dedicated infrastructure'}
-                    </span>
                   </div>
-                  {event.registrationMode === 'external' && event.link && (
-                    <a href={event.link} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container-high text-primary font-code-sm text-[11px] self-start sm:self-center hover:underline">
-                      <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                      Official Link
-                    </a>
-                  )}
-                </div>
-              </div>
-            </section>
+                ))}
+              </section>
+            )}
 
-            {/* Sprint Mission & Description */}
+            {/* About / Summary */}
             {event.summary && (
-              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
-                      <span className="material-symbols-outlined text-[20px]">flag</span>
-                    </div>
-                    <h2 className="font-headline-md text-[1.125rem] text-on-surface font-semibold">Sprint Mission & Focus Tracks</h2>
-                  </div>
-                  {event.counters.students > 0 && (
-                    <span className="font-label-md text-[11px] text-outline font-code-sm">
-                      {event.counters.students} attendees
-                    </span>
-                  )}
-                </div>
-                <p className="font-body-md text-sm text-on-surface-variant leading-relaxed">{event.summary}</p>
+              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-2">
+                <h2 className="text-base text-on-surface font-semibold">About this Event</h2>
+                <p className="text-sm text-on-surface-variant leading-relaxed">{event.summary}</p>
+              </section>
+            )}
 
-                {/* Eligibility track pills */}
+            {/* Eligibility */}
+            {(eligBranches.length > 0 || eligYears.length > 0 || eligNotes) && (
+              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-3">
+                <h2 className="text-base text-on-surface font-semibold">Eligibility</h2>
                 {(eligBranches.length > 0 || eligYears.length > 0) && (
-                  <div className="flex flex-col gap-2">
-                    <span className="font-label-sm text-[10px] uppercase tracking-wider text-outline font-semibold">
-                      Eligible Departments & Batches
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {eligBranches.map(b => (
-                        <button key={b} className="px-3 py-1.5 rounded-full bg-primary-container text-on-primary font-label-md text-[11px] font-semibold shadow-sm flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[14px]">tune</span>
-                          #{b}
-                        </button>
-                      ))}
-                      {eligYears.map(y => (
-                        <button key={y} className="px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface font-label-md text-[11px] transition-colors flex items-center gap-1">
-                          <span>
-                            #{y}{y===1?'st':y===2?'nd':y===3?'rd':'th'} Year
-                          </span>
-                        </button>
-                      ))}
-                      {event.type === 'hackathon' && (
-                        <button className="px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface font-label-md text-[11px]">
-                          #AllBranches
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </section>
-            )}
-
-            {/* Squad Matchmaking (hackathon/competition) */}
-            {(event.type === 'hackathon' || event.type === 'competition') && !isClosed && (
-              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[22px]">diversity_3</span>
-                    <h2 className="font-headline-sm text-base text-on-surface font-semibold">Squad Matchmaking Hub</h2>
-                  </div>
-                  <span className="font-code-sm text-[10px] text-primary font-bold bg-surface-container px-2 py-0.5 rounded">
-                    {event.counters.students > 0 ? `${Math.max(2, Math.floor(event.counters.students / 3))} Squads` : '4 Squads'}
-                  </span>
-                </div>
-
-                {/* Avatar stack */}
-                <div className="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
-                  <div className="flex items-center -space-x-2">
-                    {['AR', 'RK', 'SL'].map((ini, i) => (
-                      <div key={ini} className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shadow-sm ring-2 ring-surface-container-lowest ${
-                        i === 0 ? 'bg-primary-container text-on-primary' :
-                        i === 1 ? 'bg-secondary-container text-on-secondary-container' :
-                        'bg-tertiary-container text-on-tertiary'
-                      }`}>{ini}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {eligBranches.map(b => (
+                      <span key={b} className="px-3 py-1 rounded-full bg-primary-container text-on-primary text-[11px] font-semibold">
+                        {b}
+                      </span>
                     ))}
-                    <div className="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface flex items-center justify-center text-[10px] font-bold shadow-sm ring-2 ring-surface-container-lowest">
-                      +{event.counters.students > 0 ? event.counters.students : 19}
-                    </div>
+                    {eligYears.map(y => (
+                      <span key={y} className="px-3 py-1 rounded-full bg-surface-container-low text-on-surface text-[11px]">
+                        {y}{y === 1 ? 'st' : y === 2 ? 'nd' : y === 3 ? 'rd' : 'th'} Year
+                      </span>
+                    ))}
                   </div>
-                  <span className="font-label-sm text-[10px] text-on-surface-variant font-medium">
-                    {event.counters.students > 0 ? event.counters.students : 19} peers actively recruiting
-                  </span>
-                </div>
-
-                {/* Grid of squad postings */}
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => navigate(`/events/${id}/teams`)}
-                    className="py-2 px-3 rounded-lg bg-surface-container-lowest hover:bg-surface-container-low text-primary font-label-md text-[12px] font-semibold transition-all shadow-sm flex items-center justify-center gap-1">
-                    <span className="material-symbols-outlined text-[16px]">group_search</span>
-                    Find Squad
-                  </button>
-                  <button onClick={() => navigate(`/events/${id}/teams`)}
-                    className="py-2 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-[12px] font-semibold transition-all shadow-sm flex items-center justify-center gap-1">
-                    <span className="material-symbols-outlined text-[16px]">post_add</span>
-                    Post Open Role
-                  </button>
-                  <button onClick={() => navigate(`/teams/people?eventId=${id}`)}
-                    className="col-span-2 py-2 px-3 rounded-lg bg-surface-container hover:bg-surface-container-low text-on-surface font-label-md text-[12px] transition-all shadow-sm flex items-center justify-center gap-1">
-                    <span className="material-symbols-outlined text-[16px] text-outline">person_search</span>
-                    Find People
-                  </button>
-                </div>
-
-                {/* Looking for a team toggle — only for students */}
-                {user?.role === 'student' && (
-                  <LookingToggle
-                    eventId={id!}
-                    isLooking={false}
-                  />
+                )}
+                {eligNotes && (
+                  <p className="text-[12px] text-on-surface-variant">{eligNotes}</p>
                 )}
               </section>
             )}
 
-            {/* Mandatory Sprint Deliverables */}
-            {event.type === 'hackathon' && (
-              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
-                      <span className="material-symbols-outlined text-[20px]">checklist</span>
-                    </div>
-                    <h2 className="font-headline-md text-[1.125rem] text-on-surface font-semibold">Mandatory Sprint Deliverables</h2>
-                  </div>
-                  <span className="font-label-sm text-[10px] text-outline uppercase tracking-wider font-semibold">Evaluation Gates</span>
+            {/* External registration link */}
+            {event.registrationMode === 'external' && event.link && (
+              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm text-on-surface font-semibold">External Registration</span>
+                  <span className="text-[12px] text-on-surface-variant">This event uses an external portal.</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    { num: '1', icon: 'code_blocks', title: 'Functional MVP Repository', desc: 'Clean GitHub/GitLab repository with verifiable commit timestamps from during sprint hours. Must contain dockerized launch script or live staging URL.', weight: '30% of Gate Score' },
-                    { num: '2', icon: 'slideshow',  title: '5-Minute Jury Pitch Deck',  desc: 'Max 8-slide pitch deck highlighting user personas, quantitative validation, technology stack choice, and campus-to-national scaling roadmap.', weight: '20% of Gate Score' },
-                    { num: '3', icon: 'schema',     title: 'System Architecture Schema', desc: 'Detailed architectural block diagram illustrating data pipelines, cryptographic signatures, cloud backend, and edge sensor endpoints.', weight: '25% of Gate Score' },
-                    { num: '4', icon: 'devices',    title: 'Live Physical / Virtual Demo', desc: 'Zero slide demo! Working breadboard, embedded telemetry bench, or end-to-end user transaction verified live before the jury panel.', weight: '25% of Gate Score' },
-                  ].map(d => (
-                    <div key={d.num} className="p-4 rounded-xl bg-surface-container-low flex flex-col gap-2 hover:shadow-sm transition-shadow">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center">
-                          <span className="material-symbols-outlined text-[18px] text-primary">{d.icon}</span>
-                        </div>
-                        <span className="font-headline-sm text-[13px] text-on-surface font-semibold">{d.num}. {d.title}</span>
-                      </div>
-                      <p className="font-body-sm text-[11px] text-on-surface-variant leading-relaxed">{d.desc}</p>
-                      <span className="font-code-sm text-[10px] text-primary font-semibold">Weight: {d.weight}</span>
-                    </div>
-                  ))}
-                </div>
+                <a
+                  href={event.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-on-primary text-sm shadow-sm hover:bg-primary-container transition-all shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                  Register Now
+                </a>
               </section>
             )}
 
-            {/* Accordions: Rubric, Lab Access, SPOC */}
-            <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-3">
-              <h2 className="font-headline-md text-[1.125rem] text-on-surface font-semibold">Technical Protocols &amp; Logistics</h2>
-
-              {/* Accordion: Evaluation Rubric */}
-              <AccordionItem
-                id="rubric"
-                icon="bar_chart"
-                title="Comprehensive Evaluation Rubric & Weightages"
-                open={openAccordion === 'rubric'}
-                onToggle={() => setOpenAccordion(o => o === 'rubric' ? null : 'rubric')}
-              >
-                <p className="font-body-sm text-[11px] text-on-surface-variant">Evaluation is distributed into 3 milestone checkpoints across the 48 hours:</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                  {[
-                    { label: 'Novelty & Innovation', pct: '30%' },
-                    { label: 'Tech Architecture',    pct: '25%' },
-                    { label: 'Feasibility & Scalability', pct: '25%' },
-                    { label: 'Jury Presentation',    pct: '20%' },
-                  ].map(r => (
-                    <div key={r.label} className="p-3 rounded-lg bg-surface-container-lowest text-center">
-                      <span className="font-headline-sm text-[1.25rem] text-primary font-bold block">{r.pct}</span>
-                      <span className="font-label-sm text-[10px] text-on-surface-variant">{r.label}</span>
-                    </div>
-                  ))}
+            {/* Team Finder — single link, no fake squad cards */}
+            {isTeamEvent && !isClosed && (
+              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm text-on-surface font-semibold">
+                    {event.type === 'sports' ? 'Squad Board' : 'Team Finder'}
+                  </span>
+                  <span className="text-[12px] text-on-surface-variant">
+                    Browse open roles, post your own, or mark yourself as looking.
+                  </span>
                 </div>
-              </AccordionItem>
-
-              {/* Accordion: Lab Access */}
-              <AccordionItem
-                id="lab"
-                icon="science"
-                title="Lab Access, Hardware Kits & Overnight Sprint Logistics"
-                open={openAccordion === 'lab'}
-                onToggle={() => setOpenAccordion(o => o === 'lab' ? null : 'lab')}
-              >
-                <div className="flex flex-col gap-2">
-                  {[
-                    { icon: 'memory',   label: 'Hardware Kits',   desc: 'Raspberry Pi 4B, STM32 Dev Boards, Arduino Nano, ESP32, sensor arrays — issued at registration desk.' },
-                    { icon: 'nights_stay', label: 'Overnight Access', desc: 'Innovation Lab B-Wing open 24/7 during sprint. HOD-endorsed duty leave issued on submission.' },
-                    { icon: 'wifi',     label: 'Dedicated Network', desc: 'Isolated gigabit LAN + public WiFi SSID: SIH_GUEST_56. No bandwidth throttling.' },
-                  ].map(l => (
-                    <div key={l.label} className="flex items-start gap-2">
-                      <span className="material-symbols-outlined text-[18px] text-primary shrink-0 mt-0.5">{l.icon}</span>
-                      <div>
-                        <span className="font-label-md text-[12px] text-on-surface font-semibold block">{l.label}</span>
-                        <span className="font-body-sm text-[11px] text-on-surface-variant">{l.desc}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </AccordionItem>
-
-              {/* Accordion: Coordinator */}
-              {event.postedBy && (
-                <AccordionItem
-                  id="spoc"
-                  icon="contact_support"
-                  title="Faculty SPOC Office Hours & Official Comms Channels"
-                  open={openAccordion === 'spoc'}
-                  onToggle={() => setOpenAccordion(o => o === 'spoc' ? null : 'spoc')}
+                <button
+                  id="detail-team-finder-btn"
+                  onClick={() => navigate(`/events/${id}/teams`)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-sm shadow-sm transition-all shrink-0"
                 >
-                  <div className="flex flex-col sm:flex-row gap-3 pt-1">
-                    <div className="flex-1 p-3 rounded-lg bg-surface-container-lowest">
-                      <span className="font-label-md text-[12px] font-bold text-on-surface block">{event.organizer ?? 'Faculty Lead'}</span>
-                      <span className="font-body-sm text-[11px] text-on-surface-variant">Innovation Cell Convener</span>
-                      {event.postedBy?.name && (
-                        <span className="font-code-sm text-[10px] text-primary block mt-1">{event.postedBy.name}</span>
-                      )}
-                    </div>
-                    <div className="flex-1 p-3 rounded-lg bg-surface-container-lowest">
-                      <span className="font-label-md text-[12px] font-bold text-on-surface block">Official Comms</span>
-                      <span className="font-body-sm text-[11px] text-on-surface-variant">#campus-events-announcements</span>
-                    </div>
-                  </div>
-                </AccordionItem>
-              )}
+                  <span className="material-symbols-outlined text-[16px] text-primary">group_search</span>
+                  View Teams
+                </button>
+              </section>
+            )}
 
-              {/* Faculty-only: raw post notes */}
-              {isOwner && event.rawMessage && (
-                <AccordionItem
-                  id="raw"
-                  icon="sticky_note_2"
-                  title="Your Post Notes (AI Extracted)"
-                  open={openAccordion === 'raw'}
-                  onToggle={() => setOpenAccordion(o => o === 'raw' ? null : 'raw')}
-                >
-                  <pre className="font-code-sm text-[11px] text-on-surface-variant leading-relaxed whitespace-pre-wrap p-3 rounded-lg bg-surface-container-low border border-dashed border-primary/30">
-                    {event.rawMessage}
-                  </pre>
-                </AccordionItem>
-              )}
-
-              {/* Code of Conduct */}
-              <div className="rounded-lg bg-surface-container-low p-4 flex items-start gap-3">
-                <span className="material-symbols-outlined text-[24px] text-primary shrink-0">gavel</span>
-                <div className="flex flex-col gap-1">
-                  <h3 className="font-headline-sm text-[13px] text-on-surface font-semibold">Campus Integrity &amp; Open Source Ethics</h3>
-                  <p className="font-body-sm text-[11px] text-on-surface-variant leading-relaxed">
-                    All code submitted must be written specifically during the 48-hour sprint window. Usage of pre-built third-party components or foundational models (APIs, LangChain, HuggingFace) is permitted provided it is disclosed in the architecture documentation. Violations lead to immediate disqualification by the faculty board.
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* Ledger verification footer */}
-            <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
-                  <span className="material-symbols-outlined text-[24px]">verified_user</span>
-                </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="font-headline-sm text-sm font-semibold text-on-surface">Official Campus Innovation Academic Ledger</span>
-                    <span className="font-label-sm text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">VERIFIED</span>
-                  </div>
-                  <p className="font-body-sm text-[11px] text-on-surface-variant">
-                    Cryptographically signed event manifest authenticated with ECDSA-256 campus root authority.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-outline font-code-sm text-[10px]">
-                <div className="flex flex-col items-end">
-                  <span>LEDGER HASH: <span className="text-on-surface font-semibold">0x7F...9A4E2</span></span>
-                  <span>BLOCK: <span className="text-primary font-semibold">#18829510</span></span>
-                </div>
-                <span className="material-symbols-outlined text-[22px] text-primary">fingerprint</span>
-              </div>
-            </section>
+            {/* Looking toggle — students only */}
+            {isTeamEvent && !isClosed && user?.role === 'student' && (
+              <LookingToggle eventId={id!} isLooking={false} />
+            )}
 
           </div>
 
-          {/* ─── RIGHT: Sticky Sidebar (4 cols) ──────────────────────────── */}
-          <div className="lg:col-span-4 flex flex-col gap-5 lg:sticky lg:top-20 lg:self-start">
+          {/* RIGHT: Sidebar */}
+          <div className="lg:col-span-4 flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
 
-            {/* Primary Action Card */}
+            {/* Registration card */}
             <div className="rounded-xl bg-surface-container-lowest p-5 shadow-md flex flex-col gap-4">
 
-              {/* Urgency ticker */}
-              {daysLeft !== null && daysLeft <= 7 && (
-                <div className="p-3 rounded-lg bg-amber-50 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-amber-900 font-label-md text-[12px] font-semibold">
-                    <span className="material-symbols-outlined text-[20px] text-secondary">schedule</span>
-                    <span>{deadlineLabel} to deadline</span>
+              {/* Deadline — actual date + time from DB */}
+              {deadlineFormatted && (
+                <div className={`flex items-start justify-between gap-3 p-3 rounded-lg ${
+                  isDeadlinePassed ? 'bg-error-container/30' : isUrgent ? 'bg-amber-50' : 'bg-surface-container-low'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    <span className={`material-symbols-outlined text-[18px] mt-0.5 ${
+                      isDeadlinePassed ? 'text-error' : isUrgent ? 'text-amber-700' : 'text-outline'
+                    }`}>
+                      schedule
+                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      <span className={`text-[10px] uppercase tracking-wider font-semibold ${
+                        isDeadlinePassed ? 'text-error' : isUrgent ? 'text-amber-700' : 'text-outline'
+                      }`}>
+                        Registration Deadline
+                      </span>
+                      <span className={`text-[13px] font-semibold ${
+                        isDeadlinePassed ? 'text-error' : isUrgent ? 'text-amber-900' : 'text-on-surface'
+                      }`}>
+                        {deadlineFormatted}
+                      </span>
+                    </div>
                   </div>
-                  {event.deadline && (
-                    <span className="font-code-sm text-[10px] px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-bold tracking-tight">
-                      {new Date(event.deadline).toLocaleDateString('en-IN', { weekday: 'short' }).toUpperCase()}, 11:59 PM
+                  {daysLeft !== null && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold shrink-0 ${
+                      isDeadlinePassed         ? 'bg-error-container text-on-error-container' :
+                      daysLeft === 0           ? 'bg-secondary-fixed text-on-secondary-fixed' :
+                      daysLeft <= 3            ? 'bg-secondary-fixed text-on-secondary-fixed' :
+                      'bg-surface-container text-on-surface-variant'
+                    }`}>
+                      {isDeadlinePassed ? 'Passed' : daysLeft === 0 ? 'Today' : daysLeft === 1 ? '1d left' : `${daysLeft}d left`}
                     </span>
                   )}
                 </div>
               )}
 
-              <div className="flex flex-col gap-1">
-                <div className="flex items-baseline justify-between">
-                  <span className="font-label-sm text-[10px] uppercase tracking-wider text-outline font-semibold">Registration Gate</span>
-                  <span className={`font-label-sm text-[11px] px-2 py-0.5 rounded font-semibold flex items-center gap-1 ${
-                    isClosed ? 'text-error bg-error-container' : 'text-emerald-700 bg-emerald-50'
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${isClosed ? 'bg-error' : 'bg-emerald-600'}`} />
-                    {isClosed ? 'Closed' : 'Slots Open'}
-                  </span>
-                </div>
-                <p className="font-body-sm text-[12px] text-on-surface-variant">
-                  {eligBranches.length > 0
-                    ? `Open to ${eligBranches.slice(0,3).join(', ')} students`
-                    : 'Open to all enrolled engineering students'}
-                  {eligYears.length > 0 ? ` (${eligYears.map(y => `${y}${['st','nd','rd'][y-1]??'th'} Yr`).join(', ')})` : ''}
-                </p>
+              {/* Registration status */}
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-wider text-outline font-semibold">Registration</span>
+                <span className={`text-[11px] px-2 py-0.5 rounded font-semibold flex items-center gap-1 ${
+                  isRegClosed ? 'text-error bg-error-container' :
+                  isDraft     ? 'text-outline bg-surface-container' :
+                  'text-emerald-700 bg-emerald-50'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    isRegClosed ? 'bg-error' : isDraft ? 'bg-outline' : 'bg-emerald-600'
+                  }`} />
+                  {isRegClosed ? 'Closed' : isDraft ? 'Not published' : 'Open'}
+                </span>
               </div>
 
-              {/* ── F-6: Registration CTAs ────────────────────────────────── */}
+              {/* Eligibility note */}
+              {(eligBranches.length > 0 || eligYears.length > 0) && (
+                <p className="text-[12px] text-on-surface-variant -mt-1">
+                  {eligBranches.length > 0
+                    ? `Open to ${eligBranches.slice(0, 3).join(', ')}${eligBranches.length > 3 ? ` +${eligBranches.length - 3} more` : ''}`
+                    : 'Open to all enrolled students'}
+                  {eligYears.length > 0
+                    ? ` · ${eligYears.map(y => `${y}${['st', 'nd', 'rd'][y - 1] ?? 'th'} yr`).join(', ')}`
+                    : ''}
+                </p>
+              )}
+
+              {/* F-6: Registration CTAs */}
               <div id="sidebar-reg-section" className="flex flex-col gap-3">
 
-                {/* Member invite banner — shown when user has a pending invite */}
                 {hasPendingInvite && myReg && user && (
                   <MemberConfirmBanner
                     registration={myReg}
@@ -720,190 +536,87 @@ export default function EventDetailPage() {
                   />
                 )}
 
-                {/* Registration status card — if already registered */}
                 {alreadyRegistered && myReg && user && !hasPendingInvite && (
                   <RegistrationStatusCard
                     registration={myReg}
                     currentUserId={user.id}
                     onWithdraw={() => doWithdraw({ regId: myReg.id, input: { action: 'withdraw' } })}
+                    onConfirm={
+                      myReg.status === 'draft' && myReg.type === 'individual'
+                        ? () => doWithdraw({ regId: myReg.id, input: { action: 'submit' } })
+                        : undefined
+                    }
                   />
                 )}
 
-                {/* Register button — only for students who haven't registered */}
-                {!isFaculty && !alreadyRegistered && !isClosed && !isDraft && (
-                  <>
-                    <RegisterButton
-                      eventId={id!}
-                      registrationMode={event.registrationMode as 'in_app' | 'external'}
-                      eventLink={event.link}
-                      teamSizeMin={event.teamSize?.min ?? 1}
-                      teamSizeMax={event.teamSize?.max ?? 1}
-                      alreadyRegistered={false}
-                    />
-                    {/* Secondary: register as individual free agent */}
-                    <button
-                      id="sidebar-free-agent-btn"
-                      className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-outline/20 text-on-surface-variant font-label-md text-[12px] hover:border-primary/30 hover:text-primary transition-all"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">person_pin</span>
-                      Register as Individual Free Agent
-                    </button>
-                  </>
+                {!isFaculty && !alreadyRegistered && !isRegClosed && !isDraft && (
+                  <RegisterButton
+                    eventId={id!}
+                    registrationMode={event.registrationMode as 'in_app' | 'external'}
+                    eventLink={event.link}
+                    teamSizeMin={event.teamSize?.min ?? 1}
+                    teamSizeMax={event.teamSize?.max ?? 1}
+                    alreadyRegistered={false}
+                  />
                 )}
 
-                {/* Closed / draft state label */}
-                {(isClosed || isDraft) && !isFaculty && (
-                  <div className="flex items-center justify-center gap-2 py-3 rounded-xl
-                                  bg-surface-container border border-outline-variant/20">
+                {(isRegClosed || isDraft) && !isFaculty && (
+                  <div className="flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-container border border-outline-variant/20">
                     <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
-                      {isClosed ? 'lock' : 'visibility_off'}
+                      {isDeadlinePassed ? 'schedule' : isClosed ? 'lock' : 'visibility_off'}
                     </span>
-                    <span className="font-label-lg text-sm text-on-surface-variant">
-                      {ctaLabel()}
-                    </span>
+                    <span className="text-sm text-on-surface-variant">{ctaLabel()}</span>
                   </div>
                 )}
 
-                {/* Faculty: roster link */}
                 {isFaculty && (
                   <button
                     id="sidebar-roster-btn"
                     onClick={() => navigate(`/events/${id}/roster`)}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
-                               border border-outline-variant/40 font-label-lg text-sm text-on-surface-variant
-                               hover:border-primary/40 hover:text-primary transition-all"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-outline-variant/40 text-sm text-on-surface-variant hover:border-primary/40 hover:text-primary transition-all"
                   >
                     <span className="material-symbols-outlined text-[16px]">group</span>
                     View Roster
                   </button>
                 )}
               </div>
-
-              <div className="text-center">
-                <span className="font-label-sm text-[10px] text-outline">
-                  Need institutional OD endorsement? Issued automatically upon sign-in.
-                </span>
-              </div>
             </div>
 
-            {/* Squad Matchmaking sidebar panel (hackathon/competition) */}
-            {(event.type === 'hackathon' || event.type === 'competition') && !isClosed && (
-              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[20px]">group_add</span>
-                    <h2 className="font-headline-sm text-[14px] text-on-surface font-semibold">Squad Matchmaking Hub</h2>
-                  </div>
-                  <span className="font-code-sm text-[10px] text-primary font-bold bg-surface-container px-2 py-0.5 rounded">
-                    {event.counters.students > 0 ? `${Math.max(2, Math.floor(event.counters.students / 3))} Squads` : '4 Squads'}
-                  </span>
-                </div>
-
-                {/* Avatar stack */}
-                <div className="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
-                  <div className="flex items-center -space-x-2">
-                    {['RK', 'ML', 'CS', 'AK'].map((ini, i) => (
-                      <div key={ini} className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shadow-sm ring-2 ring-surface-container-lowest ${
-                        i === 0 ? 'bg-primary-container text-on-primary' :
-                        i === 1 ? 'bg-secondary-container text-on-secondary-container' :
-                        i === 2 ? 'bg-tertiary-container text-on-tertiary' :
-                        'bg-surface-container-highest text-on-surface'
-                      }`}>{ini}</div>
-                    ))}
-                    <div className="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface flex items-center justify-center text-[10px] font-bold shadow-sm ring-2 ring-surface-container-lowest">
-                      +{event.counters.students > 0 ? event.counters.students : 19}
-                    </div>
-                  </div>
-                  <span className="font-label-sm text-[10px] text-on-surface-variant font-medium">
-                    {event.counters.students > 0 ? event.counters.students : 19} peers actively recruiting
-                  </span>
-                </div>
-
-                {/* Named squad cards matching reference */}
-                <div className="flex flex-col gap-2">
-                  {[
-                    { name: 'AgriBotics AI',      role: 'ML Engineer',    roleClass: 'bg-tertiary-fixed text-on-tertiary-fixed', desc: 'Seeking: ML / Computer Vision Specialist', lead: 'Lead: Rohan K. (3rd Yr CSE)', badge: '1 Seat Left', badgeCls: 'bg-emerald-50 text-emerald-800' },
-                    { name: 'CyberShield Sentinel', role: 'Needs Lead',    roleClass: 'bg-secondary-fixed text-on-secondary-fixed', desc: 'Seeking: React / Tailwind Frontend Dev', lead: 'Lead: Meera Nair (4th Yr IT)', badge: 'Needs Lead', badgeCls: 'bg-amber-50 text-amber-900' },
-                    { name: 'HydroSense IoT',     role: 'Hardware',        roleClass: 'bg-primary-fixed text-on-primary-fixed', desc: 'Seeking: Embedded C++ / ESP32 Hardware Lead', lead: 'Lead: Devansh V. (3rd Yr Mech)', badge: 'Hardware', badgeCls: 'bg-blue-50 text-blue-800' },
-                  ].map(sq => (
-                    <div key={sq.name} className="p-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col gap-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-label-md text-[12px] text-on-surface font-semibold">{sq.name}</span>
-                        <span className={`font-label-sm text-[10px] px-1.5 py-0.5 rounded font-bold ${sq.roleClass}`}>{sq.role}</span>
-                      </div>
-                      <span className="font-body-sm text-[11px] text-on-surface-variant">{sq.desc}</span>
-                      <div className="flex items-center justify-between text-outline font-label-sm text-[10px] pt-0.5">
-                        <span>{sq.lead}</span>
-                        <button onClick={() => navigate(`/events/${id}/teams`)} className="text-primary hover:underline font-semibold">Request Invite</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => navigate(`/events/${id}/teams`)}
-                    className="py-2 px-3 rounded-lg bg-surface-container-lowest hover:bg-surface-container-low text-primary font-label-md text-[12px] font-semibold transition-all shadow-sm flex items-center justify-center gap-1">
-                    <span className="material-symbols-outlined text-[16px]">group_search</span>
-                    Find Squad
-                  </button>
-                  <button onClick={() => navigate(`/events/${id}/teams`)}
-                    className="py-2 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-[12px] font-semibold transition-all shadow-sm flex items-center justify-center gap-1">
-                    <span className="material-symbols-outlined text-[16px]">post_add</span>
-                    Post Open Role
-                  </button>
-                </div>
-              </section>
-            )}
-
-            {/* Mentors On Call */}
-            {(event.type === 'hackathon' || event.type === 'competition') && (
-              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="material-symbols-outlined text-[20px] text-primary">support_agent</span>
-                  <h2 className="font-headline-sm text-[14px] text-on-surface font-semibold">Mentors On Call</h2>
-                </div>
-                {[
-                  { initials: 'VR', name: 'Dr. V. Ramanathan', dept: 'Dept of CS • Distributed Systems',    color: 'bg-primary-container text-on-primary' },
-                  { initials: 'AJ', name: 'Prof. Arvind Joshi', dept: 'Director, IoT & Embedded Systems FabLab', color: 'bg-secondary-container text-on-secondary-container' },
-                ].map(m => (
-                  <div key={m.name} className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-label-md text-[13px] font-bold shrink-0 ${m.color}`}>
-                      {m.initials}
+            {/* Coordinators — only rendered when event.coordinators[] is non-empty */}
+            {coordinators.length > 0 && (
+              <div className="rounded-xl bg-surface-container-lowest p-4 shadow-sm flex flex-col gap-3">
+                <span className="text-[10px] uppercase tracking-wider text-outline font-semibold">Point of Contact</span>
+                {coordinators.map(c => (
+                  <div key={c.phone} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary text-[12px] font-bold shrink-0">
+                      {c.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="font-label-md text-[12px] text-on-surface font-semibold">{m.name}</span>
-                      <span className="font-body-sm text-[10px] text-on-surface-variant truncate">{m.dept}</span>
+                      <span className="text-[13px] text-on-surface font-semibold truncate">{c.name}</span>
+                      <a href={`tel:${c.phone}`} className="text-[11px] text-primary hover:underline">
+                        {c.phone}
+                      </a>
                     </div>
                   </div>
                 ))}
-
-                {/* Pre-Hackathon Briefing event card */}
-                <div className="mt-1 p-3 rounded-lg bg-primary-container/30 border border-primary/10 flex flex-col gap-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[16px] text-primary">event_upcoming</span>
-                    <span className="font-label-md text-[11px] text-primary font-semibold">Pre-Hackathon Briefing</span>
-                  </div>
-                  <span className="font-body-sm text-[11px] text-on-surface-variant">Oct 26, 4:30 PM IST</span>
-                  <span className="font-body-sm text-[11px] text-on-surface-variant">Auditorium Hall B • Hybrid Live Link</span>
-                  <button className="mt-1 text-primary font-label-md text-[11px] font-semibold hover:underline text-left">Add to Calendar (.ics)</button>
-                </div>
-              </section>
+              </div>
             )}
 
-            {/* Faculty owner publish action */}
+            {/* Faculty: publish action for own draft */}
             {isOwner && event.status === 'draft' && (
               <div className="rounded-xl bg-surface-container-low border border-dashed border-primary/30 p-4 flex flex-col gap-3">
                 <div className="flex items-center gap-2 text-primary">
                   <span className="material-symbols-outlined text-[20px]">publish</span>
-                  <span className="font-label-lg text-sm font-semibold">Ready to publish?</span>
+                  <span className="text-sm font-semibold">Ready to publish?</span>
                 </div>
-                <p className="font-body-sm text-[11px] text-on-surface-variant">
-                  Review your event details before making it visible to all students.
+                <p className="text-[12px] text-on-surface-variant">
+                  Review your event details before making it visible to students.
                 </p>
                 <button
                   id="sidebar-publish-btn"
                   onClick={() => navigate(`/events/${event.id}/edit`)}
-                  className="w-full py-2.5 rounded-lg bg-primary text-on-primary font-label-lg text-sm font-bold shadow flex items-center justify-center gap-2 active:scale-[0.98]">
+                  className="w-full py-2.5 rounded-lg bg-primary text-on-primary text-sm font-bold shadow flex items-center justify-center gap-2 active:scale-[0.98]"
+                >
                   <span className="material-symbols-outlined text-[18px]">publish</span>
                   Review & Publish
                 </button>
@@ -914,34 +627,38 @@ export default function EventDetailPage() {
         </div>
       </main>
 
-      {/* ── Mobile sticky bottom CTA ─────────────────────────────────────── */}
+      {/* ── Mobile sticky CTA ────────────────────────────────────────────── */}
       <div className="fixed bottom-16 left-0 right-0 z-40 lg:hidden bg-surface-container-lowest/95 backdrop-blur-md px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] flex items-center gap-3">
         <button
           onClick={() => toggleBookmark()}
           disabled={isBookmarking}
           aria-label={isBookmarked ? 'Remove bookmark' : 'Save event'}
-          className="h-12 w-12 rounded-lg bg-surface-container flex items-center justify-center text-on-surface hover:text-primary transition-colors shrink-0 active:scale-95 disabled:opacity-50">
+          className="h-12 w-12 rounded-lg bg-surface-container flex items-center justify-center text-on-surface hover:text-primary transition-colors shrink-0 active:scale-95 disabled:opacity-50"
+        >
           <span
             className="material-symbols-outlined text-[22px]"
-            style={isBookmarked ? { fontVariationSettings: "'FILL' 1", color: 'var(--color-primary)' } : {}}>
+            style={isBookmarked ? { fontVariationSettings: "'FILL' 1", color: 'var(--color-primary)' } : {}}
+          >
             {isBookmarked ? 'bookmark' : 'bookmark_border'}
           </span>
         </button>
-        {/* Mobile CTA: scroll-to-register or show status */}
+
         {!isFaculty ? (
           <button
             id="mobile-register-btn"
             onClick={() => document.getElementById('sidebar-reg-section')?.scrollIntoView({ behavior: 'smooth' })}
-            disabled={isClosed || isDraft}
-            className={`flex-1 h-12 rounded-lg font-label-lg text-sm font-bold flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-70 ${
+            disabled={isRegClosed || isDraft}
+            className={`flex-1 h-12 rounded-lg text-sm font-bold flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-70 ${
               alreadyRegistered ? 'bg-primary/10 text-primary border border-primary/20'
-              : isClosed        ? 'bg-surface-container-high text-on-surface-variant'
+              : isRegClosed     ? 'bg-surface-container-high text-on-surface-variant'
               : 'bg-primary-container hover:bg-primary text-on-primary'
             }`}
           >
-            <span className="material-symbols-outlined text-[20px]"
-              style={alreadyRegistered ? { fontVariationSettings: "'FILL' 1" } : {}}>
-              {alreadyRegistered ? 'how_to_reg' : isClosed ? 'lock' : 'app_registration'}
+            <span
+              className="material-symbols-outlined text-[20px]"
+              style={alreadyRegistered ? { fontVariationSettings: "'FILL' 1" } : {}}
+            >
+              {alreadyRegistered ? 'how_to_reg' : isDeadlinePassed ? 'schedule' : isClosed ? 'lock' : 'app_registration'}
             </span>
             {ctaLabel()}
           </button>
@@ -949,8 +666,7 @@ export default function EventDetailPage() {
           <button
             id="mobile-roster-btn"
             onClick={() => navigate(`/events/${id}/roster`)}
-            className="flex-1 h-12 rounded-lg font-label-lg text-sm font-medium flex items-center justify-center gap-2
-                       border border-outline-variant/40 text-on-surface-variant hover:border-primary/40 hover:text-primary transition-all"
+            className="flex-1 h-12 rounded-lg text-sm font-medium flex items-center justify-center gap-2 border border-outline-variant/40 text-on-surface-variant hover:border-primary/40 hover:text-primary transition-all"
           >
             <span className="material-symbols-outlined text-[18px]">group</span>
             View Roster
@@ -959,38 +675,6 @@ export default function EventDetailPage() {
       </div>
 
       <BottomNav />
-    </div>
-  );
-}
-
-// ── Accordion helper component ────────────────────────────────────────────────
-function AccordionItem({
-  id, icon, title, open, onToggle, children,
-}: {
-  id: string; icon: string; title: string;
-  open: boolean; onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg bg-surface-container-low overflow-hidden">
-      <button
-        id={`accordion-${id}`}
-        onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-surface-container-high transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary text-[20px]">{icon}</span>
-          <span className="font-headline-sm text-[13px] text-on-surface font-semibold">{title}</span>
-        </div>
-        <span className={`material-symbols-outlined text-outline transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
-          expand_more
-        </span>
-      </button>
-      {open && (
-        <div className="px-4 pb-4 pt-1 text-body-sm font-body-sm text-on-surface-variant flex flex-col gap-3">
-          {children}
-        </div>
-      )}
     </div>
   );
 }

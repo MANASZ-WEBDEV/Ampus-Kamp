@@ -26,14 +26,22 @@ import type { RegisterBody, LoginBody, VerifyOtpBody, ResendOtpBody } from './au
 // ── Register ─────────────────────────────────────────────────────────────────
 
 export async function register(body: RegisterBody) {
-  const { enrollmentNo, collegeId, password } = body;
+  const { enrollmentNo, email: submittedEmail, password } = body;
 
-  // 1. Verify against roster (both fields must match)
-  const rosterEntry = await StudentRoster.findOne({ enrollmentNo, collegeId })
+  // 1. Look up by enrollment number only
+  const rosterEntry = await StudentRoster.findOne({ enrollmentNo })
     .populate('department', 'code name')
     .lean();
 
   if (!rosterEntry) {
+    throw new NotFoundError(
+      'Enrollment number not found in the student roster. ' +
+      'Contact your department office if you believe this is an error.',
+    );
+  }
+
+  // 1b. Verify the submitted email matches the roster email
+  if (!rosterEntry.email || rosterEntry.email.toLowerCase() !== submittedEmail.toLowerCase()) {
     throw new NotFoundError(
       'Enrollment number or college ID not found in the student roster. ' +
       'Contact your department office if you believe this is an error.',

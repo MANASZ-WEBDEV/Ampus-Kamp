@@ -9,7 +9,7 @@ export const registerSchema = z.object({
     .max(20)
     .trim()
     .toUpperCase(),
-  collegeId: z.string().min(1).max(30).trim(),
+  email: z.string().email('Please enter a valid institutional email').trim().toLowerCase(),
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')

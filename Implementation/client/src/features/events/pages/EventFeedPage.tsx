@@ -8,28 +8,17 @@ import type { EventType } from '../types';
 
 // ── Category pills config ─────────────────────────────────────────────────────
 const CATEGORY_PILLS = [
-  { key: 'all',         label: 'All Events',         count: 24, icon: 'apps',                    iconColor: 'text-on-primary' },
-  { key: 'hackathon',   label: 'Hackathons',          count: 8,  icon: 'terminal',                iconColor: 'text-tertiary' },
-  { key: 'sports',      label: 'Sports & Athletics',  count: 4,  icon: 'sports_soccer',           iconColor: 'text-secondary' },
-  { key: 'workshop',    label: 'Hands-on Workshops',  count: 6,  icon: 'precision_manufacturing', iconColor: 'text-primary' },
-  { key: 'seminar',     label: 'Seminars & Talks',    count: 4,  icon: 'record_voice_over',       iconColor: 'text-tertiary' },
-  { key: 'other',       label: 'Research Sprints',    count: 2,  icon: 'biotech',                 iconColor: 'text-primary' },
+  { key: 'all',         label: 'All Events',         icon: 'apps',                    iconColor: 'text-on-primary' },
+  { key: 'hackathon',   label: 'Hackathons',          icon: 'terminal',                iconColor: 'text-tertiary' },
+  { key: 'sports',      label: 'Sports & Athletics',  icon: 'sports_soccer',           iconColor: 'text-secondary' },
+  { key: 'workshop',    label: 'Hands-on Workshops',  icon: 'precision_manufacturing', iconColor: 'text-primary' },
+  { key: 'seminar',     label: 'Seminars & Talks',    icon: 'record_voice_over',       iconColor: 'text-tertiary' },
+  { key: 'other',       label: 'Research Sprints',    icon: 'biotech',                 iconColor: 'text-primary' },
 ] as const;
 
 type CategoryKey = typeof CATEGORY_PILLS[number]['key'];
 
-// ── Dummy sidebar data ────────────────────────────────────────────────────────
-const DUMMY_DEADLINES = [
-  { day: 'Fri', date: 24, title: 'SIH Prelims Squad Locks',      sub: '11:59 PM • Mandatory Submission', urgent: true },
-  { day: 'Tue', date: 28, title: 'ROS2 Bootcamp Check-in',       sub: '09:00 AM • Mechatronics Lab B-204', urgent: false },
-  { day: 'Thu', date: 30, title: 'Football Roster Registration',  sub: '05:00 PM • HOD Seal Required',   urgent: false },
-];
 
-const DUMMY_SQUAD_OPENINGS = [
-  { team: 'Team NeuralNexus (SIH \'26)', role: 'ML Engineer',     roleClass: 'bg-tertiary-fixed text-on-tertiary-fixed', desc: 'Needs PyTorch / FastAPI specialist for edge pipeline.',              confirmed: '3/6' },
-  { team: 'AeroNav Labs (Drone Camp)',   role: 'Hardware Tech',    roleClass: 'bg-primary-fixed text-on-primary-fixed',   desc: 'Seeking partner with STM32 / solder bench experience.',           confirmed: '1/2' },
-  { team: 'Mech Titans (7-a-Side)',      role: 'Goalkeeper',       roleClass: 'bg-secondary-fixed text-on-secondary-fixed', desc: 'Mechanical Dept squad seeking starting goalkeeper.',            confirmed: '8/10' },
-];
 
 // ── Dummy event articles (reference-style rich cards) ─────────────────────────
 const DUMMY_ARTICLES = [
@@ -171,6 +160,25 @@ export default function EventFeedPage() {
   // Show dummy articles when API returns no events (no backend data)
   const showDummy = !isLoading && filteredEvents.length === 0 && !hasFilters;
 
+  // Closing Soon count — mirrors the card's own label logic:
+  // "Closing today" = Math.ceil(diff / 86400000) <= 0  (deadline past or today)
+  // We include that + 1 day ahead → d <= 1
+  const closingSoonCount = useMemo(() => {
+    if (showDummy) {
+      // Count dummy articles that show "Closing today" or urgency ≤ 2 days
+      return DUMMY_ARTICLES.filter(a => {
+        const label = a.urgency?.label?.toLowerCase() ?? '';
+        return label.includes('today') || label.includes('2 days') || label.includes('1 day');
+      }).length;
+    }
+    const now = Date.now();
+    return allEvents.filter(evt => {
+      if (!evt.deadline) return false;
+      const d = Math.ceil((new Date(evt.deadline).getTime() - now) / 86400000);
+      return d <= 1; // includes "Closing today" (d <= 0) and "1d left"
+    }).length;
+  }, [showDummy, allEvents]);
+
   // Typed dummy article refs — destructure to avoid TS18048 noUncheckedIndexedAccess
   const [art1, art2, art3, art4] = DUMMY_ARTICLES as [
     typeof DUMMY_ARTICLES[0],
@@ -206,7 +214,7 @@ export default function EventFeedPage() {
               Explore Campus Opportunities &amp; Tech Sprints
             </h1>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Browse 24 active hackathons, research lab sprints, robotics bootcamps, and inter-department leagues across campus labs.
+              Browse active hackathons, research lab sprints, robotics bootcamps, and inter-department leagues across campus labs.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
@@ -214,7 +222,6 @@ export default function EventFeedPage() {
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-lg text-label-lg shadow-sm transition-all">
               <span className="material-symbols-outlined text-[18px] text-primary">bookmark_manager</span>
               <span>Subscribed Feeds</span>
-              <span className="px-1.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-code-sm text-code-sm">3</span>
             </button>
             <button id="propose-event-btn" onClick={() => navigate('/events/new')}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg shadow-md transition-all active:scale-[0.98]">
@@ -275,7 +282,6 @@ export default function EventFeedPage() {
                   }`}>
                   <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-on-primary' : pill.iconColor}`}>{pill.icon}</span>
                   <span>{pill.label}</span>
-                  <span className={`font-code-sm text-code-sm ${isActive ? '' : 'text-outline'}`}>{pill.count}</span>
                 </button>
               );
             })}
@@ -297,7 +303,7 @@ export default function EventFeedPage() {
               ))}
               <button className="h-9 px-3 rounded-lg bg-secondary-fixed/50 hover:bg-secondary-fixed text-on-secondary-fixed flex items-center gap-1.5 font-label-sm text-label-sm transition-colors">
                 <span className="w-2 h-2 rounded-full bg-secondary" />
-                <span className="font-semibold">Closing Soon (3)</span>
+                <span className="font-semibold">Closing Soon ({closingSoonCount})</span>
                 <span className="material-symbols-outlined text-[16px]">close</span>
               </button>
             </div>
@@ -319,19 +325,40 @@ export default function EventFeedPage() {
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-[16px] text-primary">filter_alt</span>
               <span>
-                Showing <strong className="text-on-surface">24 events</strong> across campus labs &amp; sports arena •{' '}
-                <span className="text-secondary font-semibold">3 closing in &lt;48h</span>
+                Showing <strong className="text-on-surface">{filteredEvents.length > 0 ? filteredEvents.length : showDummy ? 7 : 0} events</strong> across campus labs &amp; sports arena
+                {closingSoonCount > 0 && (
+                  <>
+                    {' '}•{' '}
+                    <span className="text-secondary font-semibold">{closingSoonCount} closing in &lt;48h</span>
+                  </>
+                )}
               </span>
             </div>
             <button onClick={clearAll} className="text-primary hover:underline font-label-sm text-label-sm cursor-pointer">Reset Filters</button>
           </div>
         </div>
 
-        {/* ── 12-col grid ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* ── Propose Event inline banner (full-width, compact) ─────────── */}
+        <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary-container/10 to-secondary-container/10 border border-primary/15 mb-6">
+          <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+            <span className="material-symbols-outlined text-[20px] text-primary">campaign</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="font-label-lg text-label-lg text-on-surface font-semibold">Have an Idea for a Campus Event?</span>
+            <span className="font-body-sm text-body-sm text-on-surface-variant ml-2 hidden sm:inline">Pitch directly to the Innovation Council for lab grants &amp; duty leaves.</span>
+          </div>
+          <button id="submit-proposal-btn" onClick={() => navigate('/events/new')}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md shadow-sm transition-all active:scale-[0.98] shrink-0">
+            <span className="material-symbols-outlined text-[16px]">add_circle</span>
+            <span>{isFaculty ? 'Post Event' : 'Submit Proposal'}</span>
+          </button>
+        </div>
 
-          {/* LEFT: Event cards (8 cols) */}
-          <div className="lg:col-span-8 flex flex-col gap-5">
+        {/* ── Event cards (full-width) ───────────────────────────────────── */}
+        <div className="flex flex-col gap-5">
+
+          {/* Event content column */}
+          <div className="flex flex-col gap-5">
 
             {/* Loading */}
             {isLoading && (
@@ -355,7 +382,7 @@ export default function EventFeedPage() {
             {/* Real API event cards */}
             {!isLoading && !isError && filteredEvents.length > 0 && (
               <>
-                <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'flex flex-col gap-4'}>
+                <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'flex flex-col gap-4'}>
                   {filteredEvents.map(event => (
                     <article
                       key={event.id}
@@ -609,16 +636,10 @@ export default function EventFeedPage() {
                   </div>
                 </article>
 
-                {/* Pagination */}
-                <div className="flex items-center justify-between p-4 rounded-xl bg-surface-container-lowest shadow-sm">
-                  <span className="font-label-md text-label-md text-on-surface-variant">Showing 1 to 5 of 24 active events</span>
-                  <div className="flex items-center gap-1.5">
-                    <button disabled className="px-4 py-1.5 rounded-lg bg-surface-container-low text-outline font-label-md text-label-md cursor-not-allowed">Previous</button>
-                    {[1, 2, 3].map(n => (
-                      <button key={n} className={`px-3 py-1.5 rounded-lg font-label-md text-label-md ${n === 1 ? 'bg-primary text-on-primary' : 'bg-surface-container-low hover:bg-surface-container text-on-surface'}`}>{n}</button>
-                    ))}
-                    <button className="px-4 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md">Next →</button>
-                  </div>
+                {/* Info strip — real count (dummy shows 7) */}
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low/60 font-label-sm text-label-sm text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[16px] text-primary">info</span>
+                  <span>Showing all <strong className="text-on-surface">7 events</strong> — more events will appear as faculty post them.</span>
                 </div>
               </>
             )}
@@ -636,94 +657,6 @@ export default function EventFeedPage() {
               </div>
             )}
           </div>
-
-          {/* RIGHT: Sticky sidebar (4 cols) */}
-          <aside className="lg:col-span-4 hidden lg:flex flex-col gap-5 sticky top-20 self-start">
-
-            {/* Propose Event banner */}
-            <div className="flex flex-col p-5 rounded-xl bg-gradient-to-br from-primary to-primary-container text-on-primary shadow-md relative overflow-hidden">
-              <div className="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
-              <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center mb-4 backdrop-blur-sm">
-                <span className="material-symbols-outlined text-[24px] text-primary-fixed">campaign</span>
-              </div>
-              <h3 className="font-headline-sm text-headline-sm font-semibold mb-1">Have an Idea for a Campus Event?</h3>
-              <p className="font-body-sm text-body-sm text-on-primary-container mb-4">
-                Pitch a departmental hackathon, hardware sprint, or sports tournament directly to the Innovation Council for lab grants &amp; duty leaves.
-              </p>
-              <button id="submit-proposal-btn" onClick={() => navigate('/events/new')}
-                className="w-full py-2.5 px-4 rounded-lg bg-surface-container-lowest text-primary font-label-lg text-label-lg shadow-sm hover:bg-surface transition-all flex items-center justify-center gap-1.5">
-                <span>Submit Event Proposal</span>
-                <span className="material-symbols-outlined text-[18px]">add_circle</span>
-              </button>
-            </div>
-
-            {/* Upcoming Deadlines */}
-            <div className="flex flex-col p-5 rounded-xl bg-surface-container-lowest shadow-sm">
-              <div className="flex items-center justify-between pb-4 border-b border-outline/10 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[20px] text-primary">calendar_month</span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">Upcoming Deadlines</h3>
-                </div>
-                <span className="font-code-sm text-code-sm text-on-surface-variant font-medium">October 2026</span>
-              </div>
-              <div className="flex flex-col gap-4">
-                {DUMMY_DEADLINES.map(dl => (
-                  <div key={dl.date} className="flex items-start gap-3">
-                    <div className={`flex flex-col items-center flex-shrink-0 w-12 py-1 rounded ${dl.urgent ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-surface-container-low text-on-surface'}`}>
-                      <span className="font-label-sm text-label-sm uppercase leading-none">{dl.day}</span>
-                      <span className="font-headline-sm text-headline-sm font-bold">{dl.date}</span>
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-label-md text-label-md text-on-surface font-semibold truncate">{dl.title}</span>
-                      <span className={`font-label-sm text-label-sm ${dl.urgent ? 'text-secondary font-medium' : 'text-on-surface-variant'}`}>{dl.sub}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button className="mt-4 pt-4 border-t border-outline/10 text-center font-label-md text-label-md text-primary hover:underline flex items-center justify-center gap-1">
-                <span>Sync with Google Calendar</span>
-                <span className="material-symbols-outlined text-[16px]">sync</span>
-              </button>
-            </div>
-
-            {/* Squad Openings */}
-            <div className="flex flex-col p-5 rounded-xl bg-surface-container-lowest shadow-sm">
-              <div className="flex items-center justify-between pb-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[20px] text-tertiary">person_search</span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">Squad Openings</h3>
-                </div>
-                <span className="font-label-sm text-label-sm text-primary hover:underline cursor-pointer">View All</span>
-              </div>
-              <p className="font-body-sm text-body-sm text-on-surface-variant mb-3">Teams competing in active campus events seeking urgent roster additions:</p>
-              <div className="flex flex-col gap-2">
-                {DUMMY_SQUAD_OPENINGS.map(sq => (
-                  <div key={sq.team} className="p-3 rounded-lg bg-surface-container-low flex flex-col gap-1 hover:bg-surface-container transition-colors">
-                    <div className="flex items-center justify-between">
-                      <span className="font-label-md text-label-md text-on-surface font-semibold">{sq.team}</span>
-                      <span className={`px-2 py-0.5 rounded font-code-sm text-code-sm font-semibold ${sq.roleClass}`}>{sq.role}</span>
-                    </div>
-                    <span className="font-body-sm text-body-sm text-on-surface-variant text-[13px]">{sq.desc}</span>
-                    <div className="flex items-center justify-between pt-1 font-label-sm text-label-sm text-outline">
-                      <span>{sq.confirmed} Confirmed</span>
-                      <span className="text-primary hover:underline font-semibold cursor-pointer">Quick Apply →</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Autonomous Event Ledger */}
-            <div className="p-4 rounded-xl bg-surface-container-low/70 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-[20px] text-on-primary-fixed">verified_user</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-label-md text-label-md text-on-surface font-semibold">Autonomous Event Ledger</span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant">All hackathon prizes and certificates are cryptographically verified and mirrored to your Student Transcript.</span>
-              </div>
-            </div>
-          </aside>
         </div>
       </main>
 

@@ -10,6 +10,8 @@ import { z } from 'zod';
 //   not N queries. When absent, isLooking is omitted from the response.
 
 export const peopleQuerySchema = z.object({
+  email:   z.string().trim().email().optional(), // exact college email lookup (never returned in response)
+  name:    z.string().trim().max(60).optional(),  // typeahead: partial name search
   skills:  z.string().optional(), // comma-separated: "react,ml,python"
   branch:  z.string().optional(), // dept code: "CSE", "ECE"
   year:    z.coerce.number().int().min(1).max(5).optional(),

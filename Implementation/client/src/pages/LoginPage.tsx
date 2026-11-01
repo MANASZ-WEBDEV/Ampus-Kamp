@@ -74,7 +74,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await authApi.register({ enrollmentNo: form.enrollmentNo, collegeId: form.email, password: form.password });
+      const res = await authApi.register({ enrollmentNo: form.enrollmentNo, email: form.email, password: form.password });
       setOtpUserId(res.userId);
       setDigits(Array(OTP_LENGTH).fill(''));
       setSecondsLeft(OTP_TTL_SECONDS);

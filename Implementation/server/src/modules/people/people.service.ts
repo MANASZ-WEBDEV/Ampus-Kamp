@@ -52,7 +52,50 @@ export async function searchPeople(
   actor: AuthUser,
   query: PeopleQuery,
 ): Promise<{ items: PersonCard[]; nextCursor?: string; hasMore: boolean }> {
-  const { skills, branch, year, eventId, limit, cursor } = query;
+  const { email, name, skills, branch, year, eventId, limit, cursor } = query;
+
+  // ── Email fast-path — exact match, used for "invite by college email" UX ────
+  // SECURITY: email is select:false on the schema — the filter works but the
+  // field never appears in the projection below. We ONLY search by it, never
+  // return it. This is an intentional belt-and-suspenders design.
+  if (email) {
+    const found = await User.findOne({ email: email.toLowerCase(), role: 'student', status: 'active' })
+      .select('name department year skills allowInvites')  // whitelist — no email
+      .populate<{ department: { _id: mongoose.Types.ObjectId; code: string; name: string } }>('department', 'code name')
+      .lean();
+
+    if (!found || found._id.toString() === actor.id) {
+      // Not found, or it's the actor themselves — return empty
+      return { items: [], hasMore: false };
+    }
+
+    // Check if either direction is blocked
+    const isBlocked = await Block.exists({
+      $or: [
+        { userId: actor.id,        blockedUserId: found._id },
+        { userId: found._id,       blockedUserId: actor.id },
+      ],
+    });
+    if (isBlocked) return { items: [], hasMore: false };
+
+    const dept = found.department as unknown as { _id: mongoose.Types.ObjectId; code: string; name: string };
+    const card: PersonCard = {
+      id:           found._id.toString(),
+      name:         found.name,
+      department:   { id: dept._id.toString(), code: dept.code, name: dept.name },
+      year:         found.year ?? undefined,
+      skills:       found.skills,
+      allowInvites: found.allowInvites,
+    };
+
+    // Annotate isLooking if eventId provided
+    if (eventId && mongoose.isValidObjectId(eventId)) {
+      const flag = await LookingFlag.findOne({ eventId, userId: found._id }).select('_id').lean();
+      card.isLooking = !!flag;
+    }
+
+    return { items: [card], hasMore: false };
+  }
 
   // ── Step 1: Resolve branch code → department ObjectId ─────────────────────
   let departmentId: mongoose.Types.ObjectId | undefined;
@@ -94,6 +137,11 @@ export async function searchPeople(
 
   if (departmentId) filter.department = departmentId;
   if (year)          filter.year = year;
+  if (name) {
+    // Escape special regex chars, then do a case-insensitive partial match
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    filter.name = { $regex: escaped, $options: 'i' };
+  }
   if (skills) {
     // Match any of the provided skills (broad search, not strict all-of)
     const skillList = skills.split(',').map(s => s.trim()).filter(Boolean);

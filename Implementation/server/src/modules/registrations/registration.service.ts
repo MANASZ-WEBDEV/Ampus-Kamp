@@ -134,13 +134,43 @@ export async function createRegistration(
     if (validIds.length !== unique.length) {
       throw new ValidationError('One or more member IDs are invalid.');
     }
-    const existingCount = await User.countDocuments({
+    const validUsers = await User.find({
       _id: { $in: validIds },
       role: 'student',
       status: 'active',
-    });
-    if (existingCount !== validIds.length) {
+    }).select('_id name').lean();
+    if (validUsers.length !== validIds.length) {
       throw new NotFoundError('One or more invited users do not exist or are not active students.');
+    }
+
+    // ── Fix 4: Double-registration conflict check ──────────────────────────
+    // An invited member must NOT already have an active registration for this
+    // event (either as leader or as a confirmed/invited member of another team).
+    // One batched query checks all candidates at once \u2014 no N+1.
+    const conflicting = await Registration.find({
+      eventId,
+      status: { $in: ['draft', 'submitted', 'locked'] },
+      'members.userId': { $in: validIds.map(id => new mongoose.Types.ObjectId(id)) },
+    }).select('members').lean();
+
+    if (conflicting.length > 0) {
+      // Collect which invited IDs are already registered
+      const conflictingUserIds = new Set<string>();
+      for (const reg of conflicting) {
+        for (const m of reg.members) {
+          const uid = m.userId.toString();
+          if (validIds.includes(uid)) conflictingUserIds.add(uid);
+        }
+      }
+      // Map back to names for a human-readable error
+      const conflictNames = validUsers
+        .filter(u => conflictingUserIds.has(u._id.toString()))
+        .map(u => u.name)
+        .join(', ');
+      throw new ConflictError(
+        `${conflictNames} already ${conflictingUserIds.size === 1 ? 'has' : 'have'} an active ` +
+        `registration for this event and cannot be added to another team.`,
+      );
     }
 
     invitedIds.push(...validIds);
@@ -153,23 +183,72 @@ export async function createRegistration(
   ];
 
   // ── Create registration (partial unique index handles duplicate guard) ────
+  //
+  // SDE3 design: individual registrations are atomic — one click, one confirmed
+  // registration. No draft state, no submission step needed.
+  // Team registrations still start as 'draft' so members can be invited first.
+  const isIndividual = body.type === 'individual';
+
   let reg: IRegistration;
-  try {
-    reg = await Registration.create({
-      eventId,
-      type:     body.type,
-      teamName: body.teamName,
-      leaderId: actor.id,
-      members,
-      status:   'draft',
-    });
-  } catch (err: unknown) {
-    if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: number }).code === 11000) {
-      throw new ConflictError(
-        'You already have an active registration for this event. Withdraw it before creating a new one.',
-      );
+
+  if (isIndividual) {
+    // ── Individual: create + submit + increment counters in one transaction ───
+    const session = await mongoose.startSession();
+    let createdReg: IRegistration | null = null;
+    try {
+      await session.withTransaction(async () => {
+        const [created] = await Registration.create(
+          [{
+            eventId,
+            type:        'individual',
+            leaderId:    actor.id,
+            members,
+            status:      'submitted',
+            submittedAt: new Date(),
+          }],
+          { session },
+        );
+        createdReg = created as unknown as IRegistration;
+
+        // Count confirmed members (just the leader for a fresh individual reg)
+        const confirmedCount = members.filter(m => m.status === 'confirmed').length;
+        await Event.findByIdAndUpdate(
+          eventId,
+          { $inc: { 'counters.students': confirmedCount } },
+          { session },
+        );
+      });
+    } catch (err: unknown) {
+      if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: number }).code === 11000) {
+        throw new ConflictError(
+          'You already have an active registration for this event. Withdraw it before creating a new one.',
+        );
+      }
+      throw err;
+    } finally {
+      session.endSession();
     }
-    throw err;
+    if (!createdReg) throw new ConflictError('Failed to create individual registration.');
+    reg = createdReg;
+  } else {
+    // ── Team: create as draft so leader can invite members before submitting ──
+    try {
+      reg = await Registration.create({
+        eventId,
+        type:     body.type,
+        teamName: body.teamName,
+        leaderId: actor.id,
+        members,
+        status:   'draft',
+      });
+    } catch (err: unknown) {
+      if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: number }).code === 11000) {
+        throw new ConflictError(
+          'You already have an active registration for this event. Withdraw it before creating a new one.',
+        );
+      }
+      throw err;
+    }
   }
 
   const populated = await populateReg(reg._id);
