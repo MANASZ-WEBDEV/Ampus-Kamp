@@ -53,7 +53,7 @@ export default function MyEventsPage() {
             </button>
             <button
               id="my-events-post-btn"
-              onClick={() => navigate('/events/new')}
+              onClick={() => navigate('/events/paste')}
               className="h-10 px-4 rounded-xl bg-primary text-on-primary font-label-lg text-xs font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
@@ -109,7 +109,7 @@ export default function MyEventsPage() {
             <p className="text-on-surface-variant font-body-sm text-sm max-w-xs">
               Share a hackathon, workshop, or campus event with students.
             </p>
-            <button id="my-events-post-first" onClick={() => navigate('/events/new')} className="btn-primary">
+            <button id="my-events-post-first" onClick={() => navigate('/events/paste')} className="btn-primary">
               Post Your First Event
             </button>
           </div>

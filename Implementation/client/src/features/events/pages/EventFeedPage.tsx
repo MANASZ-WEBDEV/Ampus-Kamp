@@ -223,7 +223,7 @@ export default function EventFeedPage() {
               <span className="material-symbols-outlined text-[18px] text-primary">bookmark_manager</span>
               <span>Subscribed Feeds</span>
             </button>
-            <button id="propose-event-btn" onClick={() => navigate('/events/new')}
+            <button id="propose-event-btn" onClick={() => navigate(isFaculty ? '/events/paste' : '/events/new')}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg shadow-md transition-all active:scale-[0.98]">
               <span className="material-symbols-outlined text-[20px]">add_circle</span>
               <span>{isFaculty ? 'Post Event' : 'Propose Event'}</span>
@@ -347,7 +347,7 @@ export default function EventFeedPage() {
             <span className="font-label-lg text-label-lg text-on-surface font-semibold">Have an Idea for a Campus Event?</span>
             <span className="font-body-sm text-body-sm text-on-surface-variant ml-2 hidden sm:inline">Pitch directly to the Innovation Council for lab grants &amp; duty leaves.</span>
           </div>
-          <button id="submit-proposal-btn" onClick={() => navigate('/events/new')}
+          <button id="submit-proposal-btn" onClick={() => navigate(isFaculty ? '/events/paste' : '/events/new')}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md shadow-sm transition-all active:scale-[0.98] shrink-0">
             <span className="material-symbols-outlined text-[16px]">add_circle</span>
             <span>{isFaculty ? 'Post Event' : 'Submit Proposal'}</span>

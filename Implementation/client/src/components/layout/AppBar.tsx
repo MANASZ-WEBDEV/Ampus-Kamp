@@ -23,14 +23,14 @@ interface QuickAction {
 }
 
 const FACULTY_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'qa-d-post-event',   label: 'Post Event',    icon: 'campaign',             to: '/events/new' },
+  { id: 'qa-d-post-event',   label: 'Post Event',    icon: 'campaign',             to: '/events/paste' },
   { id: 'qa-d-my-events',    label: 'My Events',     icon: 'event_note',           to: '/events/my'  },
   { id: 'qa-d-verify-queue', label: 'Verify Queue',  icon: 'verified_user',        to: '/verify'     },
   { id: 'qa-d-analytics',    label: 'Analytics',     icon: 'bar_chart',            to: '/analytics'  },
 ];
 
 const ADMIN_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'qa-d-post-event',   label: 'Post Event',    icon: 'campaign',             to: '/events/new' },
+  { id: 'qa-d-post-event',   label: 'Post Event',    icon: 'campaign',             to: '/events/paste' },
   { id: 'qa-d-verify-queue', label: 'Verify Queue',  icon: 'verified_user',        to: '/verify'     },
   { id: 'qa-d-analytics',    label: 'Analytics',     icon: 'bar_chart',            to: '/analytics'  },
   { id: 'qa-d-admin',        label: 'Admin Panel',   icon: 'admin_panel_settings', to: '/admin'      },

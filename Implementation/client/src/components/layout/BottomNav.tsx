@@ -19,14 +19,14 @@ interface QuickAction {
 }
 
 const FACULTY_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'qa-post-event',   label: 'Post Event',    icon: 'campaign',             to: '/events/new', color: 'bg-primary',              textColor: 'text-on-primary' },
+  { id: 'qa-post-event',   label: 'Post Event',    icon: 'campaign',             to: '/events/paste', color: 'bg-primary',              textColor: 'text-on-primary' },
   { id: 'qa-my-events',    label: 'My Events',     icon: 'event_note',           to: '/events/my',  color: 'bg-primary-fixed',        textColor: 'text-on-primary-fixed-variant' },
   { id: 'qa-verify-queue', label: 'Verify Queue',  icon: 'verified_user',        to: '/verify',     color: 'bg-secondary',            textColor: 'text-on-secondary' },
   { id: 'qa-analytics',    label: 'Analytics',     icon: 'bar_chart',            to: '/analytics',  color: 'bg-tertiary',             textColor: 'text-on-tertiary' },
 ];
 
 const ADMIN_QUICK_ACTIONS: QuickAction[] = [
-  { id: 'qa-post-event',   label: 'Post Event',    icon: 'campaign',             to: '/events/new', color: 'bg-primary',              textColor: 'text-on-primary' },
+  { id: 'qa-post-event',   label: 'Post Event',    icon: 'campaign',             to: '/events/paste', color: 'bg-primary',              textColor: 'text-on-primary' },
   { id: 'qa-verify-queue', label: 'Verify Queue',  icon: 'verified_user',        to: '/verify',     color: 'bg-secondary',            textColor: 'text-on-secondary' },
   { id: 'qa-analytics',    label: 'Analytics',     icon: 'bar_chart',            to: '/analytics',  color: 'bg-tertiary',             textColor: 'text-on-tertiary' },
   { id: 'qa-admin',        label: 'Admin Panel',   icon: 'admin_panel_settings', to: '/admin',      color: 'bg-error',                textColor: 'text-on-error' },

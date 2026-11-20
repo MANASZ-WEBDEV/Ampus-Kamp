@@ -268,6 +268,7 @@ Respected Faculty & Students, IIT Kharagpur is organizing TechNova 2026 Hackatho
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button type="button"
+                      onClick={() => navigate('/events/paste')}
                       className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-[11px] flex items-center gap-1 transition-colors">
                       <span className="material-symbols-outlined text-[13px]">refresh</span>Re-paste Notice
                     </button>

@@ -269,12 +269,12 @@ export default function HomePage() {
             <div className="flex flex-wrap items-center gap-2 shrink-0">
               {isFaculty ? (
                 <>
-                  <button id="home-post-event-btn" onClick={() => navigate('/events/new')}
+                  <button id="home-post-event-btn" onClick={() => navigate('/events/paste')}
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl
                                bg-primary text-on-primary font-label-lg text-label-lg
                                shadow-sm hover:opacity-90 active:scale-[0.98] transition-all">
-                    <span className="material-symbols-outlined text-[18px]">add_box</span>
-                    Post New Event
+                    <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                    Post Event (AI Paste)
                   </button>
                   <button id="home-my-events-btn" onClick={() => navigate('/events/my')}
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl
