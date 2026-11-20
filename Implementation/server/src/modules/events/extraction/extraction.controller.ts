@@ -103,17 +103,40 @@ export const extractEvent = asyncHandler(async (req: AuthRequest, res: Response)
   }
 
   // 5. Coordinator fallback:
-  // If no coordinator was extracted from the text, default to the posting faculty themselves
-  if (!finalResult.extracted.coordinators || finalResult.extracted.coordinators.length === 0) {
-    const userDoc = await User.findById(actor.id).select('name phone email').lean();
+  // If AI detects no coordinator in the text, default to the posting faculty themselves
+  const userDoc = await User.findById(actor.id).select('name phone email').lean();
+  const facultyPhone = userDoc?.phone || '';
+  const facultyName = userDoc?.name || actor.name;
+  const facultyEmail = userDoc?.email;
+
+  const validCoordinators = (finalResult.extracted.coordinators ?? []).filter(
+    (c) => c && typeof c.name === 'string' && c.name.trim().length > 0,
+  );
+
+  if (validCoordinators.length === 0) {
+    // No coordinator detected in announcement -> set to logged-in faculty member's name and phone
     finalResult.extracted.coordinators = [
       {
-        name: userDoc?.name ?? actor.name,
-        phone: userDoc?.phone ?? '',
-        email: userDoc?.email ?? undefined,
+        name: facultyName,
+        phone: facultyPhone,
+        email: facultyEmail,
       },
     ];
-    finalResult.uncertainFields = finalResult.uncertainFields.filter(f => f !== 'coordinators');
+    // Remove coordinators from uncertainFields since we populated it with the faculty's details
+    finalResult.uncertainFields = finalResult.uncertainFields.filter((f) => f !== 'coordinators');
+  } else {
+    // Coordinator was detected -> normalize whitespace and if it's the faculty themselves with missing phone, fill in phone
+    finalResult.extracted.coordinators = validCoordinators.map((c) => {
+      const isSelf =
+        c.name.toLowerCase().includes(facultyName.toLowerCase()) ||
+        facultyName.toLowerCase().includes(c.name.toLowerCase());
+
+      return {
+        name: c.name.trim(),
+        phone: c.phone?.trim() || (isSelf && facultyPhone ? facultyPhone : undefined),
+        email: c.email?.trim() || (isSelf && facultyEmail ? facultyEmail : undefined),
+      };
+    });
   }
 
   // rawMessage is intentionally NOT returned to client

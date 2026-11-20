@@ -593,3 +593,51 @@ describe('closeExpiredEvents (cron logic)', () => {
     expect(draft?.status).toBe('draft'); // untouched
   });
 });
+
+// ── POST /events/extract ──────────────────────────────────────────────────────
+
+describe('POST /api/v1/events/extract', () => {
+  it('returns 403 when student tries to extract', async () => {
+    const res = await request(app)
+      .post('/api/v1/events/extract')
+      .set('Authorization', `Bearer ${studentToken}`)
+      .send({ rawMessage: 'Hackathon Announcement: 15th December 2026' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('falls back to faculty member details when no coordinator is mentioned', async () => {
+    const res = await request(app)
+      .post('/api/v1/events/extract')
+      .set('Authorization', `Bearer ${facultyToken}`)
+      .send({
+        rawMessage:
+          'TechFest 2026 Hackathon is organized by Dept of CSE. Date: 2026-12-15. Open to CSE students. Teams of 2 to 4. Apply online. Fee is Free.',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.extracted).toBeDefined();
+    // Coordinators should fallback to logged-in faculty
+    expect(res.body.data.extracted.coordinators).toBeDefined();
+    expect(res.body.data.extracted.coordinators).toHaveLength(1);
+    expect(res.body.data.extracted.coordinators[0].name).toBe('Test Faculty');
+    expect(res.body.data.uncertainFields).not.toContain('coordinators');
+  });
+
+  it('extracts coordinator and requiresFemale when explicitly mentioned', async () => {
+    const res = await request(app)
+      .post('/api/v1/events/extract')
+      .set('Authorization', `Bearer ${facultyToken}`)
+      .send({
+        rawMessage:
+          'Smart India Hackathon 2026. Teams of 6. At least 1 female member is mandatory. For queries: Dr. Ananya Sharma, 9876543210. Deadline: 2026-11-30.',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.extracted).toBeDefined();
+    expect(res.body.data.extracted.requiresFemale).toBe(true);
+    expect(res.body.data.extracted.coordinators).toBeDefined();
+    expect(res.body.data.extracted.coordinators[0].name).toBe('Dr. Ananya Sharma');
+    expect(res.body.data.extracted.coordinators[0].phone).toBe('9876543210');
+  });
+});

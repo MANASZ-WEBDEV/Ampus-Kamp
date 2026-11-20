@@ -128,14 +128,17 @@ async function callGeminiWithRetry(prompt: string): Promise<string> {
   const model = ai.getGenerativeModel({ model: env.LLM_MODEL });
 
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('LLM call timeout after 10s')), TIMEOUT_MS);
+    });
 
     try {
-      const result = await model.generateContent({
+      const generatePromise = model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
       });
-      clearTimeout(timeoutId);
+      const result = await Promise.race([generatePromise, timeoutPromise]);
+      if (timeoutId) clearTimeout(timeoutId);
 
       const text = result.response.text();
       if (!text || text.trim() === '') {
@@ -143,7 +146,7 @@ async function callGeminiWithRetry(prompt: string): Promise<string> {
       }
       return text;
     } catch (err) {
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
 
       const isLastAttempt = attempt === RETRY_DELAYS_MS.length;
       if (isLastAttempt) throw err;
