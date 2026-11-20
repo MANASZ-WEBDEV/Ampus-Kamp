@@ -46,6 +46,8 @@ export interface EventCard {
   fee?: string;
   link?: string;
   summary?: string;
+  coordinators?: IEvent['coordinators'];
+  requiresFemale?: boolean;
   registrationMode: IEvent['registrationMode'];
   registrationDeadline?: Date;
   counters: IEvent['counters'];
@@ -107,6 +109,8 @@ function toEventCard(
     fee: doc.fee,
     link: doc.link,
     summary: doc.summary,
+    coordinators: doc.coordinators,
+    requiresFemale: doc.requiresFemale ?? false,
     registrationMode: doc.registrationMode,
     registrationDeadline: doc.registrationDeadline,
     counters: doc.counters,
@@ -392,6 +396,8 @@ export async function createEvent(actor: AuthUser, body: CreateEventBody): Promi
     fee: body.fee,
     link,
     summary: body.summary,
+    coordinators: body.coordinators,
+    requiresFemale: body.requiresFemale ?? false,
     registrationMode: body.registrationMode ?? 'external',
     registrationDeadline,
     postedBy: actor.id,
@@ -452,6 +458,8 @@ export async function updateEvent(
     ...(body.fee !== undefined && { fee: body.fee }),
     ...(link !== undefined && { link }),
     ...(body.summary !== undefined && { summary: body.summary }),
+    ...(body.coordinators !== undefined && { coordinators: body.coordinators }),
+    ...(body.requiresFemale !== undefined && { requiresFemale: body.requiresFemale }),
     ...(body.registrationMode !== undefined && { registrationMode: body.registrationMode }),
     ...(body.registrationDeadline !== undefined && { registrationDeadline: body.registrationDeadline }),
   };

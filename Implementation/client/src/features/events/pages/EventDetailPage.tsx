@@ -209,6 +209,8 @@ export default function EventDetailPage() {
       value: event.teamSize.min === event.teamSize.max
         ? `${event.teamSize.max} members`
         : `${event.teamSize.min}–${event.teamSize.max} members`,
+      sub: event.requiresFemale ? '1 female member mandatory' : undefined,
+      subCls: event.requiresFemale ? 'text-secondary font-semibold' : undefined,
     }] : []),
     {
       label: 'Entry Fee',

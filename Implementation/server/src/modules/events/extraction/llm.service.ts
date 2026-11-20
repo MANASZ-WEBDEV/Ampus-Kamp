@@ -20,7 +20,7 @@ import type { ExtractedEventFields, ExtractionResult } from './extraction.schema
 // Increment PROMPT_VERSION whenever the prompt template changes so that
 // stored events carry an accurate record of which prompt produced them.
 
-export const PROMPT_VERSION = 'v2';
+export const PROMPT_VERSION = 'v3';
 
 // ── Retry / timeout constants ─────────────────────────────────────────────────
 
@@ -63,7 +63,9 @@ Required JSON shape:
   "teamSize_max":          number | null,    // maximum team members (integer ≥ 1)
   "fee":                   string | null,    // e.g. "₹200", "Free", "Rs. 500"
   "link":                  string | null,    // full registration/info URL starting with https://
-  "summary":               string | null     // ≤ 100 words: what the event is, who should apply, key highlights
+  "summary":               string | null,    // ≤ 100 words: what the event is, who should apply, key highlights
+  "coordinators":          [{"name": string, "phone": string | null, "email": string | null}] | null, // contact coordinators/faculty/student leads mentioned
+  "requiresFemale":        boolean | null    // true if announcement explicitly mandates at least 1 female team member (e.g. Smart India Hackathon rule)
 }
 
 Rules:
@@ -73,6 +75,8 @@ Rules:
 - For eligibility_branches: use standard codes — CSE, IT, ECE, ME, CE, EE, CSIT. Return null (not []) if open to all.
 - For eligibility_years: return [1], [2,3], etc. Return null (not []) if open to all years.
 - For teamSize: if solo event, return min:1 max:1. If "up to 5", return min:1 max:5.
+- For coordinators: extract names, phone numbers, or email addresses of event coordinators or contact persons. Return null if none mentioned.
+- For requiresFemale: return true if the text requires at least one girl/female member in the squad/team; otherwise return false or null.
 - The summary should help a student quickly decide if this event is relevant to them.
 
 Announcement text (read fully before responding):
@@ -218,6 +222,22 @@ function mapLLMToResult(llm: ReturnType<typeof llmResponseSchema['parse']>): {
     uncertainFields.push('teamSize');
   } else {
     uncertainFields.push('teamSize');
+  }
+
+  // Coordinators
+  if (llm.coordinators && llm.coordinators.length > 0) {
+    extracted.coordinators = llm.coordinators.map(c => ({
+      name: c.name,
+      phone: c.phone ?? undefined,
+      email: c.email ?? undefined,
+    }));
+  } else {
+    uncertainFields.push('coordinators');
+  }
+
+  // Female requirement
+  if (typeof llm.requiresFemale === 'boolean') {
+    extracted.requiresFemale = llm.requiresFemale;
   }
 
   return { extracted, uncertainFields };

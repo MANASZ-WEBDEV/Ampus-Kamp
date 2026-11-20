@@ -69,6 +69,19 @@ export const llmResponseSchema = z.object({
     .catch(null),
 
   summary: z.string().max(500).nullable().catch(null),
+
+  coordinators: z
+    .array(
+      z.object({
+        name: z.string().trim().max(100),
+        phone: z.string().trim().max(30).nullable().catch(null),
+        email: z.string().trim().max(100).nullable().catch(null),
+      }),
+    )
+    .nullable()
+    .catch(null),
+
+  requiresFemale: z.boolean().nullable().catch(null),
 });
 
 export type LLMResponse = z.infer<typeof llmResponseSchema>;
@@ -93,6 +106,12 @@ export interface ExtractedEventFields {
   fee?: string;
   link?: string;
   summary?: string;
+  coordinators?: Array<{
+    name: string;
+    phone?: string;
+    email?: string;
+  }>;
+  requiresFemale?: boolean;
 }
 
 // ── ExtractionResult — returned to client ─────────────────────────────────────
@@ -118,4 +137,6 @@ export const ALL_EXTRACTABLE_FIELDS: (keyof ExtractedEventFields | string)[] = [
   'fee',
   'link',
   'summary',
+  'coordinators',
+  'requiresFemale',
 ];

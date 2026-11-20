@@ -15,6 +15,7 @@ import { asyncHandler } from '@/shared/utils/asyncHandler';
 import { RateLimitError } from '@/shared/errors';
 import type { AuthRequest } from '@/shared/types';
 import { AuditLog } from '@/models/auditLog.model';
+import { User } from '@/models/user.model';
 import { getSetting } from '@/models/setting.model';
 import { llmExtract } from './llm.service';
 import { regexExtract } from './regex.service';
@@ -99,6 +100,20 @@ export const extractEvent = asyncHandler(async (req: AuthRequest, res: Response)
       usedFallback: true,
       regexExtracted: regexResult,
     };
+  }
+
+  // 5. Coordinator fallback:
+  // If no coordinator was extracted from the text, default to the posting faculty themselves
+  if (!finalResult.extracted.coordinators || finalResult.extracted.coordinators.length === 0) {
+    const userDoc = await User.findById(actor.id).select('name phone email').lean();
+    finalResult.extracted.coordinators = [
+      {
+        name: userDoc?.name ?? actor.name,
+        phone: userDoc?.phone ?? '',
+        email: userDoc?.email ?? undefined,
+      },
+    ];
+    finalResult.uncertainFields = finalResult.uncertainFields.filter(f => f !== 'coordinators');
   }
 
   // rawMessage is intentionally NOT returned to client

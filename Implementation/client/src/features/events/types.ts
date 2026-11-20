@@ -18,8 +18,9 @@ export type RegistrationMode = 'in_app' | 'external';
  * student / faculty point-of-contact for registrations & queries.
  */
 export interface Coordinator {
-  name:  string;   // full name
-  phone: string;   // E.164 or local — validated client-side
+  name:   string;   // full name
+  phone?: string;   // E.164 or local — validated client-side
+  email?: string;
 }
 
 export interface EventPoster {
@@ -64,6 +65,8 @@ export interface EventCard {
   postedBy: EventPoster;
   /** Point-of-contact coordinators shown on event cards and detail pages */
   coordinators?: Coordinator[];
+  /** Whether at least 1 female team member is required */
+  requiresFemale?: boolean;
   /** CDN URL of the manually uploaded banner (takes precedence over AI gradient) */
   bannerImageUrl?: string;
   isBookmarked: boolean;
@@ -101,6 +104,8 @@ export interface CreateEventInput {
    * manually-entered rows before sending.
    */
   coordinators?: Coordinator[];
+  /** Whether at least 1 female team member is required */
+  requiresFemale?: boolean;
 
   // ── F-3: Paste-to-Post metadata (only set when created via extraction) ──────
   /** Original pasted announcement text — stored server-side, never shown to students */
@@ -153,6 +158,8 @@ export interface ExtractedFields {
   fee?: string | null;
   link?: string | null;
   summary?: string | null;
+  coordinators?: Coordinator[] | null;
+  requiresFemale?: boolean | null;
 }
 
 /** Result returned by POST /api/v1/events/extract */

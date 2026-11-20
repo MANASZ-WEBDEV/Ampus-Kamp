@@ -12,7 +12,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreateEvent } from '../hooks/useCreateEvent';
 import { UncertainBadge } from './UncertainBadge';
-import type { ExtractionResult, ExtractedFields, EventType } from '../types';
+import type { ExtractionResult, ExtractedFields, EventType, Coordinator } from '../types';
 import type { CreateEventInput } from '../types';
 
 // ── Constants (mirrors FacultyPostEventPage) ──────────────────────────────────
@@ -84,6 +84,8 @@ function extractionToForm(extracted: ExtractedFields): CreateEventInput {
     fee:              extracted.fee     ?? '',
     link:             extracted.link    ?? '',
     summary:          extracted.summary ?? '',
+    requiresFemale:   extracted.requiresFemale ?? false,
+    coordinators:     extracted.coordinators ?? [],
     registrationMode: 'in_app',
   };
 }
@@ -105,6 +107,11 @@ export function ExtractionConfirmForm({ rawMessage, result, onBack }: Extraction
   const [form, setForm] = useState<CreateEventInput>(() =>
     extractionToForm(result.extracted),
   );
+  const [coordinators, setCoordinators] = useState<Coordinator[]>(() =>
+    result.extracted.coordinators && result.extracted.coordinators.length > 0
+      ? result.extracted.coordinators
+      : [{ name: '', phone: '' }],
+  );
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
   const [rawOpen, setRawOpen] = useState(false);
@@ -116,6 +123,27 @@ export function ExtractionConfirmForm({ rawMessage, result, onBack }: Extraction
   function set<K extends keyof CreateEventInput>(key: K, value: CreateEventInput[K]) {
     setForm(f => ({ ...f, [key]: value }));
     setEditedFields(prev => new Set(prev).add(key));
+  }
+
+  function updateCoordinator(index: number, field: keyof Coordinator, value: string) {
+    setCoordinators(prev => {
+      const current = prev[index] ?? { name: '', phone: '' };
+      const updated: Coordinator = { ...current, [field]: value };
+      const next = [...prev];
+      next[index] = updated;
+      return next;
+    });
+    setEditedFields(prev => new Set(prev).add('coordinators'));
+  }
+
+  function addCoordinator() {
+    setCoordinators(prev => [...prev, { name: '', phone: '' }]);
+    setEditedFields(prev => new Set(prev).add('coordinators'));
+  }
+
+  function removeCoordinator(index: number) {
+    setCoordinators(prev => prev.filter((_, i) => i !== index));
+    setEditedFields(prev => new Set(prev).add('coordinators'));
   }
 
   function toggleBranch(branch: string) {
@@ -169,8 +197,14 @@ export function ExtractionConfirmForm({ rawMessage, result, onBack }: Extraction
         ? []
         : currentYears;
 
+      const validCoordinators = coordinators
+        .filter(c => c.name.trim().length > 0)
+        .map(c => ({ name: c.name.trim(), phone: c.phone?.trim() || undefined }));
+
       const payload: CreateEventInput = {
         ...form,
+        coordinators: validCoordinators.length > 0 ? validCoordinators : undefined,
+        requiresFemale: form.requiresFemale ?? false,
         deadline:             dateInputToIso(form.deadline ?? ''),
         eventDate:            dateInputToIso(form.eventDate ?? ''),
         registrationDeadline: dateInputToIso(form.registrationDeadline ?? ''),
@@ -183,7 +217,7 @@ export function ExtractionConfirmForm({ rawMessage, result, onBack }: Extraction
         // ── F-3: Paste-to-Post audit metadata ──────────────────────────────
         rawMessage,
         extraction: {
-          promptVersion: result.usedFallback ? undefined : 'v2',
+          promptVersion: result.usedFallback ? undefined : 'v3',
           editedFields:  Array.from(editedFields),
           usedFallback:  result.usedFallback,
         },
@@ -462,6 +496,31 @@ export function ExtractionConfirmForm({ rawMessage, result, onBack }: Extraction
         </div>
       </div>
 
+      {/* ── Gender Criteria (1 Female Mandatory) ─────────────────────────── */}
+      <div className="flex items-center justify-between p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/20 shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-secondary/15 text-secondary flex items-center justify-center">
+            <span className="material-symbols-outlined text-[18px]">female</span>
+          </div>
+          <div>
+            <div className="font-label-md text-xs font-bold text-on-surface flex items-center gap-1.5">
+              At least 1 Female Member Mandatory
+              {uncertain.has('requiresFemale') && <UncertainBadge />}
+            </div>
+            <div className="font-body-sm text-[11px] text-on-surface-variant">
+              Enforce gender diversity in registered teams (e.g. SIH hackathon criterion)
+            </div>
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          id="ec-requiresFemale"
+          checked={form.requiresFemale ?? false}
+          onChange={e => set('requiresFemale', e.target.checked)}
+          className="w-5 h-5 accent-primary rounded cursor-pointer"
+        />
+      </div>
+
       {/* ── Fee ──────────────────────────────────────────────────────────── */}
       <div>
         <FieldLabel htmlFor="ec-fee" label="Entry Fee" field="fee" />
@@ -508,6 +567,52 @@ export function ExtractionConfirmForm({ rawMessage, result, onBack }: Extraction
         <span className="font-label-sm text-xs text-on-surface-variant mt-1 block text-right">
           {(form.summary ?? '').length}/200
         </span>
+      </div>
+
+      {/* ── Coordinators / Points of Contact ────────────────────────────── */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <FieldLabel label="Coordinators / Points of Contact" field="coordinators" />
+          <button
+            type="button"
+            onClick={addCoordinator}
+            className="text-xs font-label-md text-primary hover:underline flex items-center gap-1 font-semibold"
+          >
+            <span className="material-symbols-outlined text-[16px]">add_circle</span>
+            Add Coordinator
+          </button>
+        </div>
+        <div className="flex flex-col gap-2.5">
+          {coordinators.map((c, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Coordinator Name"
+                value={c.name}
+                onChange={e => updateCoordinator(i, 'name', e.target.value)}
+                className={`flex-1 px-4 py-2.5 bg-surface-container-low text-on-surface font-body-md text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm ${
+                  uncertain.has('coordinators') ? 'ring-1 ring-yellow-400/50' : ''
+                }`}
+              />
+              <input
+                type="text"
+                placeholder="Phone / WhatsApp"
+                value={c.phone ?? ''}
+                onChange={e => updateCoordinator(i, 'phone', e.target.value)}
+                className="w-40 px-4 py-2.5 bg-surface-container-low text-on-surface font-body-md text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm"
+              />
+              {coordinators.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeCoordinator(i)}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-outline hover:text-error hover:bg-error-container/20 transition-all shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ── Action buttons ────────────────────────────────────────────────── */}

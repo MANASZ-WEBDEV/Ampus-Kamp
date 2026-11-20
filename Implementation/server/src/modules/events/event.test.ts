@@ -319,6 +319,25 @@ describe('POST /api/v1/events', () => {
     // registrationDeadline should be set (defaults to deadline in service)
     expect(res.body.data.registrationDeadline).toBeTruthy();
   });
+
+  it('creates event with coordinators and requiresFemale flag', async () => {
+    const deadline = daysFromNow(10).toISOString();
+    const res = await request(app)
+      .post('/api/v1/events')
+      .set('Authorization', `Bearer ${facultyToken}`)
+      .send({
+        title: 'Smart India Hackathon 2026',
+        type: 'hackathon',
+        deadline,
+        coordinators: [{ name: 'Dr. Ramesh Kumar', phone: '9876543210' }],
+        requiresFemale: true,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.requiresFemale).toBe(true);
+    expect(res.body.data.coordinators).toHaveLength(1);
+    expect(res.body.data.coordinators[0].name).toBe('Dr. Ramesh Kumar');
+  });
 });
 
 // ── PUT /events/:id ───────────────────────────────────────────────────────────

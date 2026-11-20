@@ -33,6 +33,12 @@ export interface IEvent {
   fee?: string;
   link?: string;
   summary?: string;
+  coordinators?: Array<{
+    name: string;
+    phone?: string;
+    email?: string;
+  }>;
+  requiresFemale?: boolean;
   registrationMode: 'in_app' | 'external';
   registrationDeadline?: Date;  // defaults to deadline on create
   counters: {
@@ -85,6 +91,23 @@ const eventSchema = new Schema<IEvent>(
     fee: { type: String, trim: true, default: undefined },
     link: { type: String, trim: true, default: undefined },
     summary: { type: String, trim: true, maxlength: 200, default: undefined },
+
+    coordinators: {
+      type: [
+        {
+          name: { type: String, trim: true, required: true },
+          phone: { type: String, trim: true },
+          email: { type: String, trim: true },
+          _id: false,
+        },
+      ],
+      default: undefined,
+    },
+
+    requiresFemale: {
+      type: Boolean,
+      default: false,
+    },
 
     registrationMode: {
       type: String,

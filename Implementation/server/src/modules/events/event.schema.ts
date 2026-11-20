@@ -58,6 +58,17 @@ export const createEventSchema = z
     link: httpUrl,
     summary: z.string().max(200).trim().optional(),
 
+    coordinators: z
+      .array(
+        z.object({
+          name: z.string().min(1, 'Coordinator name is required').max(100).trim(),
+          phone: z.string().max(30).trim().optional().or(z.literal('')),
+          email: z.string().email().optional().or(z.literal('')),
+        }),
+      )
+      .optional(),
+    requiresFemale: z.boolean().optional().default(false),
+
     registrationMode: z.enum(['in_app', 'external']).default('external'),
     registrationDeadline: isoDate,
 
@@ -126,6 +137,16 @@ const updateEventObject = z.object({
   fee: z.string().max(100).trim().optional(),
   link: httpUrl,
   summary: z.string().max(200).trim().optional(),
+  coordinators: z
+    .array(
+      z.object({
+        name: z.string().min(1, 'Coordinator name is required').max(100).trim(),
+        phone: z.string().max(30).trim().optional().or(z.literal('')),
+        email: z.string().email().optional().or(z.literal('')),
+      }),
+    )
+    .optional(),
+  requiresFemale: z.boolean().optional(),
   registrationMode: z.enum(['in_app', 'external']).optional(),
   registrationDeadline: isoDate,
 });

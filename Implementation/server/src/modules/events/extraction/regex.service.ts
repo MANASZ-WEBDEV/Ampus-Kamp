@@ -243,6 +243,34 @@ function extractSummary(text: string): string | undefined {
   return undefined;
 }
 
+function extractRequiresFemale(raw: string): boolean | undefined {
+  if (
+    /\b(at least|min|minimum)\s+(1|one)\s+(female|girl|woman)\b/i.test(raw) ||
+    /\b1\s+(female|girl)\s+(member\s+)?(is\s+)?(mandatory|compulsory|required|necessary)\b/i.test(raw) ||
+    /\bfemale\s+(member\s+)?(is\s+)?(mandatory|compulsory|required)\b/i.test(raw) ||
+    /\b(mandatory|must have)\s+at least\s+one\s+female\b/i.test(raw)
+  ) {
+    return true;
+  }
+  return undefined;
+}
+
+function extractCoordinators(raw: string): Array<{ name: string; phone?: string; email?: string }> | undefined {
+  const coordMatch = raw.match(
+    /(?:coordinator|contact(?:\s+person)?|convenor|for\s+queries)\s*[:\-]?\s*(?:(?:Dr\.|Prof\.|Mr\.|Ms\.|Mrs\.)\s*)?([A-Za-z][A-Za-z.\s]{2,30})(?:[,\s]+(\+?\d[\d\s\-]{8,15}))?/i,
+  );
+  if (coordMatch && coordMatch[1]) {
+    const fullMatchStr = coordMatch[0];
+    const prefixMatch = fullMatchStr.match(/(?:Dr\.|Prof\.|Mr\.|Ms\.|Mrs\.)\s*[A-Za-z][A-Za-z.\s]{2,30}/i);
+    const name = (prefixMatch ? prefixMatch[0] : coordMatch[1]).trim();
+    const phone = coordMatch[2] ? coordMatch[2].replace(/\s+/g, '').trim() : undefined;
+    if (name.length >= 3 && !/registration|deadline|hackathon|details|apply|eligible/i.test(name)) {
+      return [{ name, phone }];
+    }
+  }
+  return undefined;
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
@@ -286,6 +314,12 @@ export function regexExtract(rawMessage: string): ExtractedEventFields {
 
     const summary = extractSummary(rawMessage);
     if (summary) result.summary = summary;
+
+    const requiresFemale = extractRequiresFemale(rawMessage);
+    if (typeof requiresFemale === 'boolean') result.requiresFemale = requiresFemale;
+
+    const coordinators = extractCoordinators(rawMessage);
+    if (coordinators && coordinators.length > 0) result.coordinators = coordinators;
 
     return result;
   } catch {
