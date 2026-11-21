@@ -20,6 +20,13 @@ type CategoryKey = typeof CATEGORY_PILLS[number]['key'];
 
 
 
+// ── Date formatting helper for relative dates ─────────────────────────────────
+function formatDaysFromNow(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
 // ── Dummy event articles (reference-style rich cards) ─────────────────────────
 const DUMMY_ARTICLES = [
   {
@@ -29,7 +36,7 @@ const DUMMY_ARTICLES = [
       { label: 'Hackathon • SIH-26 Prelims', icon: 'flag', cls: 'bg-tertiary-fixed text-on-tertiary-fixed' },
       { label: 'Faculty Sponsored',           icon: 'verified', cls: 'bg-primary-fixed text-on-primary-fixed' },
     ],
-    urgency: { label: '2 days left (Closes Fri 11:59 PM)', icon: 'timer', cls: 'bg-secondary-fixed text-on-secondary-fixed animate-pulse' },
+    urgency: { label: `2 days left (Closes ${formatDaysFromNow(2)}, 11:59 PM)`, icon: 'timer', cls: 'bg-secondary-fixed text-on-secondary-fixed animate-pulse' },
     title: 'Smart India Hackathon 2026 – Campus Prelims',
     org: 'Dept. of Computer Science & Innovation Council',
     mentor: 'Lead Mentor: Dr. V. Ramanathan',
@@ -50,7 +57,7 @@ const DUMMY_ARTICLES = [
     id: 'art2',
     type: 'workshop',
     tags: [
-      { label: 'Hands-on Workshop • Oct 28', icon: 'psychology', cls: 'bg-primary-fixed-dim/40 text-primary' },
+      { label: `Hands-on Workshop • ${formatDaysFromNow(4)}`, icon: 'psychology', cls: 'bg-primary-fixed-dim/40 text-primary' },
       { label: 'Mechatronics Lab B-204', icon: null, cls: 'bg-surface-container text-on-surface-variant' },
     ],
     urgency: { label: '4 spots remaining', icon: 'circle', cls: 'bg-error-container text-on-error-container font-semibold', ping: true },
@@ -76,7 +83,7 @@ const DUMMY_ARTICLES = [
       { label: 'Sports & Athletics • League', icon: 'sports_soccer', cls: 'bg-secondary-fixed text-on-secondary-fixed' },
       { label: 'South Sports Arena (Floodlights)', icon: null, cls: 'bg-surface-container text-on-surface-variant' },
     ],
-    urgency: { label: '5 days left to register', icon: 'schedule', cls: 'bg-surface-container-high text-on-surface', ping: false },
+    urgency: { label: `5 days left (Closes ${formatDaysFromNow(5)})`, icon: 'schedule', cls: 'bg-surface-container-high text-on-surface', ping: false },
     title: 'Inter-Department 7-a-Side Football Tournament',
     org: 'Campus Sports Council & Division of Physical Education',
     mentor: null,
@@ -84,7 +91,7 @@ const DUMMY_ARTICLES = [
     specs: [
       { label: 'Squad Roster', value: '7–10 Players', valueClass: 'text-on-surface' },
       { label: 'Prize', value: 'Rolling Trophy + Medals', valueClass: 'text-secondary' },
-      { label: 'Fixtures', value: 'Nov 2–4', valueClass: 'text-on-surface' },
+      { label: 'Fixtures', value: `${formatDaysFromNow(7)}–${formatDaysFromNow(9)}`, valueClass: 'text-on-surface' },
       { label: 'Entry Cap', value: '16 Branches', valueClass: 'text-on-surface' },
     ],
     findLink: 'Find Players & Open Tryouts',
@@ -96,7 +103,7 @@ const DUMMY_ARTICLES = [
     id: 'art4',
     type: 'seminar',
     tags: [
-      { label: 'Seminar & Keynote • Tomorrow, 2:00 PM', icon: 'podium', cls: 'bg-tertiary-fixed text-on-tertiary-fixed' },
+      { label: `Seminar & Keynote • Tomorrow, 2:00 PM`, icon: 'podium', cls: 'bg-tertiary-fixed text-on-tertiary-fixed' },
       { label: 'Seminar Hall 1 • AC Block', icon: null, cls: 'bg-surface-container text-on-surface-variant' },
     ],
     urgency: { label: '142 students registered', icon: 'group', cls: 'text-on-surface-variant', plain: true },
@@ -116,7 +123,7 @@ const DUMMY_ARTICLES = [
 ];
 
 const DUMMY_ARCHIVED = {
-  tag: 'Registration Concluded • Oct 12',
+  tag: `Registration Concluded • ${formatDaysFromNow(-12)}`,
   type: 'Competitive Coding',
   title: 'ACM-ICPC Regional Warm-up Contest',
   meta: 'Dept of CSE & Algorithmic Society • 64 Teams competed • Final ranklist verified',
@@ -149,6 +156,10 @@ export default function EventFeedPage() {
   const apiType = activeCategory === 'all' ? undefined : [activeCategory as EventType];
   const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useEvents({ type: apiType });
   const allEvents = data?.pages.flatMap(p => p.items) ?? [];
+
+  // Archived events
+  const { data: archivedData } = useEvents({ status: ['archived'] });
+  const archivedEvents = archivedData?.pages.flatMap(p => p.items) ?? [];
   const filteredEvents = useMemo(() => {
     if (!searchQuery.trim()) return allEvents;
     const q = searchQuery.toLowerCase();
@@ -175,7 +186,7 @@ export default function EventFeedPage() {
     return allEvents.filter(evt => {
       if (!evt.deadline) return false;
       const d = Math.ceil((new Date(evt.deadline).getTime() - now) / 86400000);
-      return d <= 1; // includes "Closing today" (d <= 0) and "1d left"
+      return d >= 0 && d <= 2; // includes "Closing today" (d === 0) and upcoming ≤ 2 days
     }).length;
   }, [showDummy, allEvents]);
 
@@ -394,10 +405,18 @@ export default function EventFeedPage() {
                           <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm uppercase">{event.type}</span>
                           {event.deadline && (() => {
                             const d = Math.ceil((new Date(event.deadline).getTime() - Date.now()) / 86400000);
+                            if (d < 0) {
+                              return (
+                                <span className="font-code-sm text-code-sm text-outline bg-surface-container-high px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[14px]">event_busy</span>
+                                  Past Deadline
+                                </span>
+                              );
+                            }
                             return (
                               <span className="font-code-sm text-code-sm text-secondary bg-secondary-fixed/50 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[14px]">schedule</span>
-                                {d <= 0 ? 'Closing today' : `${d}d left`}
+                                {d === 0 ? 'Closing today' : `${d}d left`}
                               </span>
                             );
                           })()}
@@ -422,6 +441,51 @@ export default function EventFeedPage() {
                       : <><span className="material-symbols-outlined text-[18px]">expand_more</span>Load more events</>
                     }
                   </button>
+                )}
+
+                {/* ── Archived & Concluded Events ─────────────────────────── */}
+                {archivedEvents.length > 0 && (
+                  <div className="mt-8 pt-6 border-t border-surface-container-high space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary text-[20px]">archive</span>
+                        <h3 className="font-headline-sm text-headline-sm text-on-surface">Archived &amp; Concluded Events</h3>
+                      </div>
+                      <span className="font-label-sm text-label-sm text-on-surface-variant">{archivedEvents.length} archived record(s)</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {archivedEvents.map(evt => (
+                        <article
+                          key={evt.id}
+                          onClick={() => navigate(`/events/${evt.id}`)}
+                          className="flex flex-col justify-between bg-surface-container-low/70 rounded-xl p-4 opacity-90 hover:opacity-100 hover:bg-surface-container-low transition-all cursor-pointer border border-outline-variant/20 shadow-sm"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="px-2.5 py-0.5 rounded-full bg-surface-dim text-on-surface-variant font-label-sm text-label-sm uppercase font-semibold">
+                                Concluded • {evt.deadline ? new Date(evt.deadline).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Archive'}
+                              </span>
+                              <span className="font-code-sm text-code-sm text-outline flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px]">verified</span> Verified Archive
+                              </span>
+                            </div>
+                            <h4 className="font-headline-sm text-headline-sm text-on-surface leading-snug">{evt.title}</h4>
+                            {evt.organizer && <p className="font-label-md text-label-md text-on-surface-variant mt-1">{evt.organizer}</p>}
+                          </div>
+                          <div className="flex items-center justify-between pt-3 mt-3 border-t border-surface-container-high/60">
+                            <span className="font-label-sm text-label-sm text-outline uppercase">{evt.type}</span>
+                            <button
+                              className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container-highest text-primary font-label-sm text-label-sm shadow-sm transition-colors flex items-center gap-1 shrink-0"
+                              onClick={e => { e.stopPropagation(); navigate(`/events/${evt.id}`); }}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">visibility</span>
+                              <span>View Details</span>
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </>
             )}

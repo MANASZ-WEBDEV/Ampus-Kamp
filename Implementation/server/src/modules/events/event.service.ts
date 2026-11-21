@@ -155,7 +155,13 @@ function buildFeedFilter(
 
   // Role-based status enforcement
   if (actor.role === 'student') {
-    filter['status'] = 'published';
+    if (query.status && query.status.length > 0) {
+      // Students can view published or archived events, but never draft or closed
+      const allowed = query.status.filter((s) => s === 'published' || s === 'archived');
+      filter['status'] = allowed.length > 0 ? { $in: allowed } : 'published';
+    } else {
+      filter['status'] = 'published';
+    }
   } else if (query.status && query.status.length > 0) {
     filter['status'] = { $in: query.status };
   }
@@ -308,7 +314,7 @@ export async function getEventById(actor: AuthUser, id: string): Promise<EventDe
   if (!doc) throw new NotFoundError('Event not found.');
 
   // Students cannot see draft events
-  if (actor.role === 'student' && doc.status !== 'published') {
+  if (actor.role === 'student' && doc.status === 'draft') {
     throw new NotFoundError('Event not found.');
   }
 
@@ -586,6 +592,45 @@ export async function closeEvent(actor: AuthUser, id: string): Promise<EventDeta
   const updated = await Event.findByIdAndUpdate(
     id,
     { $set: { status: 'closed' } },
+    { new: true },
+  )
+    .populate<{ postedBy: { _id: mongoose.Types.ObjectId; name: string } }>('postedBy', 'name')
+    .lean();
+
+  if (!updated) throw new NotFoundError('Event not found.');
+
+  invalidateFeedCache();
+
+  return {
+    ...toEventCard(
+      updated as unknown as IEvent & { postedBy: { _id: mongoose.Types.ObjectId; name: string } },
+      false,
+    ),
+    rawMessage: undefined,
+  };
+}
+
+// ── PATCH /api/v1/events/:id/archive ──────────────────────────────────────────
+
+export async function archiveEvent(actor: AuthUser, id: string): Promise<EventDetail> {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new NotFoundError('Event not found.');
+  }
+
+  const event = await Event.findOne({ _id: id, deletedAt: { $exists: false } });
+  if (!event) throw new NotFoundError('Event not found.');
+
+  assertOwnerOrAdmin(event, actor);
+
+  if (event.status !== 'closed' && event.status !== 'published') {
+    throw new ConflictError(
+      `Only published or closed events can be archived. Current status: '${event.status}'.`,
+    );
+  }
+
+  const updated = await Event.findByIdAndUpdate(
+    id,
+    { $set: { status: 'archived' } },
     { new: true },
   )
     .populate<{ postedBy: { _id: mongoose.Types.ObjectId; name: string } }>('postedBy', 'name')

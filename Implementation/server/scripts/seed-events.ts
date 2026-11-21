@@ -235,10 +235,11 @@ async function main() {
   let skipped = 0;
 
   for (const seed of seeds) {
-    const existing = await Event.findOne({ title: seed.title }).lean();
+    const existing = await Event.findOne({ title: seed.title });
     if (existing) {
-      console.log(`  ℹ️   Skipping (already exists): "${seed.title}"`);
-      skipped++;
+      await Event.updateOne({ _id: existing._id }, { $set: seed });
+      console.log(`  🔄  Updated deadlines/status for [${seed.status.padEnd(9)}] "${seed.title}"`);
+      created++;
       continue;
     }
 

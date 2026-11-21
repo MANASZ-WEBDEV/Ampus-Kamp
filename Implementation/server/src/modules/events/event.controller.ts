@@ -55,6 +55,13 @@ export const closeEvent = asyncHandler<AuthRequest>(async (req, res: Response) =
   res.status(200).json({ data: event });
 });
 
+// ── PATCH /api/v1/events/:id/archive ─────────────────────────────────────────
+
+export const archiveEvent = asyncHandler<AuthRequest>(async (req, res: Response) => {
+  const event = await eventService.archiveEvent(req.user, req.params['id']!);
+  res.status(200).json({ data: event });
+});
+
 // ── DELETE /api/v1/events/:id ─────────────────────────────────────────────────
 
 export const deleteEvent = asyncHandler<AuthRequest>(async (req, res: Response) => {

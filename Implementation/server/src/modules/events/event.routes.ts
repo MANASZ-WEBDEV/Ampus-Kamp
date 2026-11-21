@@ -70,6 +70,14 @@ eventsRouter.patch(
   ctrl.closeEvent,
 );
 
+// PATCH /api/v1/events/:id/archive — published/closed → archived
+eventsRouter.patch(
+  '/:id/archive',
+  requireAuth,
+  requireRole(['faculty', 'dept_head', 'admin']),
+  ctrl.archiveEvent,
+);
+
 // DELETE /api/v1/events/:id — soft-delete (ownership checked in service)
 eventsRouter.delete(
   '/:id',

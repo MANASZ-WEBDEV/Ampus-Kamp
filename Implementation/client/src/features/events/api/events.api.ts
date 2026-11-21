@@ -70,6 +70,12 @@ export async function closeEvent(id: string): Promise<EventDetail> {
   return res.data.data;
 }
 
+/** PATCH /events/:id/archive — archive an event */
+export async function archiveEvent(id: string): Promise<EventDetail> {
+  const res = await apiClient.patch<{ data: EventDetail }>(`/events/${id}/archive`);
+  return res.data.data;
+}
+
 /** DELETE /events/:id — soft-delete */
 export async function deleteEvent(id: string): Promise<void> {
   await apiClient.delete(`/events/${id}`);
