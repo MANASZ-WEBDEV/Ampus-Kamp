@@ -176,32 +176,29 @@ Respected Faculty & Students, IIT Kharagpur is organizing TechNova 2026 Hackatho
         {/* ── Breadcrumb row ─────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-outline-variant/10">
           <nav className="flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant flex-wrap">
-            <span>Campus Ledger</span>
+            <span>Verified Academic Portal</span>
             <span className="material-symbols-outlined text-[13px]">chevron_right</span>
             <span>Faculty Portal</span>
             <span className="material-symbols-outlined text-[13px]">chevron_right</span>
             <span className="text-on-surface font-semibold">Post New Campus Event</span>
-            <span className="mx-2 h-3.5 w-[1px] bg-outline-variant hidden sm:block" />
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              Node #INVENTUM-FACULTY-09
-            </span>
           </nav>
           {/* Faculty identity */}
           <div className="flex items-center gap-3 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-[13px] font-bold">VR</div>
+              <div className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-label-md text-[13px] font-bold">
+                {user?.name?.slice(0, 2).toUpperCase() || 'FC'}
+              </div>
               <div>
                 <div className="font-label-md text-[11px] text-on-surface font-semibold flex items-center gap-1.5">
-                  Dr. V. Ramanathan
+                  {user?.name || 'Faculty Member'}
                   <span className="material-symbols-outlined text-[13px] text-emerald-600">verified</span>
                 </div>
-                <div className="font-label-sm text-[10px] text-on-surface-variant">CS Dept. Coordinator • Emp #8841</div>
+                <div className="font-label-sm text-[10px] text-on-surface-variant">Faculty Portal • Active</div>
               </div>
             </div>
             <div className="text-right">
-              <div className="font-label-sm text-[10px] text-on-surface-variant">Dean Sign-off Active</div>
-              <div className="font-code-sm text-[10px] text-primary">ECDSA-SEC256K1</div>
+              <div className="font-label-sm text-[10px] text-on-surface-variant">Department Authorized</div>
+              <div className="font-code-sm text-[10px] text-primary">Verified Session</div>
             </div>
           </div>
         </div>
@@ -247,8 +244,8 @@ Respected Faculty & Students, IIT Kharagpur is organizing TechNova 2026 Hackatho
                     <span className="material-symbols-outlined text-[18px] text-secondary">psychology</span>
                   </div>
                   <div>
-                    <div className="font-label-lg text-[13px] text-on-surface font-semibold">Neural Parser &amp; Raw Circular</div>
-                    <div className="font-label-sm text-[10px] text-on-surface-variant">Intelligent LLM Ingestion node via Ministry &amp; Campus API</div>
+                    <div className="font-label-lg text-[13px] text-on-surface font-semibold">AI Extraction &amp; Raw Announcement</div>
+                    <div className="font-label-sm text-[10px] text-on-surface-variant">Automated campus event extraction powered by Gemini AI</div>
                   </div>
                 </div>
                 <button type="button"
@@ -264,7 +261,7 @@ Respected Faculty & Students, IIT Kharagpur is organizing TechNova 2026 Hackatho
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 font-label-sm text-[11px] text-primary">
                     <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                    Extracted with 98% accuracy • 8 fields auto-populated • Verified against Ministry of Education Registry
+                    Fields auto-populated from announcement • Verified for campus distribution
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button type="button"

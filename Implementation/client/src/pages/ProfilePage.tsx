@@ -61,7 +61,7 @@ const CREDENTIALS: Credential[] = [
     col3Label: 'Verification Seal',
     col3Value: 'NPTEL-DL-99420-OCT24\nSigned: 18 Oct 2024',
     col3Cls: 'text-primary',
-    footerLeft: 'Directly integrated into Degree Audit Ledger',
+    footerLeft: 'Directly integrated into Verified Academic Portal',
     footerLeftIcon: 'verified',
     footerAction: 'Preview Certificate',
   },
@@ -242,17 +242,17 @@ export default function ProfilePage() {
         {/* ── Breadcrumb + Action Bar ──────────────────────────────────────── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 py-4 border-b border-outline-variant/10">
           <nav className="flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant flex-wrap">
-            <span className="material-symbols-outlined text-[14px]">storage</span>
-            <span>Campus Ledger</span>
+            <span className="material-symbols-outlined text-[14px]">school</span>
+            <span>Verified Academic Portal</span>
             <span className="mx-0.5">/</span>
-            <span>Student Portfolio Dossier</span>
+            <span>Student Profile</span>
             <span className="mx-0.5">/</span>
             <span className="px-2 py-0.5 rounded bg-primary-container text-on-primary font-code-sm font-bold">
               UID: {profile?.enrollmentNo ?? authUser?.enrollmentNo ?? '22CS0841'}
             </span>
             <span className="hidden sm:flex items-center gap-1.5 ml-2 text-primary">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              ECDSA-256 Validated Node
+              Verified Student Record
             </span>
           </nav>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -264,10 +264,10 @@ export default function ProfilePage() {
               Share Card
             </button>
             <button
-              id="profile-download-ledger-btn"
+              id="profile-download-transcript-btn"
               className="px-3 py-2 rounded-lg bg-primary text-on-primary font-label-lg text-sm flex items-center gap-2 transition-colors shadow-sm hover:bg-primary-container">
               <span className="material-symbols-outlined text-[18px]">download</span>
-              Download Academic Ledger
+              Download Academic Transcript
             </button>
           </div>
         </div>
@@ -469,18 +469,18 @@ export default function ProfilePage() {
 
           </aside>
 
-          {/* RIGHT: Credentials Ledger (9 cols) */}
+          {/* RIGHT: Academic Credentials (9 cols) */}
           <div className="lg:col-span-9 flex flex-col gap-4">
 
-            {/* Ledger header */}
+            {/* Credentials header */}
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="material-symbols-outlined text-[20px] text-primary">menu_book</span>
-                  <h2 className="font-headline-lg text-[1.5rem] text-on-surface font-bold tracking-tight">Engineering Credentials Ledger</h2>
+                  <h2 className="font-headline-lg text-[1.5rem] text-on-surface font-bold tracking-tight">Verified Academic Credentials</h2>
                 </div>
                 <p className="font-body-sm text-[12px] text-on-surface-variant">
-                  Tamper-evident verification audit trail for hackathons, professional credentials, and research honors.
+                  Official academic record for hackathons, verified certifications, and competition achievements.
                 </p>
               </div>
               <button
@@ -643,16 +643,16 @@ export default function ProfilePage() {
               </article>
             ))}
 
-            {/* Ledger footer stamp */}
+            {/* Verified footer stamp */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 py-3 border-t border-outline-variant/10">
               <div className="flex items-center gap-2 font-label-sm text-[11px] text-on-surface-variant">
                 <span className="material-symbols-outlined text-[16px] text-emerald-600">check_circle</span>
-                Official Campus Innovation Academic Ledger • Cryptographically Signed (ECDSA-256)
+                Official Campus Innovation Academic Portal • Verified Institutional Record
               </div>
               <div className="flex items-center gap-2 font-code-sm text-[10px] text-outline">
-                <span>Block #18829402</span>
+                <span>Verified by Department</span>
                 <span>•</span>
-                <span>Synced with Registrar</span>
+                <span>Synced with Academic Office</span>
               </div>
             </div>
 

@@ -465,7 +465,7 @@ export default function DepartmentDashboardPage() {
             <div className="lg:col-span-8 bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col gap-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="font-headline-sm text-[15px] text-on-surface font-bold">Recent Department Verifications Ledger</h2>
+                  <h2 className="font-headline-sm text-[15px] text-on-surface font-bold">Recent Department Verifications</h2>
                   <p className="font-body-sm text-[11px] text-on-surface-variant">Real-time faculty evaluations approved toward institutional repository</p>
                 </div>
                 <div className="flex items-center gap-1 font-label-sm text-[11px] text-on-surface-variant">
@@ -510,13 +510,13 @@ export default function DepartmentDashboardPage() {
                 </table>
               </div>
 
-              {/* Ledger footer */}
+              {/* Record footer */}
               <div className="flex items-center justify-between font-label-sm text-[10px] text-on-surface-variant pt-1 border-t border-outline-variant/10">
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[13px] text-emerald-600">lock</span>
-                  All sign-offs cryptographically logged in college accreditation vault
+                  <span className="material-symbols-outlined text-[13px] text-emerald-600">verified</span>
+                  All sign-offs verified and recorded in the academic repository
                 </div>
-                <div className="font-code-sm text-[10px]">Ledger Hash: 0x9f4a…e12d</div>
+                <div className="font-code-sm text-[10px]">Record Status: Verified</div>
               </div>
             </div>
           </div>
