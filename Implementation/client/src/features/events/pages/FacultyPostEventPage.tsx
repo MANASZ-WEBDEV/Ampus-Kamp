@@ -145,7 +145,7 @@ export default function FacultyPostEventPage() {
         isSelfCoord && user ? { name: user.name, phone: user.phone ?? '' } : null;
       const allCoordinators: Coordinator[] = [
         ...(selfEntry ? [selfEntry] : []),
-        ...coordinators.filter(c => c.name.trim() || c.phone.trim()),
+        ...coordinators.filter(c => c.name.trim() || c.phone?.trim()),
       ];
       await createEvent({
         ...form,
@@ -564,7 +564,7 @@ Respected Faculty & Students, IIT Kharagpur is organizing TechNova 2026 Hackatho
                           <input
                             type="tel"
                             placeholder="Phone / ext."
-                            value={coord.phone}
+                            value={coord.phone ?? ''}
                             onChange={e => updateCoordinator(idx, 'phone', e.target.value)}
                             className="w-full h-9 pl-9 pr-3 rounded-lg bg-surface-container-low text-on-surface font-body-sm text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-outline"
                           />
