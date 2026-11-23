@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useEvent }    from '../hooks/useEvent';
+import { useArchiveEvent } from '../hooks/useArchiveEvent';
 import { useBookmark } from '../hooks/useBookmark';
 import { useAuth }     from '@/features/auth/context/AuthContext';
 import { AppBar }     from '@/components/layout/AppBar';
@@ -80,6 +81,7 @@ export default function EventDetailPage() {
   // F-6: Registration
   const { data: myReg }        = useMyRegistration(id!);
   const { mutate: doWithdraw } = useUpdateRegistration(id!);
+  const { mutate: doArchive, isPending: isArchiving } = useArchiveEvent(id!);
   const alreadyRegistered      = !!myReg && myReg.status !== 'withdrawn';
   const hasPendingInvite       = myReg?.members.some(
     m => m.userId === user?.id && m.status === 'invited',
@@ -110,13 +112,20 @@ export default function EventDetailPage() {
     }
   }
 
+  function handleArchive() {
+    if (window.confirm('Are you sure you want to move this event to the Verified Academic Archive? Registrations will be concluded and permanently preserved.')) {
+      doArchive();
+    }
+  }
+
   const ctaLabel = () => {
-    if (alreadyRegistered)          return 'Registered';
+    if (alreadyRegistered)            return 'Registered';
+    if (event?.status === 'archived') return 'Concluded & Archived';
     if (isClosed || isDeadlinePassed) return 'Registration Closed';
-    if (isDraft)                    return 'Not Yet Published';
-    if (event?.type === 'seminar')  return 'RSVP for this Talk';
-    if (event?.type === 'workshop') return 'Reserve My Spot';
-    if (event?.type === 'sports')   return 'Register My Squad';
+    if (isDraft)                      return 'Not Yet Published';
+    if (event?.type === 'seminar')    return 'RSVP for this Talk';
+    if (event?.type === 'workshop')   return 'Reserve My Spot';
+    if (event?.type === 'sports')     return 'Register My Squad';
     return `Apply to ${event?.type === 'hackathon' ? 'Hackathon' : 'Event'}`;
   };
 
@@ -317,10 +326,16 @@ export default function EventDetailPage() {
                 {(isClosed || isDraft) && (
                   <div className="absolute top-4 right-4">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                      isClosed ? 'bg-error-container text-on-error-container' : 'bg-surface-container text-on-surface-variant'
+                      event.status === 'archived'
+                        ? 'bg-secondary-container text-on-secondary-container'
+                        : isClosed
+                        ? 'bg-error-container text-on-error-container'
+                        : 'bg-surface-container text-on-surface-variant'
                     }`}>
-                      <span className="material-symbols-outlined text-[12px]">{isClosed ? 'lock' : 'visibility_off'}</span>
-                      {isClosed ? 'Closed' : 'Draft'}
+                      <span className="material-symbols-outlined text-[12px]">
+                        {event.status === 'archived' ? 'inventory_2' : isClosed ? 'lock' : 'visibility_off'}
+                      </span>
+                      {event.status === 'archived' ? 'Archived' : isClosed ? 'Closed' : 'Draft'}
                     </span>
                   </div>
                 )}
@@ -623,6 +638,43 @@ export default function EventDetailPage() {
                   <span className="material-symbols-outlined text-[18px]">publish</span>
                   Review & Publish
                 </button>
+              </div>
+            )}
+
+            {/* Faculty: archive action for own published / closed event */}
+            {isOwner && (event.status === 'published' || event.status === 'closed') && (
+              <div className="rounded-xl bg-surface-container-low border border-dashed border-secondary/30 p-4 flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-on-surface">
+                  <span className="material-symbols-outlined text-[20px] text-secondary">inventory_2</span>
+                  <span className="text-sm font-semibold">Verified Archive</span>
+                </div>
+                <p className="text-[12px] text-on-surface-variant">
+                  {event.status === 'closed' || isDeadlinePassed
+                    ? 'This event has concluded. Move it to the Verified Academic Archive to preserve historical outcomes and credentials.'
+                    : 'Archive this event to close registrations and preserve it in the verified repository.'}
+                </p>
+                <button
+                  id="sidebar-archive-btn"
+                  onClick={handleArchive}
+                  disabled={isArchiving}
+                  className="w-full py-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-semibold shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-colors disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[18px] text-secondary">inventory_2</span>
+                  <span>{isArchiving ? 'Archiving…' : 'Move to Verified Archive'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Event is archived notice */}
+            {event.status === 'archived' && (
+              <div className="rounded-xl bg-surface-container-low border border-secondary/20 p-4 flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-secondary">
+                  <span className="material-symbols-outlined text-[20px]">verified</span>
+                  <span className="text-sm font-semibold">Verified Academic Archive</span>
+                </div>
+                <p className="text-[12px] text-on-surface-variant">
+                  This event is concluded and preserved in the verified academic repository. Student submissions, team rosters, and accreditation points are permanently recorded.
+                </p>
               </div>
             )}
 
