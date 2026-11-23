@@ -18,6 +18,33 @@ const CATEGORY_PILLS = [
 
 type CategoryKey = typeof CATEGORY_PILLS[number]['key'];
 
+// ── Secondary filter options ──────────────────────────────────────────────────
+const BRANCH_OPTIONS = [
+  { value: '', label: 'All Branches' },
+  { value: 'CSE', label: 'Computer Science (CSE)' },
+  { value: 'CSIT', label: 'CS & IT (CSIT)' },
+  { value: 'IT', label: 'Information Tech (IT)' },
+  { value: 'ECE', label: 'Electronics (ECE)' },
+  { value: 'MECH', label: 'Mechanical (Mech)' },
+  { value: 'AI/DS', label: 'AI & Data Science' },
+  { value: 'CIVIL', label: 'Civil Engineering' },
+  { value: 'EEE', label: 'Electrical (EEE)' },
+];
+
+const YEAR_OPTIONS = [
+  { value: 0, label: 'All Semesters / Years' },
+  { value: 1, label: '1st Year' },
+  { value: 2, label: '2nd Year' },
+  { value: 3, label: '3rd Year' },
+  { value: 4, label: '4th Year' },
+];
+
+const MODE_OPTIONS = [
+  { value: '', label: 'All Modes' },
+  { value: 'in_app', label: 'In-App Registration' },
+  { value: 'external', label: 'External Portal / Form' },
+];
+
 
 
 // ── Date formatting helper for relative dates ─────────────────────────────────
@@ -137,8 +164,24 @@ export default function EventFeedPage() {
 
   const [searchQuery, setSearchQuery]       = useState('');
   const [activeCategory, setActiveCategory] = useState<CategoryKey>('all');
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
+  const [selectedYear, setSelectedYear]     = useState<number>(0);
+  const [selectedMode, setSelectedMode]     = useState<string>('');
+  const [closingSoonOnly, setClosingSoonOnly] = useState<boolean>(false);
+  const [openDropdown, setOpenDropdown]     = useState<'branch' | 'year' | 'mode' | null>(null);
   const [viewMode, setViewMode]             = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy]                 = useState('deadline');
+
+  // Close filter dropdowns on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (!(e.target as HTMLElement).closest('.filter-dropdown-container')) {
+        setOpenDropdown(null);
+      }
+    }
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   // ⌘K focus
   useEffect(() => {
@@ -154,29 +197,106 @@ export default function EventFeedPage() {
 
   // API data (real events, if any)
   const apiType = activeCategory === 'all' ? undefined : [activeCategory as EventType];
-  const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useEvents({ type: apiType });
+  const apiBranch = selectedBranch ? [selectedBranch] : undefined;
+  const apiYear = selectedYear > 0 ? [selectedYear] : undefined;
+  const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useEvents({
+    type: apiType,
+    branch: apiBranch,
+    year: apiYear,
+  });
   const allEvents = data?.pages.flatMap(p => p.items) ?? [];
 
   // Archived events
   const { data: archivedData } = useEvents({ status: ['archived'] });
   const archivedEvents = archivedData?.pages.flatMap(p => p.items) ?? [];
+
   const filteredEvents = useMemo(() => {
-    if (!searchQuery.trim()) return allEvents;
-    const q = searchQuery.toLowerCase();
-    return allEvents.filter(evt => `${evt.title} ${evt.organizer ?? ''} ${evt.type}`.toLowerCase().includes(q));
-  }, [allEvents, searchQuery]);
-  const hasFilters = searchQuery.trim() !== '' || activeCategory !== 'all';
-  const clearAll = useCallback(() => { setSearchQuery(''); setActiveCategory('all'); }, []);
+    let result = allEvents;
+
+    // Search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(evt =>
+        `${evt.title} ${evt.organizer ?? ''} ${evt.type} ${evt.summary ?? ''}`.toLowerCase().includes(q)
+      );
+    }
+
+    // Branch filter
+    if (selectedBranch) {
+      result = result.filter(evt => {
+        const branches = evt.eligibility?.branches ?? [];
+        return branches.length === 0 || branches.includes(selectedBranch);
+      });
+    }
+
+    // Year filter
+    if (selectedYear > 0) {
+      result = result.filter(evt => {
+        const years = evt.eligibility?.years ?? [];
+        return years.length === 0 || years.includes(selectedYear);
+      });
+    }
+
+    // Mode filter
+    if (selectedMode) {
+      result = result.filter(evt => evt.registrationMode === selectedMode);
+    }
+
+    // Closing soon toggle
+    if (closingSoonOnly) {
+      const now = Date.now();
+      result = result.filter(evt => {
+        if (!evt.deadline) return false;
+        const d = Math.ceil((new Date(evt.deadline).getTime() - now) / 86400000);
+        return d >= 0 && d <= 2;
+      });
+    }
+
+    // Sort by
+    return [...result].sort((a, b) => {
+      if (sortBy === 'deadline') {
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      }
+      if (sortBy === 'recent') {
+        const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bDate - aDate;
+      }
+      if (sortBy === 'prize') {
+        const aFee = a.fee ? 1 : 0;
+        const bFee = b.fee ? 1 : 0;
+        return bFee - aFee;
+      }
+      return 0;
+    });
+  }, [allEvents, searchQuery, selectedBranch, selectedYear, selectedMode, closingSoonOnly, sortBy]);
+
+  const hasFilters =
+    searchQuery.trim() !== '' ||
+    activeCategory !== 'all' ||
+    selectedBranch !== '' ||
+    selectedYear !== 0 ||
+    selectedMode !== '' ||
+    closingSoonOnly;
+
+  const clearAll = useCallback(() => {
+    setSearchQuery('');
+    setActiveCategory('all');
+    setSelectedBranch('');
+    setSelectedYear(0);
+    setSelectedMode('');
+    setClosingSoonOnly(false);
+    setOpenDropdown(null);
+  }, []);
 
   // Show dummy articles when API returns no events (no backend data)
   const showDummy = !isLoading && filteredEvents.length === 0 && !hasFilters;
 
-  // Closing Soon count — mirrors the card's own label logic:
-  // "Closing today" = Math.ceil(diff / 86400000) <= 0  (deadline past or today)
-  // We include that + 1 day ahead → d <= 1
+  // Closing Soon count
   const closingSoonCount = useMemo(() => {
     if (showDummy) {
-      // Count dummy articles that show "Closing today" or urgency ≤ 2 days
       return DUMMY_ARTICLES.filter(a => {
         const label = a.urgency?.label?.toLowerCase() ?? '';
         return label.includes('today') || label.includes('2 days') || label.includes('1 day');
@@ -186,7 +306,7 @@ export default function EventFeedPage() {
     return allEvents.filter(evt => {
       if (!evt.deadline) return false;
       const d = Math.ceil((new Date(evt.deadline).getTime() - now) / 86400000);
-      return d >= 0 && d <= 2; // includes "Closing today" (d === 0) and upcoming ≤ 2 days
+      return d >= 0 && d <= 2;
     }).length;
   }, [showDummy, allEvents]);
 
@@ -301,39 +421,180 @@ export default function EventFeedPage() {
           {/* Secondary filter row */}
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             <div className="flex flex-wrap items-center gap-2">
-              {[
-                { label: 'Branch:', value: 'CSE, ECE, Mech, IT, AI/DS' },
-                { label: 'Eligibility:', value: 'All Semesters / 2nd & 3rd Yr' },
-                { label: 'Mode:', value: 'In-Person & Hybrid' },
-              ].map(f => (
-                <button key={f.label} className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface flex items-center gap-1.5 font-label-sm text-label-sm transition-colors">
-                  <span className="text-outline">{f.label}</span>
-                  <span className="font-semibold">{f.value}</span>
-                  <span className="material-symbols-outlined text-[16px] text-outline">expand_more</span>
+              {/* Branch Filter Dropdown */}
+              <div className="relative inline-block filter-dropdown-container">
+                <button
+                  type="button"
+                  id="filter-branch-btn"
+                  onClick={() => setOpenDropdown(prev => prev === 'branch' ? null : 'branch')}
+                  className={`h-9 px-3 rounded-lg flex items-center gap-1.5 font-label-sm text-label-sm transition-all cursor-pointer ${
+                    selectedBranch
+                      ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
+                      : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
+                  }`}
+                >
+                  <span className="text-outline">Branch:</span>
+                  <span className="font-semibold">
+                    {BRANCH_OPTIONS.find(b => b.value === selectedBranch)?.label.split(' ')[0] || 'All'}
+                  </span>
+                  <span className="material-symbols-outlined text-[16px] text-outline">
+                    {openDropdown === 'branch' ? 'expand_less' : 'expand_more'}
+                  </span>
                 </button>
-              ))}
-              <button className="h-9 px-3 rounded-lg bg-secondary-fixed/50 hover:bg-secondary-fixed text-on-secondary-fixed flex items-center gap-1.5 font-label-sm text-label-sm transition-colors">
-                <span className="w-2 h-2 rounded-full bg-secondary" />
+                {openDropdown === 'branch' && (
+                  <div className="absolute left-0 top-11 z-50 w-56 py-1 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-1.5 font-label-sm text-label-sm text-outline border-b border-outline-variant/20 uppercase font-semibold">
+                      Filter by Branch
+                    </div>
+                    {BRANCH_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => { setSelectedBranch(opt.value); setOpenDropdown(null); }}
+                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${
+                          selectedBranch === opt.value
+                            ? 'bg-primary-container/40 text-primary font-semibold'
+                            : 'hover:bg-surface-container-low text-on-surface'
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {selectedBranch === opt.value && (
+                          <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Eligibility / Year Dropdown */}
+              <div className="relative inline-block filter-dropdown-container">
+                <button
+                  type="button"
+                  id="filter-year-btn"
+                  onClick={() => setOpenDropdown(prev => prev === 'year' ? null : 'year')}
+                  className={`h-9 px-3 rounded-lg flex items-center gap-1.5 font-label-sm text-label-sm transition-all cursor-pointer ${
+                    selectedYear > 0
+                      ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
+                      : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
+                  }`}
+                >
+                  <span className="text-outline">Year:</span>
+                  <span className="font-semibold">
+                    {selectedYear > 0 ? `${selectedYear}${selectedYear === 1 ? 'st' : selectedYear === 2 ? 'nd' : selectedYear === 3 ? 'rd' : 'th'} Year` : 'All Years'}
+                  </span>
+                  <span className="material-symbols-outlined text-[16px] text-outline">
+                    {openDropdown === 'year' ? 'expand_less' : 'expand_more'}
+                  </span>
+                </button>
+                {openDropdown === 'year' && (
+                  <div className="absolute left-0 top-11 z-50 w-52 py-1 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-1.5 font-label-sm text-label-sm text-outline border-b border-outline-variant/20 uppercase font-semibold">
+                      Eligible Year
+                    </div>
+                    {YEAR_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => { setSelectedYear(opt.value); setOpenDropdown(null); }}
+                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${
+                          selectedYear === opt.value
+                            ? 'bg-primary-container/40 text-primary font-semibold'
+                            : 'hover:bg-surface-container-low text-on-surface'
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {selectedYear === opt.value && (
+                          <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Mode Dropdown */}
+              <div className="relative inline-block filter-dropdown-container">
+                <button
+                  type="button"
+                  id="filter-mode-btn"
+                  onClick={() => setOpenDropdown(prev => prev === 'mode' ? null : 'mode')}
+                  className={`h-9 px-3 rounded-lg flex items-center gap-1.5 font-label-sm text-label-sm transition-all cursor-pointer ${
+                    selectedMode
+                      ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
+                      : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
+                  }`}
+                >
+                  <span className="text-outline">Mode:</span>
+                  <span className="font-semibold">
+                    {selectedMode === 'in_app' ? 'In-App' : selectedMode === 'external' ? 'External' : 'All Modes'}
+                  </span>
+                  <span className="material-symbols-outlined text-[16px] text-outline">
+                    {openDropdown === 'mode' ? 'expand_less' : 'expand_more'}
+                  </span>
+                </button>
+                {openDropdown === 'mode' && (
+                  <div className="absolute left-0 top-11 z-50 w-52 py-1 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-1.5 font-label-sm text-label-sm text-outline border-b border-outline-variant/20 uppercase font-semibold">
+                      Registration Mode
+                    </div>
+                    {MODE_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => { setSelectedMode(opt.value); setOpenDropdown(null); }}
+                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${
+                          selectedMode === opt.value
+                            ? 'bg-primary-container/40 text-primary font-semibold'
+                            : 'hover:bg-surface-container-low text-on-surface'
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {selectedMode === opt.value && (
+                          <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Closing Soon Toggle */}
+              <button
+                type="button"
+                id="filter-closing-soon-btn"
+                onClick={() => setClosingSoonOnly(prev => !prev)}
+                className={`h-9 px-3 rounded-lg flex items-center gap-1.5 font-label-sm text-label-sm transition-all cursor-pointer ${
+                  closingSoonOnly
+                    ? 'bg-secondary text-on-secondary font-semibold shadow-sm ring-1 ring-secondary'
+                    : 'bg-secondary-fixed/50 hover:bg-secondary-fixed text-on-secondary-fixed'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${closingSoonOnly ? 'bg-on-secondary animate-pulse' : 'bg-secondary'}`} />
                 <span className="font-semibold">Closing Soon ({closingSoonCount})</span>
-                <span className="material-symbols-outlined text-[16px]">close</span>
+                {closingSoonOnly && <span className="material-symbols-outlined text-[16px]">close</span>}
               </button>
             </div>
+
+            {/* Sort by Select */}
             <div className="flex items-center gap-2">
               <span className="text-outline font-label-sm text-label-sm">Sort by:</span>
               <select
+                id="events-sort-select"
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className="bg-surface-container-low text-on-surface rounded-lg px-2.5 py-1.5 focus:outline-none font-label-md text-label-md cursor-pointer border-0">
+                className="bg-surface-container-low text-on-surface rounded-lg px-2.5 py-1.5 focus:outline-none font-label-md text-label-md cursor-pointer border-0"
+              >
                 <option value="deadline">Deadline (Soonest first)</option>
-                <option value="prize">Prize Pool / Bounty</option>
                 <option value="recent">Recently Added</option>
+                <option value="prize">Prizes / Bounties</option>
               </select>
             </div>
           </div>
 
           {/* Active filter summary strip */}
-          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface-container-low/60 font-label-md text-label-md text-on-surface-variant">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-lg bg-surface-container-low/60 font-label-md text-label-md text-on-surface-variant">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="material-symbols-outlined text-[16px] text-primary">filter_alt</span>
               <span>
                 Showing <strong className="text-on-surface">{filteredEvents.length > 0 ? filteredEvents.length : showDummy ? 7 : 0} events</strong> across campus labs &amp; sports arena
@@ -344,8 +605,45 @@ export default function EventFeedPage() {
                   </>
                 )}
               </span>
+              {/* Active Filter Badges */}
+              {selectedBranch && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary-container text-on-primary-container font-label-sm text-label-sm font-semibold">
+                  Branch: {selectedBranch}
+                  <button type="button" onClick={() => setSelectedBranch('')} className="hover:text-error flex items-center">
+                    <span className="material-symbols-outlined text-[13px]">close</span>
+                  </button>
+                </span>
+              )}
+              {selectedYear > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary-container text-on-primary-container font-label-sm text-label-sm font-semibold">
+                  Year: {selectedYear}
+                  <button type="button" onClick={() => setSelectedYear(0)} className="hover:text-error flex items-center">
+                    <span className="material-symbols-outlined text-[13px]">close</span>
+                  </button>
+                </span>
+              )}
+              {selectedMode && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary-container text-on-primary-container font-label-sm text-label-sm font-semibold">
+                  Mode: {selectedMode === 'in_app' ? 'In-App' : 'External'}
+                  <button type="button" onClick={() => setSelectedMode('')} className="hover:text-error flex items-center">
+                    <span className="material-symbols-outlined text-[13px]">close</span>
+                  </button>
+                </span>
+              )}
+              {closingSoonOnly && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-on-secondary font-label-sm text-label-sm font-semibold">
+                  Closing Soon
+                  <button type="button" onClick={() => setClosingSoonOnly(false)} className="hover:text-error flex items-center">
+                    <span className="material-symbols-outlined text-[13px]">close</span>
+                  </button>
+                </span>
+              )}
             </div>
-            <button onClick={clearAll} className="text-primary hover:underline font-label-sm text-label-sm cursor-pointer">Reset Filters</button>
+            {hasFilters && (
+              <button onClick={clearAll} className="text-primary hover:underline font-label-sm text-label-sm cursor-pointer shrink-0">
+                Reset Filters
+              </button>
+            )}
           </div>
         </div>
 
