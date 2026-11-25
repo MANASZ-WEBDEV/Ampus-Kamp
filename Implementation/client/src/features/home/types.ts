@@ -17,7 +17,13 @@ export interface EventSummary {
 export interface TeamPostSummary {
   id:             string;
   eventId:        string;
+  eventTitle?:    string;
+  eventType?:     string;
+  ownerName?:     string;
   title:          string;
+  description?:   string;
+  spotsLeft?:     number;
+  spotsTotal?:    number;
   requiredSkills: string[];
 }
 

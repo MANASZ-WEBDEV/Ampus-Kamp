@@ -17,9 +17,22 @@ function greeting() {
 function timeLeft(isoDeadline: string): string {
   const diff = new Date(isoDeadline).getTime() - Date.now();
   if (diff <= 0) return 'Closed';
+  const m = Math.floor(diff / 60_000);
+  if (m < 60) return `${m}m left`;
   const h = Math.floor(diff / 3_600_000);
   if (h < 24) return `${h}h left`;
   return `${Math.floor(h / 24)}d left`;
+}
+
+function formatDeadline(isoDeadline: string): string {
+  const d    = new Date(isoDeadline);
+  const diff = d.getTime() - Date.now();
+  const datePart = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  if (diff > 0 && diff < 24 * 3_600_000) {
+    const timePart = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return `${datePart} · ${timePart}`;
+  }
+  return datePart;
 }
 
 function isUrgent(isoDeadline: string): boolean {
@@ -46,7 +59,7 @@ function EventCard({ ev }: { ev: EventSummary }) {
 
   return (
     <button
-      onClick={() => navigate('/events')}
+      onClick={() => navigate(`/events/${ev.id}`)}
       className="group w-full text-left bg-surface-container-lowest rounded-2xl p-5 shadow-sm
                  hover:shadow-md active:scale-[0.99] transition-all duration-200 relative overflow-hidden
                  border border-surface-container-high/60 hover:border-primary/30 cursor-pointer"
@@ -82,7 +95,7 @@ function EventCard({ ev }: { ev: EventSummary }) {
       <div className="mt-4 flex items-center justify-between">
         <span className="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
           <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-          {new Date(ev.deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+          {formatDeadline(ev.deadline)}
         </span>
         <span className="font-label-md text-label-md text-primary flex items-center gap-0.5
                          group-hover:gap-1.5 transition-all">
@@ -94,36 +107,79 @@ function EventCard({ ev }: { ev: EventSummary }) {
   );
 }
 
-// ── Team post row ─────────────────────────────────────────────────────────────
+// ── Team post card ────────────────────────────────────────────────────────────
 
 function TeamPostRow({ post }: { post: TeamPostSummary }) {
   const navigate = useNavigate();
+  const hasSpots = typeof post.spotsLeft === 'number' && typeof post.spotsTotal === 'number';
 
   return (
     <button
-      onClick={() => navigate('/teams')}
-      className="group w-full text-left bg-surface-container-lowest rounded-2xl p-4 shadow-sm
-                 hover:shadow-md active:scale-[0.99] transition-all duration-200
-                 border border-surface-container-high/60 hover:border-secondary/30 cursor-pointer
-                 flex items-center justify-between gap-4"
+      onClick={() => navigate(`/events/${post.eventId}/teams`)}
+      className="group w-full text-left bg-surface-container-lowest rounded-2xl p-5 shadow-sm
+                 hover:shadow-md active:scale-[0.99] transition-all duration-200 relative overflow-hidden
+                 border border-surface-container-high/60 hover:border-secondary/40 cursor-pointer
+                 flex flex-col justify-between gap-3"
     >
-      <div className="flex flex-col gap-1.5 min-w-0">
-        <h4 className="font-headline-sm text-headline-sm text-on-surface
-                       group-hover:text-secondary transition-colors overflow-hidden"
-            style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
-          {post.title}
-        </h4>
+      {/* Top accent stripe */}
+      <div className="absolute top-0 left-0 right-0 h-[3px]
+                      bg-gradient-to-r from-secondary via-primary to-secondary-fixed rounded-t-2xl opacity-80" />
+
+      <div className="flex flex-col gap-2.5 mt-0.5">
+        {/* Header badges: Event context + Spots left */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                           bg-surface-container text-on-surface-variant font-label-sm text-label-sm truncate max-w-[65%]">
+            <span className="material-symbols-outlined text-[13px] text-secondary shrink-0">emoji_events</span>
+            <span className="truncate">{post.eventTitle || 'Open Squad'}</span>
+          </span>
+
+          {hasSpots ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                             bg-primary/10 text-primary font-code-sm text-[11px] font-semibold shrink-0">
+              <span className="material-symbols-outlined text-[13px]">group_add</span>
+              {post.spotsLeft}/{post.spotsTotal} left
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                             bg-secondary-container/40 text-secondary font-label-sm text-[11px] font-semibold shrink-0">
+              Open
+            </span>
+          )}
+        </div>
+
+        {/* Title + owner */}
+        <div>
+          <h4 className="font-headline-sm text-headline-sm text-on-surface
+                         group-hover:text-secondary transition-colors leading-snug line-clamp-1">
+            {post.title}
+          </h4>
+          {post.ownerName && (
+            <p className="font-body-sm text-[11px] text-on-surface-variant mt-0.5">
+              Posted by <span className="font-medium text-on-surface">{post.ownerName}</span>
+            </p>
+          )}
+        </div>
+
+        {/* Description */}
+        {post.description && (
+          <p className="font-body-sm text-xs text-on-surface-variant leading-relaxed line-clamp-2">
+            {post.description}
+          </p>
+        )}
+
+        {/* Skills */}
         {post.requiredSkills.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {post.requiredSkills.slice(0, 3).map(s => (
               <span key={s}
-                className="px-1.5 py-0.5 rounded-md bg-primary-fixed/40 text-on-primary-fixed
-                           font-code-sm text-[11px]">
+                className="px-2 py-0.5 rounded-md bg-secondary/10 text-secondary
+                           font-code-sm text-[11px] font-medium">
                 {s}
               </span>
             ))}
             {post.requiredSkills.length > 3 && (
-              <span className="px-1.5 py-0.5 rounded-md bg-surface-container text-on-surface-variant
+              <span className="px-2 py-0.5 rounded-md bg-surface-container text-on-surface-variant
                                font-code-sm text-[11px]">
                 +{post.requiredSkills.length - 3}
               </span>
@@ -131,10 +187,18 @@ function TeamPostRow({ post }: { post: TeamPostSummary }) {
           </div>
         )}
       </div>
-      <span className="material-symbols-outlined text-[20px] text-on-surface-variant
-                       group-hover:text-secondary transition-colors shrink-0">
-        chevron_right
-      </span>
+
+      {/* Footer CTA */}
+      <div className="pt-2 border-t border-outline-variant/15 flex items-center justify-between">
+        <span className="font-label-sm text-[11px] text-on-surface-variant">
+          {post.requiredSkills.length === 0 ? 'All skills welcome' : `${post.requiredSkills.length} role${post.requiredSkills.length !== 1 ? 's' : ''} needed`}
+        </span>
+        <span className="font-label-md text-label-md text-secondary flex items-center gap-0.5
+                         group-hover:gap-1.5 transition-all">
+          View squad
+          <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+        </span>
+      </div>
     </button>
   );
 }
@@ -462,7 +526,7 @@ export default function HomePage() {
                 <span className="material-symbols-outlined text-[16px]">chevron_right</span>
               </button>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {matchedPosts.slice(0, 4).map(post => (
                 <TeamPostRow key={post.id} post={post} />
               ))}

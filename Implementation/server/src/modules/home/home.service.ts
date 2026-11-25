@@ -27,7 +27,13 @@ interface EventSummary {
 interface TeamPostSummary {
   id:             string;
   eventId:        string;
+  eventTitle?:    string;
+  eventType?:     string;
+  ownerName?:     string;
   title:          string;
+  description?:   string;
+  spotsLeft?:     number;
+  spotsTotal?:    number;
   requiredSkills: string[];
 }
 
@@ -122,14 +128,18 @@ export async function getHomeData(userId: string): Promise<HomeData> {
     hasSkills
       ? TeamPost.find({ rolesNeeded: { $in: user.skills }, status: 'open' })
           .limit(5)
-          .select('_id eventId title rolesNeeded')
+          .select('_id eventId ownerId title description rolesNeeded spotsLeft spotsTotal')
+          .populate('eventId', 'title type')
+          .populate('ownerId', 'name')
           .lean()
       : Promise.resolve([]),
 
     // Dept+year fallback — only used if skills produced no results
     TeamPost.find({ status: 'open' })
       .limit(5)
-      .select('_id eventId title rolesNeeded')
+      .select('_id eventId ownerId title description rolesNeeded spotsLeft spotsTotal')
+      .populate('eventId', 'title type')
+      .populate('ownerId', 'name')
       .lean(),
 
     // Unread flag — Notification.exists is lean and indexed
@@ -166,12 +176,26 @@ export async function getHomeData(userId: string): Promise<HomeData> {
   }
 
   if (teamPosts.length > 0) {
-    data.matchedTeamPosts = teamPosts.map(p => ({
-      id:             p._id.toString(),
-      eventId:        p.eventId.toString(),
-      title:          p.title,
-      requiredSkills: (p as unknown as { rolesNeeded?: string[] }).rolesNeeded ?? [],
-    }));
+    data.matchedTeamPosts = teamPosts.map(p => {
+      const evObj = typeof p.eventId === 'object' && p.eventId !== null
+        ? (p.eventId as unknown as { _id: mongoose.Types.ObjectId; title?: string; type?: string })
+        : null;
+      const ownerObj = typeof p.ownerId === 'object' && p.ownerId !== null
+        ? (p.ownerId as unknown as { name?: string })
+        : null;
+      return {
+        id:             p._id.toString(),
+        eventId:        evObj ? evObj._id.toString() : p.eventId.toString(),
+        eventTitle:     evObj?.title,
+        eventType:      evObj?.type,
+        ownerName:      ownerObj?.name,
+        title:          p.title,
+        description:    (p as unknown as { description?: string }).description,
+        spotsLeft:      (p as unknown as { spotsLeft?: number }).spotsLeft,
+        spotsTotal:     (p as unknown as { spotsTotal?: number }).spotsTotal,
+        requiredSkills: (p as unknown as { rolesNeeded?: string[] }).rolesNeeded ?? [],
+      };
+    });
   }
 
   setCache(cacheKey, data, 30); // 30s TTL — mirrors spec
