@@ -535,31 +535,18 @@ export default function HomePage() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl bg-surface-container-lowest border border-surface-container-high/60
-                              p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-secondary-container/40 text-secondary
-                                  flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-[20px]">groups</span>
-                  </div>
-                  <div>
-                    <p className="font-title-sm text-sm font-semibold text-on-surface">
-                      No open team posts right now
-                    </p>
-                    <p className="font-body-sm text-xs text-on-surface-variant mt-0.5">
-                      Start a squad for an upcoming event or browse looking students.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate('/teams')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl
-                             bg-secondary text-on-secondary font-label-lg text-xs font-medium
-                             hover:opacity-90 active:scale-[0.98] transition-all shrink-0 self-start sm:self-auto"
-                >
-                  <span className="material-symbols-outlined text-[16px]">add_box</span>
-                  Explore Teams
-                </button>
+              <div className="rounded-2xl border border-dashed border-outline-variant/40
+                              py-6 px-4 text-center">
+                <p className="font-body-sm text-sm text-on-surface-variant">
+                  No open team posts right now —{' '}
+                  <button
+                    onClick={() => navigate('/teams')}
+                    className="text-primary font-medium hover:underline"
+                  >
+                    browse Team Finder
+                  </button>{' '}
+                  or open any team event to start a squad.
+                </p>
               </div>
             )}
           </section>

@@ -107,10 +107,10 @@ export async function getHomeData(userId: string): Promise<HomeData> {
       'verification.status': 'verified',
     }),
 
-    // Pending links in either direction (inbox + outbox)
+    // Pending incoming links only (requests the user actually needs to review)
     TeamLink.countDocuments({
-      $or:    [{ fromUserId: userId }, { toUserId: userId }],
-      status: 'pending',
+      toUserId: userId,
+      status:   'pending',
     }),
 
     // Events closing in next 48h
@@ -175,8 +175,9 @@ export async function getHomeData(userId: string): Promise<HomeData> {
     }));
   }
 
-  if (teamPosts.length > 0) {
-    data.matchedTeamPosts = teamPosts.map(p => {
+  const validTeamPosts = teamPosts.filter(p => p.eventId != null);
+  if (validTeamPosts.length > 0) {
+    data.matchedTeamPosts = validTeamPosts.map(p => {
       const evObj = typeof p.eventId === 'object' && p.eventId !== null
         ? (p.eventId as unknown as { _id: mongoose.Types.ObjectId; title?: string; type?: string })
         : null;
@@ -185,7 +186,7 @@ export async function getHomeData(userId: string): Promise<HomeData> {
         : null;
       return {
         id:             p._id.toString(),
-        eventId:        evObj ? evObj._id.toString() : p.eventId.toString(),
+        eventId:        evObj ? evObj._id.toString() : String(p.eventId ?? ''),
         eventTitle:     evObj?.title,
         eventType:      evObj?.type,
         ownerName:      ownerObj?.name,
