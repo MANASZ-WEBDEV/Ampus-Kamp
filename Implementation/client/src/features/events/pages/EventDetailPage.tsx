@@ -460,7 +460,7 @@ export default function EventDetailPage() {
                     {event.type === 'sports' ? 'Squad Board' : 'Team Finder'}
                   </span>
                   <span className="text-[12px] text-on-surface-variant">
-                    Browse open roles, post your own, or mark yourself as looking.
+                    Browse open team recruitments or post your own team for this event.
                   </span>
                 </div>
                 <button

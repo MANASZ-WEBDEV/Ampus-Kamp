@@ -46,10 +46,10 @@ export function LookingToggle({ eventId, isLooking, lookingCount }: LookingToggl
             <p className="font-title-sm text-sm font-semibold text-on-surface">
               {isLooking ? 'You\'re looking for a team' : 'Looking for a team?'}
             </p>
-            <p className="font-body-sm text-[10px] text-on-surface-variant">
+            <p className="font-body-sm text-xs text-on-surface-variant">
               {isLooking
-                ? 'Others can see you\'re available — tap to stop looking'
-                : 'Let others know you need teammates'}
+                ? 'Others can see you\'re available on the looking list — toggle off anytime'
+                : 'Broadcast yourself as available so teams can find you'}
             </p>
           </div>
         </div>
