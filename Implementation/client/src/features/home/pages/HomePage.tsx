@@ -478,7 +478,7 @@ export default function HomePage() {
                 <span className="material-symbols-outlined text-[16px]">chevron_right</span>
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className={`grid grid-cols-1 gap-4 ${closingEvents.length > 1 ? 'sm:grid-cols-2' : ''}`}>
               {closingEvents.slice(0, 4).map(ev => (
                 <EventCard key={ev.id} ev={ev} />
               ))}
@@ -495,7 +495,7 @@ export default function HomePage() {
               <Shimmer className="h-20" />
             </div>
           </section>
-        ) : !isFaculty && matchedPosts.length > 0 ? (
+        ) : !isFaculty ? (
           <section className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -503,7 +503,7 @@ export default function HomePage() {
                   <h2 className="font-headline-md text-headline-md text-on-surface">
                     Looking for Teammates
                   </h2>
-                  {hasSkillsMatch && (
+                  {hasSkillsMatch && matchedPosts.length > 0 && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                      bg-primary-fixed text-on-primary-fixed
                                      font-label-sm text-label-sm">
@@ -513,9 +513,11 @@ export default function HomePage() {
                   )}
                 </div>
                 <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
-                  {hasSkillsMatch
-                    ? 'Squads that need exactly what you know'
-                    : 'Open squads from your department'}
+                  {matchedPosts.length === 0
+                    ? 'Open squads from your department will appear here'
+                    : hasSkillsMatch
+                      ? 'Squads that need exactly what you know'
+                      : 'Open squads from your department'}
                 </p>
               </div>
               <button
@@ -526,16 +528,45 @@ export default function HomePage() {
                 <span className="material-symbols-outlined text-[16px]">chevron_right</span>
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {matchedPosts.slice(0, 4).map(post => (
-                <TeamPostRow key={post.id} post={post} />
-              ))}
-            </div>
+            {matchedPosts.length > 0 ? (
+              <div className={`grid grid-cols-1 gap-4 ${matchedPosts.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                {matchedPosts.slice(0, 4).map(post => (
+                  <TeamPostRow key={post.id} post={post} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-surface-container-lowest border border-surface-container-high/60
+                              p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-secondary-container/40 text-secondary
+                                  flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[20px]">groups</span>
+                  </div>
+                  <div>
+                    <p className="font-title-sm text-sm font-semibold text-on-surface">
+                      No open team posts right now
+                    </p>
+                    <p className="font-body-sm text-xs text-on-surface-variant mt-0.5">
+                      Start a squad for an upcoming event or browse looking students.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate('/teams')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl
+                             bg-secondary text-on-secondary font-label-lg text-xs font-medium
+                             hover:opacity-90 active:scale-[0.98] transition-all shrink-0 self-start sm:self-auto"
+                >
+                  <span className="material-symbols-outlined text-[16px]">add_box</span>
+                  Explore Teams
+                </button>
+              </div>
+            )}
           </section>
         ) : null}
 
-        {/* ── Empty state ───────────────────────────────────────────────────── */}
-        {!isLoading && closingEvents.length === 0 && matchedPosts.length === 0 && (
+        {/* ── Empty state (faculty only, since students always see Looking for Teammates) ── */}
+        {!isLoading && isFaculty && closingEvents.length === 0 && (
           <div className="rounded-2xl bg-surface-container-lowest border border-surface-container-high/40
                           p-10 flex flex-col items-center gap-4 text-center shadow-sm">
             <div className="w-14 h-14 rounded-2xl bg-primary-fixed flex items-center justify-center">
