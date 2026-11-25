@@ -34,7 +34,8 @@ export interface LinkUser {
 }
 
 export interface ContactReveal {
-  phone: string;
+  phone?: string;
+  email?: string;
 }
 
 export interface ContactHint {
@@ -42,17 +43,19 @@ export interface ContactHint {
 }
 
 export interface TeamLink {
-  id:          string;
-  direction:   LinkDirection;
-  status:      LinkStatus;
-  from:        LinkUser;
-  to:          LinkUser;
-  eventId?:    string;
-  teamPostId?: string;
-  message?:    string;
-  expiresAt:   string;
-  respondedAt?: string;
-  createdAt:   string;
+  id:            string;
+  direction:     LinkDirection;
+  status:        LinkStatus;
+  from:          LinkUser;
+  to:            LinkUser;
+  eventId?:      string;
+  eventTitle?:   string;
+  teamPostId?:   string;
+  teamPostTitle?: string;
+  message?:      string;
+  expiresAt:     string;
+  respondedAt?:  string;
+  createdAt:     string;
   // Present only when status='accepted'
   contact?: ContactReveal | ContactHint;
 }
@@ -99,5 +102,5 @@ export interface TeamLinksPage {
 // ── Type guards ───────────────────────────────────────────────────────────────
 
 export function isContactReveal(c: ContactReveal | ContactHint): c is ContactReveal {
-  return 'phone' in c;
+  return 'phone' in c || 'email' in c;
 }

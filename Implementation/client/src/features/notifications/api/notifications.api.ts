@@ -18,3 +18,9 @@ export async function getNotifications(
 export async function markNotificationRead(id: string): Promise<void> {
   await apiClient.patch(`/notifications/${id}/read`);
 }
+
+// ── PATCH /api/v1/notifications/read-all ─────────────────────────────────────
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await apiClient.patch('/notifications/read-all');
+}

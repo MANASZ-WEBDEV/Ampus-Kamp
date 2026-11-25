@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useRespondLink } from '../hooks/useTeams';
 import { BlockReportMenu } from './BlockReportMenu';
 import type { TeamLink } from '../types';
@@ -58,7 +59,9 @@ export function LinkCard({ link, box }: LinkCardProps) {
                 {otherPerson.name}
               </p>
               <p className="font-body-sm text-[10px] text-on-surface-variant">
-                {box === 'in' ? 'wants to join your team' : 'your request'}
+                {box === 'in'
+                  ? (link.direction === 'connect' ? 'wants to connect with you' : 'wants to join your team')
+                  : 'your request'}
                 {' · '}{new Date(link.createdAt).toLocaleDateString()}
               </p>
             </div>
@@ -84,6 +87,33 @@ export function LinkCard({ link, box }: LinkCardProps) {
           </div>
         </div>
 
+        {/* ── Event / Team Post context ────────────────────────────────── */}
+        {(link.eventTitle || link.teamPostTitle || link.eventId) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {link.eventId && (
+              <Link
+                to={`/events/${link.eventId}`}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
+                           bg-secondary-container/40 hover:bg-secondary-container/70
+                           text-secondary font-label-sm text-[11px] font-medium transition-colors"
+              >
+                <span className="material-symbols-outlined text-[13px]">emoji_events</span>
+                <span className="truncate max-w-[260px]">
+                  {link.eventTitle || 'View Event'}
+                </span>
+                <span className="material-symbols-outlined text-[13px]">arrow_forward</span>
+              </Link>
+            )}
+            {link.teamPostTitle && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full
+                               bg-surface-container text-on-surface-variant font-label-sm text-[11px]">
+                <span className="material-symbols-outlined text-[13px]">groups</span>
+                {link.teamPostTitle}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* ── Message ──────────────────────────────────────────────────── */}
         {link.message && (
           <div className="p-3 rounded-xl bg-surface-container border border-outline-variant/20">
@@ -95,18 +125,71 @@ export function LinkCard({ link, box }: LinkCardProps) {
 
         {/* ── Contact reveal (accepted only) ───────────────────────────── */}
         {link.status === 'accepted' && link.contact && (
-          <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
-              {isContactReveal(link.contact) ? 'phone' : 'info'}
-            </span>
-            <div>
+          <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] text-primary shrink-0">
+                {isContactReveal(link.contact) ? 'contact_phone' : 'info'}
+              </span>
               <p className="font-label-lg text-xs font-semibold text-primary">
-                {isContactReveal(link.contact) ? 'Contact Revealed' : 'Contact Info'}
-              </p>
-              <p className="font-body-sm text-xs text-on-surface mt-0.5">
-                {isContactReveal(link.contact) ? link.contact.phone : link.contact.hint}
+                {isContactReveal(link.contact) ? `Connect with ${otherPerson.name}` : 'Contact Info'}
               </p>
             </div>
+            {isContactReveal(link.contact) ? (
+              <>
+              <div className="flex flex-wrap items-center gap-2">
+                {link.contact.phone && (
+                  <>
+                    <a
+                      href={`https://wa.me/${link.contact.phone.replace(/\D/g, '').replace(/^(\d{10})$/, '91$1')}?text=${encodeURIComponent(
+                        `Hi ${otherPerson.name}, we connected on CIP${link.eventTitle ? ` for ${link.eventTitle}` : ''}!`,
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                                 bg-[#25D366] text-white font-label-md text-xs font-medium
+                                 hover:opacity-90 transition-opacity"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">chat</span>
+                      WhatsApp
+                    </a>
+                    <a
+                      href={`tel:${link.contact.phone}`}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg
+                                 bg-surface-container-lowest border border-outline-variant/30
+                                 text-on-surface font-code-sm text-xs hover:bg-surface-container transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[14px] text-primary">call</span>
+                      {link.contact.phone}
+                    </a>
+                  </>
+                )}
+                {link.contact.email && (
+                  <a
+                    href={`mailto:${link.contact.email}?subject=${encodeURIComponent(
+                      `CIP Team Connect${link.eventTitle ? ` — ${link.eventTitle}` : ''}`,
+                    )}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                               bg-surface-container-lowest border border-outline-variant/30
+                               text-on-surface font-label-md text-xs font-medium
+                               hover:bg-surface-container transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[15px] text-primary">mail</span>
+                    {link.contact.email}
+                  </a>
+                )}
+              </div>
+              {!link.contact.phone && (
+                <p className="font-body-sm text-[11px] text-on-surface-variant">
+                  Want WhatsApp?{' '}
+                  <Link to="/profile" className="text-primary font-medium hover:underline">
+                    Add &amp; show your phone in Profile
+                  </Link>
+                </p>
+              )}
+              </>
+            ) : (
+              <p className="font-body-sm text-xs text-on-surface">{link.contact.hint}</p>
+            )}
           </div>
         )}
 

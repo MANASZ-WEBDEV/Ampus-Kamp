@@ -24,7 +24,8 @@ const DEFAULT_DAY_LIMIT = 10;
 // ── Response shapes ───────────────────────────────────────────────────────────
 
 export interface ContactReveal {
-  phone: string;
+  phone?: string;
+  email?: string;
 }
 
 export interface ContactHint {
@@ -32,54 +33,83 @@ export interface ContactHint {
 }
 
 export interface LinkCard {
-  id:          string;
-  direction:   ITeamLink['direction'];
-  status:      ITeamLink['status'];
+  id:            string;
+  direction:     ITeamLink['direction'];
+  status:        ITeamLink['status'];
   from: { id: string; name: string };
   to:   { id: string; name: string };
-  eventId?:    string;
-  teamPostId?: string;
-  message?:    string;
-  expiresAt:   string;
-  respondedAt?: string;
-  createdAt:   string;
+  eventId?:      string;
+  eventTitle?:   string;
+  teamPostId?:   string;
+  teamPostTitle?: string;
+  message?:      string;
+  expiresAt:     string;
+  respondedAt?:  string;
+  createdAt:     string;
   // Present ONLY when status='accepted' — never for pending/declined/expired
   contact?: ContactReveal | ContactHint;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+type PopulatedUser = {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+  email?: string;
+  phoneVisible?: boolean;
+  phone?: string;
+};
+
+type PopulatedEvent = { _id: mongoose.Types.ObjectId; title?: string } | mongoose.Types.ObjectId;
+type PopulatedPost  = { _id: mongoose.Types.ObjectId; title?: string } | mongoose.Types.ObjectId;
+
 /** Shape a TeamLink document into a client-safe LinkCard.
- *  phone is ONLY included when status='accepted' AND the target's phoneVisible=true.
- *  All other states return no contact information.
+ *  Reveals the OTHER party's contact (phone if phoneVisible=true, plus email)
+ *  ONLY when status='accepted'. All other states return no contact information.
  */
 function shapeLink(
   link: ITeamLink & {
-    fromUserId: { _id: mongoose.Types.ObjectId; name: string };
-    toUserId:   { _id: mongoose.Types.ObjectId; name: string; phoneVisible?: boolean; phone?: string };
+    fromUserId:  PopulatedUser;
+    toUserId:    PopulatedUser;
+    eventId?:    PopulatedEvent | null;
+    teamPostId?: PopulatedPost  | null;
   },
+  viewerId?: string,
 ): LinkCard {
+  const evObj = link.eventId && typeof link.eventId === 'object' && 'title' in link.eventId
+    ? link.eventId
+    : null;
+  const postObj = link.teamPostId && typeof link.teamPostId === 'object' && 'title' in link.teamPostId
+    ? link.teamPostId
+    : null;
+
   const base: LinkCard = {
-    id:          link._id.toString(),
-    direction:   link.direction,
-    status:      link.status,
+    id:            link._id.toString(),
+    direction:     link.direction,
+    status:        link.status,
     from: { id: link.fromUserId._id.toString(), name: link.fromUserId.name },
     to:   { id: link.toUserId._id.toString(),   name: link.toUserId.name },
-    eventId:     link.eventId?.toString(),
-    teamPostId:  link.teamPostId?.toString(),
-    message:     link.message,
-    expiresAt:   link.expiresAt.toISOString(),
-    respondedAt: link.respondedAt?.toISOString(),
-    createdAt:   link.createdAt.toISOString(),
+    eventId:       evObj ? evObj._id.toString() : link.eventId?.toString(),
+    eventTitle:    evObj?.title,
+    teamPostId:    postObj ? postObj._id.toString() : link.teamPostId?.toString(),
+    teamPostTitle: postObj?.title,
+    message:       link.message,
+    expiresAt:     link.expiresAt.toISOString(),
+    respondedAt:   link.respondedAt?.toISOString(),
+    createdAt:     link.createdAt.toISOString(),
   };
 
   // ── Contact reveal rule (enforced here — not on the client) ──────────────
-  // phone NEVER appears unless status='accepted' AND phoneVisible=true
   if (link.status === 'accepted') {
-    if (link.toUserId.phoneVisible && link.toUserId.phone) {
-      base.contact = { phone: link.toUserId.phone };
+    const other = viewerId && link.fromUserId._id.toString() !== viewerId
+      ? link.fromUserId
+      : link.toUserId;
+    const phone = other.phoneVisible && other.phone ? other.phone : undefined;
+    const email = other.email || undefined;
+    if (phone || email) {
+      base.contact = { ...(phone ? { phone } : {}), ...(email ? { email } : {}) };
     } else {
-      base.contact = { hint: 'Ask the leader to share a WhatsApp group link.' };
+      base.contact = { hint: 'Contact details not shared yet. Ask them to add phone/email in Profile.' };
     }
   }
 
@@ -213,11 +243,13 @@ export async function sendLink(actor: AuthUser, body: SendLinkBody): Promise<Lin
 
   // ── 7. Return shaped card ────────────────────────────────────────────────
   const populated = await TeamLink.findById(link._id)
-    .populate<{ fromUserId: { _id: mongoose.Types.ObjectId; name: string } }>('fromUserId', 'name')
-    .populate<{ toUserId:   { _id: mongoose.Types.ObjectId; name: string; phoneVisible: boolean } }>('toUserId', 'name phoneVisible')
+    .populate('fromUserId', 'name')
+    .populate('toUserId', 'name phoneVisible')
+    .populate('eventId', 'title')
+    .populate('teamPostId', 'title')
     .lean();
 
-  const shaped = shapeLink(populated as unknown as Parameters<typeof shapeLink>[0]);
+  const shaped = shapeLink(populated as unknown as Parameters<typeof shapeLink>[0], actor.id);
 
   // Notify recipient — fire-and-forget
   const recipientId = shaped.to.id;
@@ -301,17 +333,22 @@ export async function respondLink(
     },
     { new: true },
   )
-    .populate<{ fromUserId: { _id: mongoose.Types.ObjectId; name: string } }>('fromUserId', 'name')
-    .populate<{ toUserId: { _id: mongoose.Types.ObjectId; name: string; phoneVisible: boolean; phone?: string } }>(
-      'toUserId',
-      // Fetch +phone ONLY on accept path — never expose otherwise
-      action === 'accept' ? 'name phoneVisible +phone' : 'name phoneVisible',
+    .populate(
+      'fromUserId',
+      action === 'accept' ? 'name email phoneVisible +phone' : 'name',
     )
+    .populate(
+      'toUserId',
+      // Fetch email + +phone ONLY on accept path — never expose otherwise
+      action === 'accept' ? 'name email phoneVisible +phone' : 'name phoneVisible',
+    )
+    .populate('eventId', 'title')
+    .populate('teamPostId', 'title')
     .lean();
 
   if (!updatedLink) throw new NotFoundError('Link');
 
-  const shaped = shapeLink(updatedLink as unknown as Parameters<typeof shapeLink>[0]);
+  const shaped = shapeLink(updatedLink as unknown as Parameters<typeof shapeLink>[0], actor.id);
 
   // Notify original sender on accept/decline — fire-and-forget
   // Withdraw is excluded: no need to notify yourself.
@@ -349,12 +386,10 @@ export async function getLinks(
 
   // Fetch limit + 1 to determine hasMore
   const raw = await TeamLink.find(filter)
-    .populate<{ fromUserId: { _id: mongoose.Types.ObjectId; name: string } }>('fromUserId', 'name')
-    .populate<{ toUserId: { _id: mongoose.Types.ObjectId; name: string; phoneVisible: boolean; phone?: string } }>(
-      'toUserId',
-      // Fetch +phone for all — shapeLink will only expose it for accepted links
-      'name phoneVisible +phone',
-    )
+    .populate('fromUserId', 'name email phoneVisible +phone')
+    .populate('toUserId', 'name email phoneVisible +phone')
+    .populate('eventId', 'title')
+    .populate('teamPostId', 'title')
     .sort({ _id: -1 })
     .limit(limit + 1)
     .lean();
@@ -364,7 +399,7 @@ export async function getLinks(
   const nextCursor = hasMore ? items[items.length - 1]?._id.toString() : undefined;
 
   return {
-    items: items.map(l => shapeLink(l as unknown as Parameters<typeof shapeLink>[0])),
+    items: items.map(l => shapeLink(l as unknown as Parameters<typeof shapeLink>[0], actor.id)),
     nextCursor,
     hasMore,
   };

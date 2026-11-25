@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BottomNav }         from '@/components/layout/BottomNav';
 import { AppBar }            from '@/components/layout/AppBar';
-import { useNotifications, useMarkRead } from '../hooks/useNotifications';
+import { useNotifications, useMarkRead, useMarkAllRead } from '../hooks/useNotifications';
 import type { AppNotification, NotifType } from '../types';
 
 // ── Relative time formatter ───────────────────────────────────────────────────
@@ -127,7 +127,16 @@ function NotifRow({ notif }: { notif: AppNotification }) {
       id={`notif-row-${notif.id}`}
       onClick={() => {
         if (isUnread) markRead(notif.id);
-        if ((notif.type === 'team_invite' || notif.type === 'team_member_joined' || notif.type === 'event_new' || notif.type === 'deadline') && eventId) {
+        if (notif.type === 'link_received' || notif.type === 'link_expiring') {
+          navigate('/teams/inbox');
+        } else if (notif.type === 'link_update') {
+          navigate('/teams/inbox?tab=out');
+        } else if (notif.type === 'credential_update') {
+          navigate('/badges');
+        } else if (
+          (notif.type === 'team_invite' || notif.type === 'team_member_joined' || notif.type === 'event_new' || notif.type === 'deadline') &&
+          eventId
+        ) {
           navigate(`/events/${eventId}`);
         }
       }}
@@ -159,7 +168,10 @@ function NotifRow({ notif }: { notif: AppNotification }) {
           <p className={`text-sm leading-snug ${isUnread ? 'font-bold text-on-surface' : 'font-medium text-on-surface-variant'}`}>
             {title}
           </p>
-          <span className="text-[10px] text-on-surface-variant shrink-0 mt-0.5">
+          <span
+            title={new Date(notif.createdAt).toLocaleString('en-IN')}
+            className="text-[10px] text-on-surface-variant shrink-0 mt-0.5"
+          >
             {relativeTime(notif.createdAt)}
           </span>
         </div>
@@ -187,6 +199,7 @@ export default function NotificationsPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useNotifications();
+  const { mutate: markAllRead, isPending: isMarkingAll } = useMarkAllRead();
 
   // IntersectionObserver on sentinel div — triggers next page load
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -208,12 +221,39 @@ export default function NotificationsPage() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const allNotifications = data?.pages.flatMap(p => p.notifications) ?? [];
+  const unreadCount = allNotifications.filter(n => !n.readAt).length;
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
       <AppBar title="Notifications" />
 
-      <main className="flex-1 overflow-y-auto pb-24 divide-y divide-outline-variant/20">
+      <main className="flex-1 pt-16 max-w-3xl mx-auto w-full overflow-y-auto pb-24">
+        {/* Header bar */}
+        <div className="flex items-center justify-between px-4 pt-5 pb-3 border-b border-outline-variant/20">
+          <div className="flex items-center gap-2">
+            <h1 className="font-headline-md text-lg font-bold text-on-surface">Notifications</h1>
+            {unreadCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-primary/15 text-primary font-label-sm text-xs font-semibold">
+                {unreadCount} unread
+              </span>
+            )}
+          </div>
+          {unreadCount > 0 && (
+            <button
+              id="notif-mark-all-read-btn"
+              onClick={() => markAllRead()}
+              disabled={isMarkingAll}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl
+                         bg-surface-container hover:bg-surface-container-high text-primary
+                         font-label-md text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[15px]">done_all</span>
+              {isMarkingAll ? 'Marking…' : 'Mark all as read'}
+            </button>
+          )}
+        </div>
+
+        <div className="divide-y divide-outline-variant/20">
 
         {/* Loading skeleton */}
         {isLoading && Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}
@@ -249,6 +289,7 @@ export default function NotificationsPage() {
         {allNotifications.map(n => (
           <NotifRow key={n.id} notif={n} />
         ))}
+        </div>
 
         {/* Infinite scroll sentinel */}
         <div ref={sentinelRef} className="h-4" />

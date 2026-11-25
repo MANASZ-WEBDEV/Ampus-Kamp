@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getNotifications, markNotificationRead }        from '../api/notifications.api';
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notifications.api';
 
 // ── useNotifications — cursor-based infinite scroll ───────────────────────────
 
@@ -22,6 +22,19 @@ export function useMarkRead() {
     mutationFn: markNotificationRead,
     onSuccess: () => {
       // Refresh notification list + home unread flag
+      void qc.invalidateQueries({ queryKey: ['notifications'] });
+      void qc.invalidateQueries({ queryKey: ['home'] });
+    },
+  });
+}
+
+// ── useMarkAllRead — marks all notifications as read ──────────────────────────
+
+export function useMarkAllRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: markAllNotificationsRead,
+    onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['notifications'] });
       void qc.invalidateQueries({ queryKey: ['home'] });
     },

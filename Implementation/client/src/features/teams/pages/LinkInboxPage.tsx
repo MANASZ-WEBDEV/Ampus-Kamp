@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AppBar }     from '@/components/layout/AppBar';
 import { useLinks }   from '../hooks/useTeams';
 import { LinkCard }   from '../components/LinkCard';
@@ -11,7 +12,9 @@ type Tab = 'in' | 'out';
  * Two tabs: Incoming (requests I received) and Sent (requests I sent).
  */
 export default function LinkInboxPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('in');
+  const [searchParams] = useSearchParams();
+  const initialTab: Tab = searchParams.get('tab') === 'out' ? 'out' : 'in';
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   const { data: inData,  isLoading: inLoading,  isError: inError  } = useLinks('in');
   const { data: outData, isLoading: outLoading, isError: outError } = useLinks('out');

@@ -2,6 +2,7 @@ import { Notification, type NotificationType } from '@/models/notification.model
 import { User }                               from '@/models/user.model';
 import { sendNotificationEmail }             from '@/services/email.service';
 import type { NotificationEmailPayload }     from '@/services/email.service';
+import { invalidateHomeCache }               from '@/modules/home/home.service';
 import mongoose                              from 'mongoose';
 
 // ── Discriminated union — type-safe payload per notification type ──────────────
@@ -192,6 +193,18 @@ export async function markRead(userId: string, notificationId: string): Promise<
     { _id: notificationId, userId, readAt: null },
     { $set: { readAt: new Date() } },
   );
+  invalidateHomeCache(userId);
+}
+
+/**
+ * markAllRead — marks every unread notification for userId as read.
+ */
+export async function markAllRead(userId: string): Promise<void> {
+  await Notification.updateMany(
+    { userId, readAt: null },
+    { $set: { readAt: new Date() } },
+  );
+  invalidateHomeCache(userId);
 }
 
 // ── Shape helper ──────────────────────────────────────────────────────────────

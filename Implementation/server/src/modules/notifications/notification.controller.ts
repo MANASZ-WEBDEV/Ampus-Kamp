@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { listQuerySchema, idParamSchema }        from './notification.schema';
-import { getNotifications, markRead }            from './notification.service';
+import { getNotifications, markRead, markAllRead } from './notification.service';
 
 // ── GET /api/v1/notifications ─────────────────────────────────────────────────
 
@@ -35,6 +35,21 @@ export async function markNotificationRead(
 
     await markRead(userId, id);
 
+    res.json({ data: {} });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── PATCH /api/v1/notifications/read-all ──────────────────────────────────────
+
+export async function markAllNotificationsRead(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    await markAllRead(req.user!.id);
     res.json({ data: {} });
   } catch (err) {
     next(err);
