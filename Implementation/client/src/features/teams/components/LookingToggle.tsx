@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useToggleLooking } from '../hooks/usePeople';
 
 interface LookingToggleProps {
@@ -53,13 +54,22 @@ export function LookingToggle({ eventId, isLooking, lookingCount }: LookingToggl
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Count badge */}
-          {(lookingCount ?? 0) > 0 && (
-            <span className="font-label-sm text-[10px] text-on-surface-variant">
-              {lookingCount} looking
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Count / link to LookingListPage */}
+          <Link
+            to={`/events/${eventId}/looking`}
+            className="px-2.5 py-1 rounded-full bg-surface-container hover:bg-surface-container-high
+                       text-on-surface font-label-md text-xs font-medium transition-colors
+                       flex items-center gap-1"
+            title="View students looking for a team"
+          >
+            <span>
+              {(lookingCount ?? 0) > 0
+                ? `${lookingCount} ${lookingCount === 1 ? 'student' : 'students'} looking`
+                : 'View looking list'}
             </span>
-          )}
+            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+          </Link>
 
           {/* Toggle pill */}
           <button
@@ -67,12 +77,15 @@ export function LookingToggle({ eventId, isLooking, lookingCount }: LookingToggl
             onClick={handleToggle}
             disabled={isPending}
             aria-pressed={isLooking}
-            className={`w-12 h-6 rounded-full transition-all duration-300 relative disabled:opacity-60 ${
-              isLooking ? 'bg-primary' : 'bg-surface-container-high'
+            aria-label={isLooking ? 'Turn off looking for a team' : 'Turn on looking for a team'}
+            className={`w-12 h-6 rounded-full transition-all duration-300 relative disabled:opacity-60 border ${
+              isLooking
+                ? 'bg-primary border-primary'
+                : 'bg-slate-300 border-slate-400/60 hover:bg-slate-400/70'
             }`}
           >
-            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm
-                              transition-all duration-300 ${isLooking ? 'left-6' : 'left-0.5'}`} />
+            <span className={`absolute top-[1px] w-5 h-5 rounded-full bg-white shadow-md ring-1 ring-black/10
+                              transition-all duration-300 ${isLooking ? 'left-6' : 'left-[1px]'}`} />
           </button>
         </div>
       </div>

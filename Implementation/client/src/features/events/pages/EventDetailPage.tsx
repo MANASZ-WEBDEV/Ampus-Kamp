@@ -7,6 +7,7 @@ import { useAuth }     from '@/features/auth/context/AuthContext';
 import { AppBar }     from '@/components/layout/AppBar';
 import { BottomNav }  from '@/components/layout/BottomNav';
 import { LookingToggle }          from '@/features/teams/components/LookingToggle';
+import { useLooking }             from '@/features/teams/hooks/usePeople';
 import { RegisterButton }         from '@/features/registrations/components/RegisterButton';
 import { RegistrationStatusCard } from '@/features/registrations/components/RegistrationStatusCard';
 import { MemberConfirmBanner }    from '@/features/registrations/components/MemberConfirmBanner';
@@ -99,6 +100,9 @@ export default function EventDetailPage() {
   const isClosed   = event?.status === 'closed' || event?.status === 'archived';
   const isDraft    = event?.status === 'draft';
   const isTeamEvent = event?.type === 'hackathon' || event?.type === 'competition' || event?.type === 'sports';
+  const { data: lookingData } = useLooking(isTeamEvent && !isClosed && id ? id : '');
+  const isLooking    = lookingData?.items.some(item => item.user.id === user?.id) ?? false;
+  const lookingCount = lookingData?.items.length ?? 0;
   // Deadline enforcement — derived from timestamp, not just event.status.
   // A published event whose deadline has passed should show "Closed" to students.
   const deadlinePassedMs  = event?.registrationDeadline
@@ -472,7 +476,7 @@ export default function EventDetailPage() {
 
             {/* Looking toggle — students only */}
             {isTeamEvent && !isClosed && user?.role === 'student' && (
-              <LookingToggle eventId={id!} isLooking={false} />
+              <LookingToggle eventId={id!} isLooking={isLooking} lookingCount={lookingCount} />
             )}
 
           </div>
