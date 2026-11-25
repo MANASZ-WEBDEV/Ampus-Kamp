@@ -155,13 +155,13 @@ export default function AddAchievementPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 border-b border-outline-variant/10 mt-1">
           <div className="flex items-center gap-3 flex-wrap text-[11px] font-label-md">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-container/20 text-secondary font-bold text-[10px] uppercase tracking-wide">
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
-              Tamper Detection &amp; OCR Engine Active
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
+              Duplicate File Detection Active
             </span>
             <span className="hidden sm:block h-3.5 w-[1px] bg-outline-variant" />
             <span className="inline-flex items-center gap-1.5 text-on-surface-variant">
-              <span className="material-symbols-outlined text-[14px] text-emerald-600">storage</span>
-              Ledger Node #849-82 Connected
+              <span className="material-symbols-outlined text-[14px] text-emerald-600">verified_user</span>
+              Verified Academic Portal
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -178,17 +178,17 @@ export default function AddAchievementPage() {
 
         {/* ── Breadcrumb ────────────────────────────────────────────────── */}
         <nav className="flex items-center gap-1.5 font-label-md text-[11px] text-on-surface-variant py-3 flex-wrap">
-          <span>Campus Ledger</span>
+          <span>Verified Academic Portal</span>
           <span className="material-symbols-outlined text-[13px]">chevron_right</span>
           <button onClick={() => navigate('/profile')} className="hover:text-primary transition-colors">Student Profile</button>
           <span className="material-symbols-outlined text-[13px]">chevron_right</span>
           <span className="text-on-surface font-semibold">Submit Achievement &amp; Credential Verification</span>
         </nav>
 
-        {/* ── ECDSA ledger pill ─────────────────────────────────────────── */}
+        {/* ── Verification badge pill ───────────────────────────────────── */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-code-sm text-[11px] font-semibold mb-4">
           <span className="material-symbols-outlined text-[14px]">verified_user</span>
-          ECDSA-256 LEDGER ADMISSION • TERM 2025-Q1
+          FACULTY VERIFIED CREDENTIAL SUBMISSION
         </div>
 
         {/* ── Page heading ──────────────────────────────────────────────── */}
@@ -199,7 +199,7 @@ export default function AddAchievementPage() {
             </h1>
             <p className="font-body-md text-sm text-on-surface-variant mt-2 leading-relaxed max-w-xl">
               Upload verified industry certifications, hackathon awards, or academic honors to claim institutional
-              activity points and automatically populate your cryptographic academic transcript.
+              activity points on your verified academic transcript.
             </p>
           </div>
           <span className="flex-shrink-0 self-start flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container text-on-surface font-label-md text-[11px]">
@@ -533,8 +533,8 @@ export default function AddAchievementPage() {
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-surface-container text-primary flex items-center justify-center font-label-md text-[12px] font-bold border border-primary/20">4</div>
                   <div>
-                    <h2 className="font-headline-sm text-[15px] text-on-surface font-bold">Primary Proof Document &amp; Signature Verification</h2>
-                    <p className="font-body-sm text-[11px] text-on-surface-variant">Cryptographic image scan with EXIF timestamp and PDF structure analysis</p>
+                    <h2 className="font-headline-sm text-[15px] text-on-surface font-bold">Primary Proof Document</h2>
+                    <p className="font-body-sm text-[11px] text-on-surface-variant">Upload your official certificate PDF or high-resolution image for faculty review</p>
                   </div>
                 </div>
                 <span className="font-code-sm text-[10px] text-outline">SEC_04</span>
@@ -585,8 +585,7 @@ export default function AddAchievementPage() {
                 </div>
 
                 <p className="font-body-sm text-[10px] text-on-surface-variant">
-                  Accepted Formats: Cryptographically sealed PDF, High-Res PNG or JPG (Max 15MB).
-                  OCR engine automatically checks official issuer cert seals.
+                  Accepted Formats: PDF, PNG, or JPG (Max 15MB). Uploaded files are hashed (SHA-256) to prevent duplicate submissions.
                 </p>
 
                 <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="sr-only" onChange={handleFileChange} />
@@ -674,12 +673,10 @@ export default function AddAchievementPage() {
               </div>
             </div>
 
-            {/* Cryptographic signature footer */}
+            {/* Verification note footer */}
             <div className="py-2 flex items-center justify-center gap-2 font-code-sm text-[10px] text-on-surface-variant">
               <span className="material-symbols-outlined text-[14px]">lock</span>
-              Cryptographically signed via Student Identity Token:
-              <span className="text-primary">ananya.rao@campus.ac.in</span>
-              • SFC-P256K1 // SHA-256
+              Submitted to Verified Academic Portal • File integrity checked via SHA-256
             </div>
 
           </div>
@@ -800,7 +797,7 @@ export default function AddAchievementPage() {
                 ))}
               </div>
               <button className="mt-3 flex items-center gap-1 text-primary font-label-md text-[11px] hover:underline">
-                Read Full Academic Ledger Policy Handbook
+                Read Academic Accreditation Guidelines
                 <span className="material-symbols-outlined text-[13px]">open_in_new</span>
               </button>
             </div>
