@@ -25,7 +25,6 @@ const PasteToPostPage = lazy(() => import('@/features/events/pages/PasteToPostPa
 
 // F-4: Team Finder
 const TeamFinderPage     = lazy(() => import('@/features/teams/pages/TeamFinderPage'));
-const TeamCommandHubPage = lazy(() => import('@/features/teams/pages/TeamCommandHubPage'));
 const TeamPostsPage      = lazy(() => import('@/features/teams/pages/TeamPostsPage'));
 const LinkInboxPage      = lazy(() => import('@/features/teams/pages/LinkInboxPage'));
 
@@ -125,10 +124,10 @@ export function AppRouter() {
             path="/teams"
             element={<ProtectedRoute><TeamFinderPage /></ProtectedRoute>}
           />
-          {/* Team Command Hub — Squad Requests & Applications (/teams/requests) */}
+          {/* Team Requests & Applications — routed to real LinkInboxPage */}
           <Route
             path="/teams/requests"
-            element={<ProtectedRoute><TeamCommandHubPage /></ProtectedRoute>}
+            element={<ProtectedRoute roles={['student']}><LinkInboxPage /></ProtectedRoute>}
           />
           {/* IMPORTANT: /events/:eventId/teams must be before /events/:id ── */}
           <Route

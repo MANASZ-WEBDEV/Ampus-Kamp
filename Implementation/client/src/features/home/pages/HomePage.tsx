@@ -329,7 +329,7 @@ export default function HomePage() {
             </div>
             <button
               id="home-review-requests-btn"
-              onClick={() => navigate('/teams')}
+              onClick={() => navigate('/teams/inbox')}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl
                          bg-secondary text-on-secondary font-label-lg text-label-lg
                          shadow hover:opacity-90 active:scale-[0.98] transition-all
