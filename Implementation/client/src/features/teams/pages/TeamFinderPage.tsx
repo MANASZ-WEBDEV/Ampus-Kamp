@@ -93,7 +93,7 @@ export default function TeamFinderPage() {
   // ── 4. Fetch incoming/outgoing links for badge count (students only) ──────
   const { data: inboxLinks } = useLinks('in');
   const pendingInboxCount = useMemo(
-    () => (inboxLinks ?? []).filter(l => l.status === 'pending').length,
+    () => (inboxLinks?.items ?? []).filter(l => l.status === 'pending').length,
     [inboxLinks],
   );
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BottomNav }         from '@/components/layout/BottomNav';
 import { AppBar }            from '@/components/layout/AppBar';
 import { useNotifications, useMarkRead } from '../hooks/useNotifications';
@@ -75,6 +76,24 @@ function buildContent(n: AppNotification): NotifContent {
         body:  'One of your pending team requests expires tomorrow.',
       };
 
+    case 'team_invite':
+      return {
+        icon:  'group_add',
+        title: `Team Invite${p.teamName ? ` · ${p.teamName}` : ''}`,
+        body:  p.leaderName && p.eventTitle
+          ? `${p.leaderName} invited you to join their team for ${p.eventTitle}.`
+          : 'You have been invited to join a team registration.',
+      };
+
+    case 'team_member_joined':
+      return {
+        icon:  'how_to_reg',
+        title: `Teammate Joined${p.teamName ? ` · ${p.teamName}` : ''}`,
+        body:  p.memberName && p.eventTitle
+          ? `${p.memberName} confirmed their spot for ${p.eventTitle}.`
+          : 'A teammate has confirmed their spot on your team.',
+      };
+
     default:
       return { icon: 'notifications', title: 'Notification', body: '' };
   }
@@ -97,14 +116,21 @@ function SkeletonRow() {
 // ── Notification row ──────────────────────────────────────────────────────────
 
 function NotifRow({ notif }: { notif: AppNotification }) {
+  const navigate = useNavigate();
   const { mutate: markRead } = useMarkRead();
   const { icon, title, body } = buildContent(notif);
   const isUnread = !notif.readAt;
+  const eventId = (notif.payload as Record<string, string>)?.eventId;
 
   return (
     <button
       id={`notif-row-${notif.id}`}
-      onClick={() => { if (isUnread) markRead(notif.id); }}
+      onClick={() => {
+        if (isUnread) markRead(notif.id);
+        if ((notif.type === 'team_invite' || notif.type === 'team_member_joined' || notif.type === 'event_new' || notif.type === 'deadline') && eventId) {
+          navigate(`/events/${eventId}`);
+        }
+      }}
       className={`w-full flex gap-3 px-4 py-4 text-left transition-colors active:scale-[.99] ${
         isUnread
           ? 'bg-primary-container/20 hover:bg-primary-container/30'

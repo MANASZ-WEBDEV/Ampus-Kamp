@@ -6,7 +6,9 @@ export type NotifType =
   | 'link_received'
   | 'link_update'
   | 'credential_update'
-  | 'link_expiring';
+  | 'link_expiring'
+  | 'team_invite'
+  | 'team_member_joined';
 
 export interface AppNotification {
   id:        string;
