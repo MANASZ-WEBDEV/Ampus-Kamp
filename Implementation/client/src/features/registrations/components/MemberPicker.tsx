@@ -4,6 +4,10 @@ import { searchStudents, type PersonCard } from '../api/people.api';
 interface MemberPickerProps {
   eventId:      string;
   teamSizeMax:  number;
+  /** Optional override for max selectable invites (defaults to teamSizeMax - 1) */
+  maxInvites?:  number;
+  /** User IDs to exclude from search results (e.g. existing team members) */
+  excludeIds?:  string[];
   /** Called each time the selected member list changes */
   onChange:     (members: PersonCard[]) => void;
 }
@@ -14,7 +18,13 @@ interface MemberPickerProps {
 // Renders selected members as dismissable chips.
 // Respects allowInvites flag — users who disabled invites show a muted indicator.
 
-export function MemberPicker({ eventId, teamSizeMax, onChange }: MemberPickerProps) {
+export function MemberPicker({
+  eventId,
+  teamSizeMax,
+  maxInvites: maxInvitesProp,
+  excludeIds = [],
+  onChange,
+}: MemberPickerProps) {
   const [query,    setQuery]    = useState('');
   const [results,  setResults]  = useState<PersonCard[]>([]);
   const [selected, setSelected] = useState<PersonCard[]>([]);
@@ -27,9 +37,13 @@ export function MemberPicker({ eventId, teamSizeMax, onChange }: MemberPickerPro
   const selectedRef   = useRef<PersonCard[]>(selected); // always current for callbacks
   useEffect(() => { selectedRef.current = selected; }, [selected]);
 
-  // Max invites = teamSize.max - 1 (leader fills one slot)
-  const maxInvites = teamSizeMax - 1;
+  const excludeRef    = useRef<string[]>(excludeIds);
+  useEffect(() => { excludeRef.current = excludeIds; }, [excludeIds]);
+
+  // Max invites defaults to teamSize.max - 1 (leader fills one slot)
+  const maxInvites = maxInvitesProp ?? Math.max(0, teamSizeMax - 1);
   const selectedIds = new Set(selected.map(p => p.id));
+  const excludedSet = new Set(excludeIds);
 
   // ── Debounced search ───────────────────────────────────────────────────────
   const isEmailQuery    = (q: string) => q.includes('@');
@@ -41,9 +55,12 @@ export function MemberPicker({ eventId, teamSizeMax, onChange }: MemberPickerPro
     if (!isReadyToSearch(q)) { setResults([]); setOpen(false); return; }
     setLoading(true);
     try {
-      const currentIds = new Set(selectedRef.current.map(p => p.id));
+      const currentIds = new Set([
+        ...selectedRef.current.map(p => p.id),
+        ...excludeRef.current,
+      ]);
       const items = await searchStudents(q, eventId);
-      // Filter out already-selected members using the ref (no stale closure)
+      // Filter out already-selected and excluded members using refs (no stale closure)
       setResults(items.filter(p => !currentIds.has(p.id)));
       setOpen(true);
     } catch {
@@ -75,7 +92,7 @@ export function MemberPicker({ eventId, teamSizeMax, onChange }: MemberPickerPro
 
   // ── Add / remove ──────────────────────────────────────────────────────────
   function addMember(person: PersonCard) {
-    if (selectedIds.has(person.id) || selected.length >= maxInvites) return;
+    if (selectedIds.has(person.id) || excludedSet.has(person.id) || selected.length >= maxInvites) return;
     const next = [...selected, person];
     setSelected(next);
     onChange(next);

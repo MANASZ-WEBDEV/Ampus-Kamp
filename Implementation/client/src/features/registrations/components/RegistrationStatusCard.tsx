@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import type { Registration, Member } from '../types';
+import type { PersonCard } from '../api/people.api';
+import { MemberPicker } from './MemberPicker';
 
 interface RegistrationStatusCardProps {
   registration: Registration;
@@ -6,8 +9,14 @@ interface RegistrationStatusCardProps {
   onWithdraw?: () => void;
   /** For draft registrations: submit the registration */
   onConfirm?: () => void;
+  /** For team draft registrations: update invited memberUserIds (excluding confirmed) */
+  onUpdateMembers?: (memberUserIds: string[]) => Promise<unknown> | void;
+  isUpdatingMembers?: boolean;
+  updateMembersError?: string | null;
   /** Min confirmed members required to submit (from event teamSize.min) */
   teamSizeMin?: number;
+  /** Max total members allowed (from event teamSize.max) */
+  teamSizeMax?: number;
 }
 
 const STATUS_CONFIG = {
@@ -28,8 +37,16 @@ export function RegistrationStatusCard({
   currentUserId,
   onWithdraw,
   onConfirm,
+  onUpdateMembers,
+  isUpdatingMembers = false,
+  updateMembersError = null,
   teamSizeMin = 1,
+  teamSizeMax = 1,
 }: RegistrationStatusCardProps) {
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [pendingAdds, setPendingAdds] = useState<PersonCard[]>([]);
+  const [pickerKey, setPickerKey] = useState(0);
+
   const cfg             = STATUS_CONFIG[reg.status];
   const isLeader        = reg.leader.id === currentUserId;
   const canWithdraw     = isLeader && ['draft', 'submitted'].includes(reg.status);
@@ -37,6 +54,32 @@ export function RegistrationStatusCard({
   const pendingCount    = reg.members.filter(m => m.status === 'invited').length;
   // Leader can submit once confirmed members meet the min threshold
   const canSubmit       = isLeader && reg.status === 'draft' && confirmedCount >= teamSizeMin;
+
+  const isTeamDraft     = reg.type === 'team' && reg.status === 'draft' && isLeader;
+  const remainingSlots  = Math.max(0, teamSizeMax - reg.members.length);
+  const existingIds     = reg.members.map(m => m.userId);
+  const invitedIds      = reg.members.filter(m => m.status === 'invited').map(m => m.userId);
+
+  async function handleSendInvites() {
+    if (!onUpdateMembers || pendingAdds.length === 0) return;
+    try {
+      await onUpdateMembers([...invitedIds, ...pendingAdds.map(p => p.id)]);
+      setPendingAdds([]);
+      setPickerKey(k => k + 1);
+      setInviteOpen(false);
+    } catch {
+      // Error is surfaced via updateMembersError prop
+    }
+  }
+
+  async function handleRemoveInvite(userId: string) {
+    if (!onUpdateMembers || isUpdatingMembers) return;
+    try {
+      await onUpdateMembers(invitedIds.filter(id => id !== userId));
+    } catch {
+      // Error is surfaced via updateMembersError prop
+    }
+  }
 
   return (
     <div className={`rounded-2xl border border-outline-variant/20 p-4 flex flex-col gap-3 ${cfg.bg}`}>
@@ -86,9 +129,13 @@ export function RegistrationStatusCard({
       {/* ── Members ────────────────────────────────────────────────────── */}
       {reg.members.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider">
-            Members ({confirmedCount} confirmed)
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider">
+              Members ({reg.type === 'team' && teamSizeMax > 1
+                ? `${reg.members.length}/${teamSizeMax} · ${confirmedCount} confirmed`
+                : `${confirmedCount} confirmed`})
+            </p>
+          </div>
           {reg.members.map(m => (
             <div key={m.userId}
               className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl
@@ -106,12 +153,88 @@ export function RegistrationStatusCard({
                   )}
                 </p>
               </div>
-              <span className={`shrink-0 px-2 py-0.5 rounded-lg font-label-sm text-[11px] capitalize
-                               ${MEMBER_STATUS_COLORS[m.status]}`}>
-                {m.status}
-              </span>
+              <div className="flex items-center gap-1 shrink-0">
+                <span className={`px-2 py-0.5 rounded-lg font-label-sm text-[11px] capitalize
+                                 ${MEMBER_STATUS_COLORS[m.status]}`}>
+                  {m.status}
+                </span>
+                {isTeamDraft && onUpdateMembers && m.status === 'invited' && (
+                  <button
+                    type="button"
+                    disabled={isUpdatingMembers}
+                    onClick={() => handleRemoveInvite(m.userId)}
+                    aria-label={`Cancel invite for ${m.name}`}
+                    title="Cancel invite"
+                    className="p-0.5 rounded-full text-on-surface-variant hover:text-error
+                               hover:bg-error-container/20 transition-colors disabled:opacity-40"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">close</span>
+                  </button>
+                )}
+              </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Invite more members (team draft, leader, slots remaining) ──── */}
+      {isTeamDraft && onUpdateMembers && remainingSlots > 0 && (
+        <div className="flex flex-col gap-2">
+          {!inviteOpen ? (
+            <button
+              type="button"
+              id={`reg-invite-toggle-${reg.id}`}
+              onClick={() => setInviteOpen(true)}
+              className="w-full py-2 px-3 rounded-xl border border-dashed border-primary/40
+                         text-primary font-label-md text-xs font-semibold
+                         hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[16px]">person_add</span>
+              Invite more members ({remainingSlots} slot{remainingSlots !== 1 ? 's' : ''} left)
+            </button>
+          ) : (
+            <div className="p-3 rounded-xl bg-surface-container-lowest/80 border border-outline-variant/25 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-label-md text-xs font-semibold text-on-surface">
+                  Invite teammates ({remainingSlots} slot{remainingSlots !== 1 ? 's' : ''} left)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setInviteOpen(false); setPendingAdds([]); setPickerKey(k => k + 1); }}
+                  className="text-xs text-on-surface-variant hover:text-on-surface"
+                >
+                  Cancel
+                </button>
+              </div>
+              <MemberPicker
+                key={pickerKey}
+                eventId={reg.eventId}
+                teamSizeMax={teamSizeMax}
+                maxInvites={remainingSlots}
+                excludeIds={existingIds}
+                onChange={setPendingAdds}
+              />
+              {updateMembersError && (
+                <p className="text-xs text-error bg-error-container/20 rounded-lg px-2.5 py-1.5">
+                  {updateMembersError}
+                </p>
+              )}
+              <button
+                type="button"
+                id={`reg-send-invites-${reg.id}`}
+                disabled={pendingAdds.length === 0 || isUpdatingMembers}
+                onClick={handleSendInvites}
+                className="w-full py-2 rounded-xl bg-primary text-on-primary font-label-md text-xs font-semibold
+                           hover:bg-primary/90 active:scale-[0.98] transition-all
+                           disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[15px]">send</span>
+                {isUpdatingMembers
+                  ? 'Sending…'
+                  : `Send Invite${pendingAdds.length > 1 ? `s (${pendingAdds.length})` : ''}`}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

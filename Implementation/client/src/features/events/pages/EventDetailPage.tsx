@@ -80,7 +80,12 @@ export default function EventDetailPage() {
 
   // F-6: Registration
   const { data: myReg }        = useMyRegistration(id!);
-  const { mutate: doWithdraw } = useUpdateRegistration(id!);
+  const {
+    mutate: doWithdraw,
+    mutateAsync: doUpdateRegAsync,
+    isPending: isUpdatingReg,
+    error: updateRegError,
+  } = useUpdateRegistration(id!);
   const { mutate: doArchive, isPending: isArchiving } = useArchiveEvent(id!);
   const alreadyRegistered      = !!myReg && myReg.status !== 'withdrawn';
   const hasPendingInvite       = myReg?.members.some(
@@ -558,6 +563,15 @@ export default function EventDetailPage() {
                     registration={myReg}
                     currentUserId={user.id}
                     teamSizeMin={event.teamSize?.min ?? 1}
+                    teamSizeMax={event.teamSize?.max ?? 1}
+                    isUpdatingMembers={isUpdatingReg}
+                    updateMembersError={
+                      (updateRegError as { response?: { data?: { error?: { message?: string } } } } | null)
+                        ?.response?.data?.error?.message ?? updateRegError?.message ?? null
+                    }
+                    onUpdateMembers={memberUserIds =>
+                      doUpdateRegAsync({ regId: myReg.id, input: { action: 'edit', memberUserIds } })
+                    }
                     onWithdraw={() => doWithdraw({ regId: myReg.id, input: { action: 'withdraw' } })}
                     onConfirm={
                       myReg.status === 'draft'
