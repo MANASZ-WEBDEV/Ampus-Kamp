@@ -568,11 +568,11 @@ export default function CollegeLeaderboardPage() {
                   <div className="flex items-center gap-2 flex-wrap mb-0.5">
                     <span className="font-label-md text-[13px] text-on-surface font-bold">Institutional Governance Verification</span>
                     <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-label-sm text-[10px] font-bold flex items-center gap-0.5">
-                      <span className="material-symbols-outlined text-[11px]">verified</span>ECDSA-256 Valid
+                      <span className="material-symbols-outlined text-[11px]">verified</span>Verified Academic Portal
                     </span>
                   </div>
                   <p className="font-body-sm text-[11px] text-on-surface-variant">
-                    Cryptographically signed by Office of Institutional Research &amp; Dean of Academics. Block #892,104 verified.
+                    Audited by Office of Institutional Research &amp; Dean of Academics.
                   </p>
                 </div>
               </div>
