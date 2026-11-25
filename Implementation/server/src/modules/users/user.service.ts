@@ -22,6 +22,7 @@ export async function getMe(actor: AuthUser) {
     role: user.role,
     department: user.department,
     year: user.year,
+    gender: user.gender ?? null,
     skills: user.skills,
     phone: user.phone ?? null,
     phoneVisible: user.phoneVisible,
@@ -41,12 +42,14 @@ export async function updateMe(actor: AuthUser, body: UpdateMeBody) {
     phone: string | null;
     phoneVisible: boolean;
     allowInvites: boolean;
+    gender: string | null;
   }> = {};
 
   if (body.skills !== undefined) update.skills = body.skills;
   if (body.phone !== undefined) update.phone = body.phone;
   if (body.phoneVisible !== undefined) update.phoneVisible = body.phoneVisible;
   if (body.allowInvites !== undefined) update.allowInvites = body.allowInvites;
+  if (body.gender !== undefined) update.gender = body.gender;
 
   const user = await User.findByIdAndUpdate(
     actor.id,
@@ -62,6 +65,7 @@ export async function updateMe(actor: AuthUser, body: UpdateMeBody) {
   return {
     id: user._id.toString(),
     name: user.name,
+    gender: user.gender ?? null,
     skills: user.skills,
     phone: user.phone ?? null,
     phoneVisible: user.phoneVisible,

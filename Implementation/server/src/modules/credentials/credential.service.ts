@@ -163,6 +163,8 @@ export async function getMyCredentials(user: AuthUser) {
   return Credential
     .find({ studentId: new mongoose.Types.ObjectId(user.id) })
     .sort({ createdAt: -1 })
+    .populate('courseId', 'name issuer')
+    .populate('verification.verifiedBy', 'name')
     .lean();
 }
 

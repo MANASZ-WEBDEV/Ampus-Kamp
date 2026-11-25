@@ -14,6 +14,10 @@ export const updateMeSchema = z.object({
     .nullable(),
   phoneVisible: z.boolean().optional(),
   allowInvites: z.boolean().optional(),
+  gender: z
+    .enum(['male', 'female', 'other', 'prefer_not_to_say'])
+    .optional()
+    .nullable(),
 });
 
 export type UpdateMeBody = z.infer<typeof updateMeSchema>;

@@ -2,6 +2,8 @@ import { apiClient } from '@/lib/apiClient';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export type UserGender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
+
 export interface AuthUser {
   id: string;
   enrollmentNo: string;
@@ -10,6 +12,7 @@ export interface AuthUser {
   role: 'student' | 'faculty' | 'dept_head' | 'admin';
   department: { _id: string; code: string; name: string } | string;
   year?: number;
+  gender?: UserGender | null;
   skills: string[];
   status: 'pending' | 'active' | 'suspended';
   phoneVisible: boolean;
@@ -29,6 +32,7 @@ export interface PublicUser {
 
 export interface MeProfile extends AuthUser {
   phone?: string | null;
+  gender?: UserGender | null;
   lastLoginAt?: string;
   firstOpenedAt?: string;
 }
@@ -93,6 +97,7 @@ export async function updateMe(body: {
   phone?: string | null;
   phoneVisible?: boolean;
   allowInvites?: boolean;
+  gender?: UserGender | null;
 }): Promise<Partial<MeProfile>> {
   const res = await apiClient.put<{ data: Partial<MeProfile> }>('/users/me', body);
   return res.data.data;

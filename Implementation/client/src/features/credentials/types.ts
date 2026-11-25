@@ -23,7 +23,7 @@ export interface Course {
 export interface Verification {
   status:      CredVerifStatus;
   method:      CredVerifMethod;
-  verifiedBy?: string;
+  verifiedBy?: string | { _id: string; name: string };
   verifiedAt?: string;
   reason?:     string;
   evidence?:   string;
@@ -33,7 +33,7 @@ export interface Credential {
   _id:             string;
   studentId:       string;
   department:      string;
-  courseId?:       string;
+  courseId?:       string | { _id: string; name: string; issuer?: string };
   otherCourseName?: string;
   issuer:          string;
   session:         string;

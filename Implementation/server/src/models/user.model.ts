@@ -4,6 +4,7 @@ import { Schema, model, type Types } from 'mongoose';
 
 export type UserRole = 'student' | 'faculty' | 'dept_head' | 'admin';
 export type UserStatus = 'pending' | 'active' | 'suspended';
+export type UserGender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
 export interface IUser {
   _id: Types.ObjectId;
@@ -15,6 +16,7 @@ export interface IUser {
   role: UserRole;
   department: Types.ObjectId; // ref → Dept
   year?: number;             // null for faculty/admin
+  gender?: UserGender;       // used for event team gender requirements
   skills: string[];
   phone?: string;            // select:false
   phoneVisible: boolean;
@@ -65,6 +67,11 @@ const userSchema = new Schema<IUser>(
       required: true,
     },
     year: { type: Number, min: 1, max: 5, default: null },
+    gender: {
+      type: String,
+      enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+      default: null,
+    },
     skills: { type: [String], default: [] },
     phone: {
       type: String,
@@ -89,8 +96,9 @@ const userSchema = new Schema<IUser>(
 
 // ── Indexes ──────────────────────────────────────────────────────────────────
 
-// Team-finder filter: branch × year
+// Team-finder filter: branch × year × gender (for gender-quota events)
 userSchema.index({ department: 1, year: 1 });
+userSchema.index({ gender: 1 });
 // Skill search
 userSchema.index({ skills: 1 });
 
