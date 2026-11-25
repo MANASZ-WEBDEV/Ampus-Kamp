@@ -6,9 +6,11 @@ interface LookingToggleProps {
   eventId:    string;
   isLooking:  boolean;     // current state from parent (EventDetailPage)
   lookingCount?: number;   // optional count badge
+  /** When true, suppresses the outer card wrapper (use inside a parent card) */
+  embedded?: boolean;
 }
 
-export function LookingToggle({ eventId, isLooking, lookingCount }: LookingToggleProps) {
+export function LookingToggle({ eventId, isLooking, lookingCount, embedded }: LookingToggleProps) {
   const { mutate: toggle, isPending } = useToggleLooking(eventId);
   const [note, setNote]     = useState('');
   const [expanded, setExpanded] = useState(false);
@@ -30,7 +32,7 @@ export function LookingToggle({ eventId, isLooking, lookingCount }: LookingToggl
   }
 
   return (
-    <div className="rounded-2xl bg-surface-container-lowest border border-outline-variant/20 overflow-hidden">
+    <div className={embedded ? '' : 'rounded-2xl bg-surface-container-lowest border border-outline-variant/20 overflow-hidden'}>
       {/* ── Toggle row ───────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-3 gap-3">
         <div className="flex items-center gap-2.5">
@@ -43,9 +45,16 @@ export function LookingToggle({ eventId, isLooking, lookingCount }: LookingToggl
             </span>
           </div>
           <div>
-            <p className="font-title-sm text-sm font-semibold text-on-surface">
-              {isLooking ? 'You\'re looking for a team' : 'Looking for a team?'}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="font-title-sm text-sm font-semibold text-on-surface">
+                {isLooking ? 'You\'re looking for a team' : 'Looking for a team?'}
+              </p>
+              {embedded && (
+                <span className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                  For You
+                </span>
+              )}
+            </div>
             <p className="font-body-sm text-xs text-on-surface-variant">
               {isLooking
                 ? 'Others can see you\'re available on the looking list — toggle off anytime'

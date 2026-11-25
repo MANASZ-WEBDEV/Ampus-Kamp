@@ -452,31 +452,48 @@ export default function EventDetailPage() {
               </section>
             )}
 
-            {/* Team Finder — single link, no fake squad cards */}
+            {/* ── Team Matchmaking card — unified surface for all team-related CTAs ── */}
             {isTeamEvent && !isClosed && (
-              <section className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex items-center justify-between gap-4">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm text-on-surface font-semibold">
-                    {event.type === 'sports' ? 'Squad Board' : 'Team Finder'}
-                  </span>
-                  <span className="text-[12px] text-on-surface-variant">
-                    Browse open team recruitments or post your own team for this event.
-                  </span>
-                </div>
-                <button
-                  id="detail-team-finder-btn"
-                  onClick={() => navigate(`/events/${id}/teams`)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-sm shadow-sm transition-all shrink-0"
-                >
-                  <span className="material-symbols-outlined text-[16px] text-primary">group_search</span>
-                  View Teams
-                </button>
-              </section>
-            )}
+              <section className="rounded-2xl bg-surface-container-lowest border border-outline-variant/20 overflow-hidden shadow-sm">
 
-            {/* Looking toggle — students only */}
-            {isTeamEvent && !isClosed && user?.role === 'student' && (
-              <LookingToggle eventId={id!} isLooking={isLooking} lookingCount={lookingCount} />
+                {/* Row 1 — Browse / Post teams (visible to all roles) */}
+                <div className="flex items-center justify-between px-5 py-4 gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-secondary-container/40 flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[20px] text-secondary">groups</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-on-surface">
+                          {event.type === 'sports' ? 'Squad Board' : 'Team Finder'}
+                        </span>
+                        <span className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded bg-secondary-container/50 text-secondary">
+                          For Teams
+                        </span>
+                      </div>
+                      <span className="text-[12px] text-on-surface-variant">
+                        Browse open recruitments or post your own team for this event.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    id="detail-team-finder-btn"
+                    onClick={() => navigate(`/events/${id}/teams`)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-sm shadow-sm transition-all shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-secondary">arrow_forward</span>
+                    View Teams
+                  </button>
+                </div>
+
+                {/* Row 2 — Looking toggle (students only) */}
+                {user?.role === 'student' && (
+                  <>
+                    <div className="border-t border-outline-variant/15" />
+                    <LookingToggle eventId={id!} isLooking={isLooking} lookingCount={lookingCount} embedded />
+                  </>
+                )}
+              </section>
             )}
 
           </div>
