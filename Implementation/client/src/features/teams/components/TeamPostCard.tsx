@@ -18,11 +18,13 @@ const STATUS_CONFIG: Record<
 interface TeamPostCardProps {
   post:            TeamPost;
   onRequestToJoin: (post: TeamPost) => void;
+  /** Optional status label shown instead of "Request to Join" (e.g. Already in Team / Request Sent) */
+  disabledLabel?:  string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function TeamPostCard({ post, onRequestToJoin }: TeamPostCardProps) {
+export function TeamPostCard({ post, onRequestToJoin, disabledLabel }: TeamPostCardProps) {
   const cfg = STATUS_CONFIG[post.status];
   const { mutate: updatePost, isPending: isClosing } = useUpdateTeamPost(post.id, post.eventId);
 
@@ -99,15 +101,22 @@ export function TeamPostCard({ post, onRequestToJoin }: TeamPostCardProps) {
       {/* ── Actions ────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 pt-1">
         {canRequest && (
-          <button
-            id={`team-post-join-${post.id}`}
-            onClick={() => onRequestToJoin(post)}
-            className="flex-1 py-2 rounded-xl bg-primary text-on-primary
-                       font-label-lg text-sm font-medium
-                       hover:bg-primary/90 active:scale-[0.98] transition-all"
-          >
-            Request to Join
-          </button>
+          disabledLabel ? (
+            <span className="flex-1 py-2 px-3 rounded-xl bg-surface-container text-on-surface-variant
+                             font-label-md text-xs font-semibold text-center">
+              {disabledLabel}
+            </span>
+          ) : (
+            <button
+              id={`team-post-join-${post.id}`}
+              onClick={() => onRequestToJoin(post)}
+              className="flex-1 py-2 rounded-xl bg-primary text-on-primary
+                         font-label-lg text-sm font-medium
+                         hover:bg-primary/90 active:scale-[0.98] transition-all"
+            >
+              Request to Join
+            </button>
+          )
         )}
 
         {post.isOwner && post.status === 'open' && (

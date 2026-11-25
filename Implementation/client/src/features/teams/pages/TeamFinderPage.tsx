@@ -9,6 +9,9 @@ import { listTeamPosts } from '../api/teams.api';
 import { listLooking } from '../api/people.api';
 import { teamKeys, useLinks } from '../hooks/useTeams';
 import { peopleKeys } from '../hooks/usePeople';
+import { getMyRegistration } from '@/features/registrations/api/registrations.api';
+import { registrationKeys } from '@/features/registrations/hooks/useRegistration';
+import type { Registration } from '@/features/registrations/types';
 import { RequestToJoinModal } from '../components/RequestToJoinModal';
 import { CreateTeamPostForm } from '../components/CreateTeamPostForm';
 import type { TeamPost } from '../types';
@@ -90,12 +93,45 @@ export default function TeamFinderPage() {
     })),
   });
 
-  // ── 4. Fetch incoming/outgoing links for badge count (students only) ──────
+  // ── 4. Fetch incoming/outgoing links + my registrations (students only) ───
   const { data: inboxLinks } = useLinks('in');
+  const { data: sentLinks }  = useLinks('out');
   const pendingInboxCount = useMemo(
     () => (inboxLinks?.items ?? []).filter(l => l.status === 'pending').length,
     [inboxLinks],
   );
+
+  const regQueries = useQueries({
+    queries: isStudent
+      ? activeEvents.map(evt => ({
+          queryKey: registrationKeys.mine(evt.id),
+          queryFn: () => getMyRegistration(evt.id),
+          staleTime: 30_000,
+        }))
+      : [],
+  });
+
+  const regByEventId = useMemo(() => {
+    const map = new Map<string, Registration>();
+    if (!isStudent) return map;
+    activeEvents.forEach((evt, idx) => {
+      const reg = regQueries[idx]?.data;
+      if (reg && reg.status !== 'withdrawn') {
+        map.set(evt.id, reg);
+      }
+    });
+    return map;
+  }, [isStudent, activeEvents, regQueries]);
+
+  const sentStatusByPostId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const link of sentLinks?.items ?? []) {
+      if (link.teamPostId && (link.status === 'pending' || link.status === 'accepted')) {
+        map.set(link.teamPostId, link.status);
+      }
+    }
+    return map;
+  }, [sentLinks]);
 
   const postsLoading = eventsLoading || postQueries.some(q => q.isLoading);
 
@@ -559,15 +595,50 @@ export default function TeamFinderPage() {
                       >
                         Event Details
                       </button>
-                      {!post.isOwner && !isFull && isStudent && (
-                        <button
-                          onClick={() => setJoiningPost(post)}
-                          className="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
-                        >
-                          <span className="material-symbols-outlined text-[15px]">send</span>
-                          Request to Join
-                        </button>
-                      )}
+                      {!post.isOwner && isStudent && (() => {
+                        const myReg = regByEventId.get(post.eventId);
+                        if (myReg) {
+                          const isInvited = myReg.members.some(
+                            m => m.userId === user?.id && m.status === 'invited',
+                          );
+                          return (
+                            <button
+                              onClick={() => navigate(`/events/${post.eventId}`)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 ${
+                                isInvited
+                                  ? 'bg-amber-50 text-amber-700 border border-amber-200/60 hover:bg-amber-100'
+                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100'
+                              }`}
+                            >
+                              <span className="material-symbols-outlined text-[14px]">
+                                {isInvited ? 'mail' : 'how_to_reg'}
+                              </span>
+                              {isInvited ? 'Invite Pending' : 'Already in Team'}
+                            </button>
+                          );
+                        }
+                        const sentStatus = sentStatusByPostId.get(post.id);
+                        if (sentStatus) {
+                          return (
+                            <span className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                              {sentStatus === 'accepted' ? 'Accepted' : 'Request Sent'}
+                            </span>
+                          );
+                        }
+                        if (!isFull) {
+                          return (
+                            <button
+                              onClick={() => setJoiningPost(post)}
+                              className="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary text-xs font-semibold shadow-sm transition-all flex items-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">send</span>
+                              Request to Join
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
                 </article>

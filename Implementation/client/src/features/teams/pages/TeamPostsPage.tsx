@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppBar }               from '@/components/layout/AppBar';
-import { useTeamPosts }         from '../hooks/useTeams';
+import { useTeamPosts, useLinks } from '../hooks/useTeams';
+import { useMyRegistration }    from '@/features/registrations/hooks/useRegistration';
+import { useAuth }              from '@/features/auth/context/AuthContext';
 import { TeamPostCard }         from '../components/TeamPostCard';
 import { CreateTeamPostForm }   from '../components/CreateTeamPostForm';
 import { RequestToJoinModal }   from '../components/RequestToJoinModal';
@@ -20,8 +22,16 @@ export default function TeamPostsPage() {
   const navigate = useNavigate();
 
   const { data: posts, isLoading, isError, refetch } = useTeamPosts(eventId);
+  const { user } = useAuth();
+  const { data: myReg } = useMyRegistration(eventId);
+  const { data: sentLinks } = useLinks('out');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [joiningPost,    setJoiningPost]    = useState<TeamPost | null>(null);
+
+  const activeReg = myReg && myReg.status !== 'withdrawn' ? myReg : null;
+  const isInvitedToReg = activeReg?.members.some(
+    m => m.userId === user?.id && m.status === 'invited',
+  ) ?? false;
 
   return (
     <div className="min-h-screen bg-background pb-24 pt-14">
@@ -128,13 +138,25 @@ export default function TeamPostsPage() {
         {/* ── Team posts list ─────────────────────────────────────────── */}
         {!isLoading && posts && posts.length > 0 && (
           <div className="flex flex-col gap-3">
-            {posts.map(post => (
-              <TeamPostCard
-                key={post.id}
-                post={post}
-                onRequestToJoin={setJoiningPost}
-              />
-            ))}
+            {posts.map(post => {
+              const sentLink = sentLinks?.items.find(
+                l => l.teamPostId === post.id && (l.status === 'pending' || l.status === 'accepted'),
+              );
+              const disabledLabel = activeReg
+                ? (isInvitedToReg ? 'Team Invite Pending' : 'Already in a Team')
+                : sentLink
+                ? (sentLink.status === 'accepted' ? 'Request Accepted' : 'Request Sent')
+                : undefined;
+
+              return (
+                <TeamPostCard
+                  key={post.id}
+                  post={post}
+                  onRequestToJoin={setJoiningPost}
+                  disabledLabel={disabledLabel}
+                />
+              );
+            })}
           </div>
         )}
       </div>
