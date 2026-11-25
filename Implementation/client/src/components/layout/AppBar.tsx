@@ -102,7 +102,11 @@ export function AppBar({ subtitle = 'Incubator PWA' }: AppBarProps) {
       <div className="h-16 max-w-7xl mx-auto px-4 lg:px-8 flex items-center justify-between gap-4">
 
         {/* ── Left: logo + brand ──────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 shrink-0">
+        <Link
+          to="/home"
+          aria-label="Go to Home"
+          className="flex items-center gap-3 shrink-0 group hover:opacity-90 active:scale-[0.98] transition-all"
+        >
           <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center
                           shadow-[0_2px_8px_rgba(0,69,65,0.25)]">
             <span className="material-symbols-outlined text-on-primary text-[20px]">biotech</span>
@@ -115,7 +119,7 @@ export function AppBar({ subtitle = 'Incubator PWA' }: AppBarProps) {
               {isFaculty ? 'Faculty Portal' : subtitle}
             </span>
           </div>
-        </div>
+        </Link>
 
         {/* ── Centre: desktop horizontal nav (lg+) ──────────────────────── */}
         <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center">
