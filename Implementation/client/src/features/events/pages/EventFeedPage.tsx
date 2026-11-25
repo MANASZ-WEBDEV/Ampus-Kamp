@@ -48,115 +48,6 @@ const MODE_OPTIONS = [
 
 
 
-// ── Date formatting helper for relative dates ─────────────────────────────────
-function formatDaysFromNow(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-}
-
-// ── Dummy event articles (reference-style rich cards) ─────────────────────────
-const DUMMY_ARTICLES = [
-  {
-    id: 'art1',
-    type: 'featured',
-    tags: [
-      { label: 'Hackathon • SIH-26 Prelims', icon: 'flag', cls: 'bg-tertiary-fixed text-on-tertiary-fixed' },
-      { label: 'Faculty Sponsored',           icon: 'verified', cls: 'bg-primary-fixed text-on-primary-fixed' },
-    ],
-    urgency: { label: `2 days left (Closes ${formatDaysFromNow(2)}, 11:59 PM)`, icon: 'timer', cls: 'bg-secondary-fixed text-on-secondary-fixed animate-pulse' },
-    title: 'Smart India Hackathon 2026 – Campus Prelims',
-    org: 'Dept. of Computer Science & Innovation Council',
-    mentor: 'Lead Mentor: Dr. V. Ramanathan',
-    desc: 'The official campus qualifying phase for SIH 2026. Top 3 shortlisted student squads receive institutional hardware sponsorships, rapid prototyping lab access, and direct entry to the national ministry track.',
-    specs: [
-      { label: 'Team Size', value: '6 members', valueClass: 'text-on-surface' },
-      { label: 'Prize Bounty', value: '₹1,50,000', valueClass: 'text-secondary' },
-      { label: 'Location / Venue', value: 'Main Auditorium', valueClass: 'text-on-surface' },
-      { label: 'Format', value: 'Hybrid 36-Hr Sprint', valueClass: 'text-on-surface' },
-    ],
-    squadAvatars: ['AK', 'SN'],
-    squadText: '14 squads forming now',
-    ctaLink: 'Details & Guidelines',
-    cta: 'Apply Now',
-    accent: 'from-primary via-primary-container to-secondary-container',
-  },
-  {
-    id: 'art2',
-    type: 'workshop',
-    tags: [
-      { label: `Hands-on Workshop • ${formatDaysFromNow(4)}`, icon: 'psychology', cls: 'bg-primary-fixed-dim/40 text-primary' },
-      { label: 'Mechatronics Lab B-204', icon: null, cls: 'bg-surface-container text-on-surface-variant' },
-    ],
-    urgency: { label: '4 spots remaining', icon: 'circle', cls: 'bg-error-container text-on-error-container font-semibold', ping: true },
-    title: 'ROS2 & Autonomous Drone Navigation Bootcamp',
-    org: 'Robotics & Automation Club • Division of Mechatronics Research',
-    mentor: null,
-    desc: 'Intensive 2-day session covering micro-ROS telemetry, SLAM point-cloud mapping, and PX4 autopilot configuration. Dev-kits and quadcopter testbeds provided for all participants.',
-    ribbon: [
-      { icon: 'groups', label: 'Solo or Pairs', cls: 'text-primary' },
-      { icon: 'card_membership', label: 'Lab Certification Issued', cls: 'text-tertiary' },
-      { icon: 'memory', label: 'Hardware dev-kit provided', cls: 'text-secondary' },
-      { icon: 'check_circle', label: 'Free for Enrolled Students', cls: 'text-primary' },
-    ],
-    prereq: 'Prerequisites: C++ or Python basics',
-    ctaLink: 'View Syllabus',
-    cta: 'Reserve Spot',
-    ctaIcon: 'airplane_ticket',
-  },
-  {
-    id: 'art3',
-    type: 'sports',
-    tags: [
-      { label: 'Sports & Athletics • League', icon: 'sports_soccer', cls: 'bg-secondary-fixed text-on-secondary-fixed' },
-      { label: 'South Sports Arena (Floodlights)', icon: null, cls: 'bg-surface-container text-on-surface-variant' },
-    ],
-    urgency: { label: `5 days left (Closes ${formatDaysFromNow(5)})`, icon: 'schedule', cls: 'bg-surface-container-high text-on-surface', ping: false },
-    title: 'Inter-Department 7-a-Side Football Tournament',
-    org: 'Campus Sports Council & Division of Physical Education',
-    mentor: null,
-    desc: 'Annual inter-branch knockout championship. Open exclusively to official branch-endorsed squads. Refereed by regional football federation officials with live drone streaming on the campus portal.',
-    specs: [
-      { label: 'Squad Roster', value: '7–10 Players', valueClass: 'text-on-surface' },
-      { label: 'Prize', value: 'Rolling Trophy + Medals', valueClass: 'text-secondary' },
-      { label: 'Fixtures', value: `${formatDaysFromNow(7)}–${formatDaysFromNow(9)}`, valueClass: 'text-on-surface' },
-      { label: 'Entry Cap', value: '16 Branches', valueClass: 'text-on-surface' },
-    ],
-    findLink: 'Find Players & Open Tryouts',
-    ctaLink: 'Tournament Rules',
-    cta: 'Register Squad',
-    ctaIcon: 'sports_soccer',
-  },
-  {
-    id: 'art4',
-    type: 'seminar',
-    tags: [
-      { label: `Seminar & Keynote • Tomorrow, 2:00 PM`, icon: 'podium', cls: 'bg-tertiary-fixed text-on-tertiary-fixed' },
-      { label: 'Seminar Hall 1 • AC Block', icon: null, cls: 'bg-surface-container text-on-surface-variant' },
-    ],
-    urgency: { label: '142 students registered', icon: 'group', cls: 'text-on-surface-variant', plain: true },
-    title: 'From Campus Capstone to Seed Funding: Alumni Talk',
-    org: 'Hosted by E-Cell & Department of ECE • Speaker: Tanya Rao (Co-founder, Kinesis AI, Batch of \'22)',
-    mentor: null,
-    desc: 'A raw retrospective on converting institutional final-year engineering projects into institutional IP, securing angels, surviving pre-seed rounds, and working with university incubators.',
-    perks: [
-      { icon: 'coffee', label: 'High Tea & Networking' },
-      { icon: 'school', label: '3rd & 4th Year Priority' },
-    ],
-    ctaLink: 'Add to Calendar',
-    ctaLinkIcon: 'calendar_add_on',
-    cta: 'RSVP Attending',
-    ctaIcon: 'check',
-  },
-];
-
-const DUMMY_ARCHIVED = {
-  tag: `Registration Concluded • ${formatDaysFromNow(-12)}`,
-  type: 'Competitive Coding',
-  title: 'ACM-ICPC Regional Warm-up Contest',
-  meta: 'Dept of CSE & Algorithmic Society • 64 Teams competed • Final ranklist verified',
-};
-
 // ── EventFeedPage ─────────────────────────────────────────────────────────────
 export default function EventFeedPage() {
   const navigate = useNavigate();
@@ -334,37 +225,15 @@ export default function EventFeedPage() {
   const isArchiveCategory = activeCategory === 'archive';
   const displayEvents = isArchiveCategory ? filteredArchivedEvents : filteredEvents;
 
-  // Show dummy articles when API returns no events (no backend data)
-  const showDummy = !isArchiveCategory && !isLoading && filteredEvents.length === 0 && !hasFilters;
-
   // Closing Soon count
   const closingSoonCount = useMemo(() => {
-    if (showDummy) {
-      return DUMMY_ARTICLES.filter(a => {
-        const label = a.urgency?.label?.toLowerCase() ?? '';
-        return label.includes('today') || label.includes('2 days') || label.includes('1 day');
-      }).length;
-    }
     const now = Date.now();
     return allEvents.filter(evt => {
       if (!evt.deadline) return false;
       const d = Math.ceil((new Date(evt.deadline).getTime() - now) / 86400000);
       return d >= 0 && d <= 2;
     }).length;
-  }, [showDummy, allEvents]);
-
-  // Typed dummy article refs — destructure to avoid TS18048 noUncheckedIndexedAccess
-  const [art1, art2, art3, art4] = DUMMY_ARTICLES as [
-    typeof DUMMY_ARTICLES[0],
-    typeof DUMMY_ARTICLES[1],
-    typeof DUMMY_ARTICLES[2],
-    typeof DUMMY_ARTICLES[3],
-  ];
-  const art1specs   = art1.specs        ?? [];
-  const art1avatars = art1.squadAvatars ?? [];
-  const art2ribbon  = art2.ribbon       ?? [];
-  const art3specs   = art3.specs        ?? [];
-  const art4perks   = art4.perks        ?? [];
+  }, [allEvents]);
 
   return (
     <div className="min-h-screen bg-background font-body-md text-on-surface antialiased">
@@ -374,7 +243,7 @@ export default function EventFeedPage() {
 
         {/* ── Breadcrumb ────────────────────────────────────────────────── */}
         <div className="flex items-center gap-1.5 font-label-md text-label-md text-on-surface-variant pt-4 pb-3">
-          <Link to="/home" className="hover:text-primary transition-colors">Campus Ledger</Link>
+          <Link to="/home" className="hover:text-primary transition-colors">Verified Academic Portal</Link>
           <span className="material-symbols-outlined text-[14px] text-outline">chevron_right</span>
           <Link to="/events" className="hover:text-primary transition-colors">Events</Link>
           <span className="material-symbols-outlined text-[14px] text-outline">chevron_right</span>
@@ -644,7 +513,7 @@ export default function EventFeedPage() {
                   <>Showing <strong className="text-on-surface">{filteredArchivedEvents.length} archived record(s)</strong> in Verified Academic Archive</>
                 ) : (
                   <>
-                    Showing <strong className="text-on-surface">{filteredEvents.length > 0 ? filteredEvents.length : showDummy ? 7 : 0} events</strong> across campus labs &amp; sports arena
+                    Showing <strong className="text-on-surface">{filteredEvents.length} events</strong> across campus labs &amp; sports arena
                     {closingSoonCount > 0 && (
                       <>
                         {' '}•{' '}
@@ -880,226 +749,8 @@ export default function EventFeedPage() {
               </>
             )}
 
-            {/* Dummy reference-style articles (shown when no real data) */}
-            {showDummy && (
-              <>
-                {/* Article 1: Featured hero */}
-                <article className="flex flex-col bg-surface-container-lowest rounded-xl p-6 shadow-md hover:shadow-xl transition-all relative overflow-hidden group">
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-primary-container to-secondary-container" />
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {art1.tags.map(t => (
-                        <span key={t.label} className={`px-3 py-0.5 rounded-full font-label-sm text-label-sm uppercase tracking-wide flex items-center gap-1 ${t.cls}`}>
-                          <span className="material-symbols-outlined text-[14px]">{t.icon}</span>{t.label}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-code-sm text-code-sm self-start sm:self-auto shadow-sm animate-pulse">
-                      <span className="material-symbols-outlined text-[16px] text-secondary">timer</span>
-                      <span>{art1.urgency.label}</span>
-                    </div>
-                  </div>
-                  <div className="mb-4">
-                    <h2 className="font-headline-lg text-headline-lg text-on-surface group-hover:text-primary transition-colors">{art1.title}</h2>
-                    <div className="flex items-center gap-2 mt-1 text-on-surface-variant font-label-md text-label-md">
-                      <span className="material-symbols-outlined text-[18px] text-primary">domain</span>
-                      <span>{art1.org}</span>
-                      <span className="text-outline">•</span>
-                      <span className="text-on-surface font-semibold">{art1.mentor}</span>
-                    </div>
-                  </div>
-                  <p className="font-body-md text-body-md text-on-surface-variant mb-4">{art1.desc}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-surface-container-low mb-4">
-                    {art1specs.map(s => (
-                      <div key={s.label} className="flex flex-col">
-                        <span className="font-label-sm text-label-sm text-outline uppercase tracking-wider">{s.label}</span>
-                        <span className={`font-headline-sm text-headline-sm ${s.valueClass}`}>{s.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-1">
-                    <div className="flex items-center gap-3 px-2 py-2 pr-4 rounded-lg bg-surface-container-high/60">
-                      <div className="flex -space-x-2">
-                        {art1avatars.map((av, i) => (
-                          <div key={i} className={`w-7 h-7 rounded-full ${i === 0 ? 'bg-primary-fixed text-on-primary-fixed' : 'bg-secondary-fixed text-on-secondary-fixed'} flex items-center justify-center font-label-sm text-label-sm shadow-sm`}>{av}</div>
-                        ))}
-                        <div className="w-7 h-7 rounded-full bg-surface-container-highest flex items-center justify-center text-outline shadow-sm">
-                          <span className="material-symbols-outlined text-[16px]">person_add</span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-label-sm text-label-sm text-on-surface font-semibold">{art1.squadText}</span>
-                        <span className="font-label-sm text-label-sm text-primary hover:underline cursor-pointer">Find or Post Squad →</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                      <button className="px-4 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-lg text-label-lg transition-colors">{art1.ctaLink}</button>
-                      <button className="px-5 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg shadow-md transition-all active:scale-[0.98] flex items-center gap-1.5">
-                        <span>{art1.cta}</span>
-                        <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                      </button>
-                    </div>
-                  </div>
-                </article>
-
-                {/* Article 2: Workshop */}
-                <article className="flex flex-col bg-surface-container-lowest rounded-xl p-6 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {art2.tags.map(t => (
-                        <span key={t.label} className={`px-3 py-0.5 rounded-full font-label-sm text-label-sm uppercase tracking-wide flex items-center gap-1 ${t.cls}`}>
-                          {t.icon && <span className="material-symbols-outlined text-[14px]">{t.icon}</span>}{t.label}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-error-container text-on-error-container font-code-sm text-code-sm font-semibold self-start sm:self-auto">
-                      <span className="w-2 h-2 rounded-full bg-error animate-ping" />
-                      <span>{art2.urgency.label}</span>
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <h2 className="font-headline-md text-headline-md text-on-surface">{art2.title}</h2>
-                    <span className="font-label-md text-label-md text-on-surface-variant">{art2.org}</span>
-                  </div>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant mb-4 line-clamp-2">{art2.desc}</p>
-                  <div className="flex flex-wrap items-center gap-4 text-on-surface-variant font-label-sm text-label-sm py-2 border-y border-outline/10 mb-4">
-                    {art2ribbon.map(r => (
-                      <div key={r.label} className="flex items-center gap-1">
-                        <span className={`material-symbols-outlined text-[16px] ${r.cls}`}>{r.icon}</span>
-                        <span className={r.icon === 'check_circle' ? 'text-primary font-semibold' : ''}>{r.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-1.5 text-outline font-label-sm text-label-sm">
-                      <span className="material-symbols-outlined text-[16px]">history_edu</span>
-                      <span>{art2.prereq}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button className="px-4 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-lg text-label-lg transition-colors">{art2.ctaLink}</button>
-                      <button className="px-5 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg shadow-sm transition-all flex items-center gap-1.5">
-                        <span>{art2.cta}</span>
-                        <span className="material-symbols-outlined text-[18px]">{art2.ctaIcon}</span>
-                      </button>
-                    </div>
-                  </div>
-                </article>
-
-                {/* Article 3: Sports */}
-                <article className="flex flex-col bg-surface-container-lowest rounded-xl p-6 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {art3.tags.map(t => (
-                        <span key={t.label} className={`px-3 py-0.5 rounded-full font-label-sm text-label-sm uppercase tracking-wide flex items-center gap-1 ${t.cls}`}>
-                          {t.icon && <span className="material-symbols-outlined text-[14px]">{t.icon}</span>}{t.label}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface font-code-sm text-code-sm self-start sm:self-auto">
-                      <span className="material-symbols-outlined text-[16px] text-secondary">schedule</span>
-                      <span>{art3.urgency.label}</span>
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <h2 className="font-headline-md text-headline-md text-on-surface">{art3.title}</h2>
-                    <span className="font-label-md text-label-md text-on-surface-variant">{art3.org}</span>
-                  </div>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant mb-4 line-clamp-2">{art3.desc}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-lg bg-surface-container-low mb-4 text-center">
-                    {art3specs.map(s => (
-                      <div key={s.label}>
-                        <div className="font-label-sm text-label-sm text-outline">{s.label}</div>
-                        <div className={`font-headline-sm text-headline-sm ${s.valueClass}`}>{s.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <button className="flex items-center gap-1.5 text-primary hover:underline font-label-md text-label-md">
-                      <span className="material-symbols-outlined text-[18px]">group_search</span>
-                      <span>{art3.findLink}</span>
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <button className="px-4 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-lg text-label-lg transition-colors">{art3.ctaLink}</button>
-                      <button className="px-5 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg shadow-sm transition-all flex items-center gap-1.5">
-                        <span>{art3.cta}</span>
-                        <span className="material-symbols-outlined text-[18px]">{art3.ctaIcon}</span>
-                      </button>
-                    </div>
-                  </div>
-                </article>
-
-                {/* Article 4: Seminar */}
-                <article className="flex flex-col bg-surface-container-lowest rounded-xl p-6 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {art4.tags.map(t => (
-                        <span key={t.label} className={`px-3 py-0.5 rounded-full font-label-sm text-label-sm uppercase tracking-wide flex items-center gap-1 ${t.cls}`}>
-                          {t.icon && <span className="material-symbols-outlined text-[14px]">{t.icon}</span>}{t.label}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm">
-                      <span className="material-symbols-outlined text-[16px] text-tertiary">group</span>
-                      <span>{art4.urgency.label}</span>
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <h2 className="font-headline-md text-headline-md text-on-surface">{art4.title}</h2>
-                    <span className="font-label-md text-label-md text-on-surface-variant">{art4.org}</span>
-                  </div>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant mb-4">{art4.desc}</p>
-                  <div className="flex items-center justify-between gap-4 pt-1">
-                    <div className="flex items-center gap-4 font-label-sm text-label-sm text-on-surface-variant">
-                      {art4perks.map(p => (
-                        <span key={p.label} className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[16px] text-primary">{p.icon}</span>{p.label}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button className="px-4 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-lg text-label-lg transition-colors flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[18px]">{art4.ctaLinkIcon}</span>
-                        <span>{art4.ctaLink}</span>
-                      </button>
-                      <button className="px-5 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg shadow-sm transition-all flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[18px]">{art4.ctaIcon}</span>
-                        <span>{art4.cta}</span>
-                      </button>
-                    </div>
-                  </div>
-                </article>
-
-                {/* Archived event */}
-                <article className="flex flex-col bg-surface-container-low/70 rounded-xl p-4 opacity-85 hover:opacity-100 transition-opacity">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-0.5 rounded-full bg-surface-dim text-on-surface-variant font-label-sm text-label-sm uppercase font-semibold">{DUMMY_ARCHIVED.tag}</span>
-                      <span className="text-outline font-label-sm text-label-sm">{DUMMY_ARCHIVED.type}</span>
-                    </div>
-                    <span className="font-code-sm text-code-sm text-outline">Verified Archive</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex flex-col">
-                      <h3 className="font-headline-sm text-headline-sm text-on-surface">{DUMMY_ARCHIVED.title}</h3>
-                      <span className="font-label-sm text-label-sm text-on-surface-variant">{DUMMY_ARCHIVED.meta}</span>
-                    </div>
-                    <button className="px-4 py-2 rounded-lg bg-surface hover:bg-surface-container-highest text-primary font-label-sm text-label-sm shadow-sm transition-colors flex items-center gap-1 shrink-0">
-                      <span className="material-symbols-outlined text-[16px]">leaderboard</span>
-                      <span>View Leaderboard</span>
-                    </button>
-                  </div>
-                </article>
-
-                {/* Info strip — real count (dummy shows 7) */}
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low/60 font-label-sm text-label-sm text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[16px] text-primary">info</span>
-                  <span>Showing all <strong className="text-on-surface">7 events</strong> — more events will appear as faculty post them.</span>
-                </div>
-              </>
-            )}
-
-            {/* Empty state (filtered, no results) */}
-            {!isLoading && !isError && !showDummy && displayEvents.length === 0 && (
+            {/* Empty state (no results) */}
+            {!isLoading && !isError && displayEvents.length === 0 && (
               <div className="flex flex-col items-center gap-4 py-16 text-center">
                 <div className={`w-16 h-16 rounded-full ${isArchiveCategory ? 'bg-secondary-fixed' : 'bg-primary-fixed'} flex items-center justify-center mb-2`}>
                   <span className={`material-symbols-outlined ${isArchiveCategory ? 'text-secondary' : 'text-primary'} text-[32px]`}>
