@@ -9,7 +9,7 @@ import { NotFoundError, ForbiddenError } from '@/shared/errors';
 
 export interface LookingCard {
   id:       string;
-  user:     { id: string; name: string };
+  user:     { id: string; name: string; gender?: string | null };
   note?:    string;
   since:    string;  // ISO — "looking since"
 }
@@ -23,12 +23,16 @@ export interface ToggleResult {
 
 function shapeFlag(
   flag: ILookingFlag & {
-    userId: { _id: mongoose.Types.ObjectId; name: string };
+    userId: { _id: mongoose.Types.ObjectId; name: string; gender?: string | null };
   },
 ): LookingCard {
   return {
     id:    flag._id.toString(),
-    user:  { id: flag.userId._id.toString(), name: flag.userId.name },
+    user:  {
+      id:     flag.userId._id.toString(),
+      name:   flag.userId.name,
+      gender: flag.userId.gender ?? null,
+    },
     note:  flag.note,
     since: flag.createdAt.toISOString(),
   };
@@ -70,12 +74,12 @@ export async function toggleLooking(
   });
 
   const populated = await LookingFlag.findById(created._id)
-    .populate<{ userId: { _id: mongoose.Types.ObjectId; name: string } }>('userId', 'name')
+    .populate<{ userId: { _id: mongoose.Types.ObjectId; name: string; gender?: string | null } }>('userId', 'name gender')
     .lean();
 
   return {
     isLooking: true,
-    flag: shapeFlag(populated as unknown as ILookingFlag & { userId: { _id: mongoose.Types.ObjectId; name: string } }),
+    flag: shapeFlag(populated as unknown as ILookingFlag & { userId: { _id: mongoose.Types.ObjectId; name: string; gender?: string | null } }),
   };
 }
 
@@ -98,7 +102,7 @@ export async function listLooking(
   }
 
   const raw = await LookingFlag.find(filter)
-    .populate<{ userId: { _id: mongoose.Types.ObjectId; name: string } }>('userId', 'name')
+    .populate<{ userId: { _id: mongoose.Types.ObjectId; name: string; gender?: string | null } }>('userId', 'name gender')
     .sort({ _id: -1 })
     .limit(limit + 1)
     .lean();
@@ -109,7 +113,7 @@ export async function listLooking(
 
   return {
     items: items.map(f =>
-      shapeFlag(f as unknown as ILookingFlag & { userId: { _id: mongoose.Types.ObjectId; name: string } }),
+      shapeFlag(f as unknown as ILookingFlag & { userId: { _id: mongoose.Types.ObjectId; name: string; gender?: string | null } }),
     ),
     nextCursor,
     hasMore,

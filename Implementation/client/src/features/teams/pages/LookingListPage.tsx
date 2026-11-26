@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppBar } from '@/components/layout/AppBar';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { useEvent } from '@/features/events/hooks/useEvent';
 import { useLooking } from '../hooks/usePeople';
 import { useSendLink, useLinks } from '../hooks/useTeams';
 import type { LookingCard } from '../types.f5';
@@ -12,16 +13,22 @@ import type { LookingCard } from '../types.f5';
  */
 export default function LookingListPage() {
   const { id: eventId = '' } = useParams<{ id: string }>();
-  const navigate        = useNavigate();
-  const { user }        = useAuth();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
+  const { data: event } = useEvent(eventId);
   const { data, isLoading, isError } = useLooking(eventId);
   const { data: sentLinks } = useLinks('out');
   const { mutateAsync: sendLink, isPending: isSending } = useSendLink();
 
+  const [femaleOnly, setFemaleOnly] = useState(false);
   const [targetFlag, setTargetFlag] = useState<LookingCard | null>(null);
-  const [message, setMessage]       = useState('');
-  const [sendError, setSendError]   = useState('');
+  const [message, setMessage] = useState('');
+  const [sendError, setSendError] = useState('');
+
+  const filteredItems = (data?.items ?? []).filter(
+    flag => !femaleOnly || flag.user.gender === 'female',
+  );
 
   // Map of userId -> link status for active outgoing links on this event
   const sentStatusByUser = new Map<string, string>();
@@ -38,9 +45,9 @@ export default function LookingListPage() {
     try {
       await sendLink({
         direction: 'connect',
-        toUserId:  targetFlag.user.id,
+        toUserId: targetFlag.user.id,
         eventId,
-        message:   message.trim() || undefined,
+        message: message.trim() || undefined,
       });
       setTargetFlag(null);
       setMessage('');
@@ -74,6 +81,28 @@ export default function LookingListPage() {
             Back
           </button>
         </div>
+
+        {/* ── Female Quota Banner ─────────────────────────────── */}
+        {event?.requiresFemale && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-secondary-fixed/40 border border-secondary/20 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-on-surface">
+              <span className="material-symbols-outlined text-[18px] text-secondary">diversity_3</span>
+              <span>
+                <strong className="font-semibold">1 female member mandatory</strong> for {event.title}.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFemaleOnly(v => !v)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors shrink-0 ${femaleOnly
+                  ? 'bg-primary text-on-primary'
+                  : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container'
+                }`}
+            >
+              {femaleOnly ? 'Showing Female Only' : 'Filter: Female'}
+            </button>
+          </div>
+        )}
 
         {/* ── Loading ─────────────────────────────────────────── */}
         {isLoading && (
@@ -115,84 +144,119 @@ export default function LookingListPage() {
         {/* ── Results ─────────────────────────────────────────── */}
         {!isLoading && data && data.items.length > 0 && (
           <div className="flex flex-col gap-3">
-            {/* Count */}
-            <p className="font-label-sm text-xs text-on-surface-variant">
-              {data.items.length} student{data.items.length !== 1 ? 's' : ''} looking
-              {data.hasMore ? ` (showing first ${data.items.length})` : ''}
-            </p>
+            {/* Count + Female filter pill */}
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-label-sm text-xs text-on-surface-variant">
+                {filteredItems.length} student{filteredItems.length !== 1 ? 's' : ''} looking
+                {data.hasMore && !femaleOnly ? ` (showing first ${data.items.length})` : ''}
+              </p>
+              {!event?.requiresFemale && (
+                <button
+                  type="button"
+                  onClick={() => setFemaleOnly(v => !v)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${femaleOnly
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
+                    }`}
+                >
+                  Female only
+                </button>
+              )}
+            </div>
 
-            {data.items.map(flag => {
-              const isSelf = flag.user.id === user?.id;
-              const existingStatus = sentStatusByUser.get(flag.user.id);
+            {filteredItems.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-surface-container-lowest text-center border border-outline-variant/20">
+                <p className="text-sm font-semibold text-on-surface">No female students marked looking yet</p>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  Students who set their gender to Female in Profile appear here.
+                </p>
+              </div>
+            ) : (
+              filteredItems.map(flag => {
+                const isSelf = flag.user.id === user?.id;
+                const existingStatus = sentStatusByUser.get(flag.user.id);
+                const genderBadge =
+                  flag.user.gender === 'female' ? 'Female' :
+                    flag.user.gender === 'male' ? 'Male' :
+                      flag.user.gender === 'other' ? 'Other' : null;
 
-              return (
-                <article key={flag.id}
-                  className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20
+                return (
+                  <article key={flag.id}
+                    className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20
                              p-4 flex items-start gap-3 hover:shadow-md transition-all">
 
-                  {/* Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                    <span className="font-headline-sm text-sm font-bold text-primary">
-                      {flag.user.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
+                    {/* Avatar */}
+                    <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                      <span className="font-headline-sm text-sm font-bold text-primary">
+                        {flag.user.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <p className="font-title-sm text-sm font-semibold text-on-surface truncate">
-                          {flag.user.name}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="font-title-sm text-sm font-semibold text-on-surface truncate">
+                            {flag.user.name}
+                          </p>
+                          {genderBadge && (
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${flag.user.gender === 'female'
+                                ? 'bg-secondary-fixed text-on-secondary-fixed'
+                                : 'bg-surface-container text-on-surface-variant'
+                              }`}>
+                              {genderBadge}
+                            </span>
+                          )}
+                          {isSelf && (
+                            <span className="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant text-[10px] font-semibold">
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <span className="font-label-sm text-[11px] text-on-surface-variant shrink-0">
+                          {new Date(flag.since).toLocaleDateString('en-IN', {
+                            day: 'numeric', month: 'short',
+                          })}
+                        </span>
+                      </div>
+
+                      {flag.note && (
+                        <p className="font-body-sm text-xs text-on-surface-variant mt-0.5 line-clamp-2">
+                          {flag.note}
                         </p>
-                        {isSelf && (
-                          <span className="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant text-[10px] font-semibold">
-                            You
-                          </span>
+                      )}
+
+                      {/* Badge + Action */}
+                      <div className="mt-2.5 flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full
+                                       bg-primary/10 text-primary font-label-sm text-[11px] font-medium">
+                          <span className="material-symbols-outlined text-[12px]">search</span>
+                          Looking for a team
+                        </span>
+
+                        {!isSelf && user?.role === 'student' && (
+                          existingStatus ? (
+                            <span className="px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                              {existingStatus === 'accepted' ? 'Connected' : 'Request Sent'}
+                            </span>
+                          ) : (
+                            <button
+                              id={`looking-connect-${flag.user.id}`}
+                              onClick={() => { setTargetFlag(flag); setSendError(''); setMessage(''); }}
+                              className="px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold
+                                       hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">person_add</span>
+                              Connect
+                            </button>
+                          )
                         )}
                       </div>
-                      <span className="font-label-sm text-[11px] text-on-surface-variant shrink-0">
-                        {new Date(flag.since).toLocaleDateString('en-IN', {
-                          day: 'numeric', month: 'short',
-                        })}
-                      </span>
                     </div>
-
-                    {flag.note && (
-                      <p className="font-body-sm text-xs text-on-surface-variant mt-0.5 line-clamp-2">
-                        {flag.note}
-                      </p>
-                    )}
-
-                    {/* Badge + Action */}
-                    <div className="mt-2.5 flex items-center justify-between gap-2">
-                      <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full
-                                       bg-primary/10 text-primary font-label-sm text-[11px] font-medium">
-                        <span className="material-symbols-outlined text-[12px]">search</span>
-                        Looking for a team
-                      </span>
-
-                      {!isSelf && user?.role === 'student' && (
-                        existingStatus ? (
-                          <span className="px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                            {existingStatus === 'accepted' ? 'Connected' : 'Request Sent'}
-                          </span>
-                        ) : (
-                          <button
-                            id={`looking-connect-${flag.user.id}`}
-                            onClick={() => { setTargetFlag(flag); setSendError(''); setMessage(''); }}
-                            className="px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold
-                                       hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center gap-1"
-                          >
-                            <span className="material-symbols-outlined text-[14px]">person_add</span>
-                            Connect
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+                  </article>
+                );
+              })
+            )}
           </div>
         )}
       </div>

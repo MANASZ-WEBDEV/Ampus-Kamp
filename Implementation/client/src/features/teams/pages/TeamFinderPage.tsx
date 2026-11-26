@@ -22,6 +22,7 @@ interface EnrichedPost {
   eventTitle: string;
   eventType: string;
   eventDeadline?: string;
+  eventRequiresFemale?: boolean;
 }
 
 interface EnrichedLooking {
@@ -37,15 +38,15 @@ export default function TeamFinderPage() {
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
-  const [activeRole, setActiveRole]           = useState<string | null>(null);
-  const [urgentOnly, setUrgentOnly]           = useState(false);
-  const [search, setSearch]                   = useState('');
-  const [sortBy, setSortBy]                   = useState<'newest' | 'deadline' | 'spots'>('newest');
+  const [activeRole, setActiveRole] = useState<string | null>(null);
+  const [urgentOnly, setUrgentOnly] = useState(false);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'deadline' | 'spots'>('newest');
 
   // ── Modals / forms ────────────────────────────────────────────────────────
-  const [joiningPost, setJoiningPost]         = useState<TeamPost | null>(null);
+  const [joiningPost, setJoiningPost] = useState<TeamPost | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createEventId, setCreateEventId]     = useState<string>('');
+  const [createEventId, setCreateEventId] = useState<string>('');
 
   // ⌘K focuses search input
   useEffect(() => {
@@ -95,7 +96,7 @@ export default function TeamFinderPage() {
 
   // ── 4. Fetch incoming/outgoing links + my registrations (students only) ───
   const { data: inboxLinks } = useLinks('in');
-  const { data: sentLinks }  = useLinks('out');
+  const { data: sentLinks } = useLinks('out');
   const pendingInboxCount = useMemo(
     () => (inboxLinks?.items ?? []).filter(l => l.status === 'pending').length,
     [inboxLinks],
@@ -104,10 +105,10 @@ export default function TeamFinderPage() {
   const regQueries = useQueries({
     queries: isStudent
       ? activeEvents.map(evt => ({
-          queryKey: registrationKeys.mine(evt.id),
-          queryFn: () => getMyRegistration(evt.id),
-          staleTime: 30_000,
-        }))
+        queryKey: registrationKeys.mine(evt.id),
+        queryFn: () => getMyRegistration(evt.id),
+        staleTime: 30_000,
+      }))
       : [],
   });
 
@@ -146,6 +147,7 @@ export default function TeamFinderPage() {
           eventTitle: evt.title,
           eventType: evt.type,
           eventDeadline: evt.deadline,
+          eventRequiresFemale: evt.requiresFemale,
         });
       }
     });
@@ -366,15 +368,13 @@ export default function TeamFinderPage() {
             <span className="font-label-sm text-[11px] text-outline uppercase tracking-wider mr-1">Event:</span>
             <button
               onClick={() => setSelectedEventId('all')}
-              className={`px-3 py-1.5 rounded-full font-label-md text-[11px] transition-all flex items-center gap-1.5 ${
-                selectedEventId === 'all'
+              className={`px-3 py-1.5 rounded-full font-label-md text-[11px] transition-all flex items-center gap-1.5 ${selectedEventId === 'all'
                   ? 'bg-primary-container text-on-primary shadow-sm'
                   : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-              }`}>
+                }`}>
               All Events
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                selectedEventId === 'all' ? 'bg-primary/20' : 'bg-surface-container-high'
-              }`}>{allPosts.length}</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${selectedEventId === 'all' ? 'bg-primary/20' : 'bg-surface-container-high'
+                }`}>{allPosts.length}</span>
             </button>
             {activeEvents.map(evt => {
               const count = postCountByEvent.get(evt.id) ?? 0;
@@ -383,16 +383,14 @@ export default function TeamFinderPage() {
                 <button
                   key={evt.id}
                   onClick={() => setSelectedEventId(evt.id)}
-                  className={`px-3 py-1.5 rounded-full font-label-md text-[11px] transition-all flex items-center gap-1.5 max-w-[230px] ${
-                    isSelected
+                  className={`px-3 py-1.5 rounded-full font-label-md text-[11px] transition-all flex items-center gap-1.5 max-w-[230px] ${isSelected
                       ? 'bg-primary-container text-on-primary shadow-sm'
                       : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-                  }`}>
+                    }`}>
                   <span className="truncate">{evt.title}</span>
                   {count > 0 && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                      isSelected ? 'bg-primary/20' : 'bg-surface-container-high'
-                    }`}>{count}</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${isSelected ? 'bg-primary/20' : 'bg-surface-container-high'
+                      }`}>{count}</span>
                   )}
                 </button>
               );
@@ -409,11 +407,10 @@ export default function TeamFinderPage() {
                     <button
                       key={r}
                       onClick={() => setActiveRole(rr => rr === r ? null : r)}
-                      className={`px-2.5 py-1 rounded-md font-label-md text-[11px] cursor-pointer transition-colors ${
-                        activeRole === r
+                      className={`px-2.5 py-1 rounded-md font-label-md text-[11px] cursor-pointer transition-colors ${activeRole === r
                           ? 'bg-primary-container text-on-primary'
                           : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
-                      }`}>{r}</button>
+                        }`}>{r}</button>
                   ))}
                   <div className="h-4 w-[1px] bg-outline-variant mx-1 hidden sm:block" />
                 </>
@@ -494,7 +491,7 @@ export default function TeamFinderPage() {
             )}
 
             {/* Real TeamPost cards */}
-            {!postsLoading && filteredPosts.map(({ post, eventTitle, eventType, eventDeadline }) => {
+            {!postsLoading && filteredPosts.map(({ post, eventTitle, eventType, eventDeadline, eventRequiresFemale }) => {
               const filled = Math.max(0, post.spotsTotal - post.spotsLeft);
               const isFull = post.status === 'full' || post.spotsLeft === 0;
               return (
@@ -511,13 +508,18 @@ export default function TeamFinderPage() {
                       >
                         {eventType} • {eventTitle}
                       </button>
-                      <span className={`px-2.5 py-0.5 rounded-full font-label-sm text-[10px] font-bold flex items-center gap-1 ${
-                        isFull
+                      {eventRequiresFemale && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[10px] font-bold flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px]">diversity_3</span>
+                          1 female required
+                        </span>
+                      )}
+                      <span className={`px-2.5 py-0.5 rounded-full font-label-sm text-[10px] font-bold flex items-center gap-1 ${isFull
                           ? 'bg-surface-container-high text-on-surface-variant'
                           : post.spotsLeft === 1
-                          ? 'bg-secondary-fixed text-on-secondary-fixed'
-                          : 'bg-emerald-50 text-emerald-700'
-                      }`}>
+                            ? 'bg-secondary-fixed text-on-secondary-fixed'
+                            : 'bg-emerald-50 text-emerald-700'
+                        }`}>
                         <span className="material-symbols-outlined text-[12px]">
                           {isFull ? 'lock' : post.spotsLeft === 1 ? 'local_fire_department' : 'check_circle'}
                         </span>
@@ -604,11 +606,10 @@ export default function TeamFinderPage() {
                           return (
                             <button
                               onClick={() => navigate(`/events/${post.eventId}`)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 ${
-                                isInvited
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 ${isInvited
                                   ? 'bg-amber-50 text-amber-700 border border-amber-200/60 hover:bg-amber-100'
                                   : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100'
-                              }`}
+                                }`}
                             >
                               <span className="material-symbols-outlined text-[14px]">
                                 {isInvited ? 'mail' : 'how_to_reg'}
@@ -699,9 +700,16 @@ export default function TeamFinderPage() {
                         {item.user.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="font-label-md text-xs text-on-surface font-semibold block truncate">
-                          {item.user.name}
-                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-label-md text-xs text-on-surface font-semibold truncate">
+                            {item.user.name}
+                          </span>
+                          {item.user.gender === 'female' && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[9px] font-bold shrink-0">
+                              Female
+                            </span>
+                          )}
+                        </div>
                         <span className="font-body-sm text-[11px] text-primary truncate block">
                           {eventTitle}
                         </span>

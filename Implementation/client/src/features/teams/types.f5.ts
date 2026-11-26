@@ -1,4 +1,5 @@
 // ── F-5: People Search + Looking + Safety ────────────────────────────────────
+import type { UserGender } from '@/features/auth/api/auth.api';
 
 // ── People ────────────────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ export interface PeoplePage {
 
 export interface LookingCard {
   id:    string;
-  user:  { id: string; name: string };
+  user:  { id: string; name: string; gender?: UserGender | null };
   note?: string;
   since: string;
 }
