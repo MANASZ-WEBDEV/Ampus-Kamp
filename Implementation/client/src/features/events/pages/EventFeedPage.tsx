@@ -361,7 +361,7 @@ export default function EventFeedPage() {
               const isActive = pill.key === activeCategory;
               return (
                 <button key={pill.key} id={`filter-${pill.key}`} onClick={() => setActiveCategory(pill.key)}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-label-md text-label-md transition-all active:scale-95 whitespace-nowrap shrink-0 ${
+                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all active:scale-95 whitespace-nowrap shrink-0 ${
                     isActive
                       ? 'bg-primary-container text-on-primary font-semibold shadow-sm'
                       : 'bg-surface-container-low hover:bg-surface-container text-on-surface-variant'
@@ -382,7 +382,7 @@ export default function EventFeedPage() {
                   type="button"
                   id="filter-branch-btn"
                   onClick={() => setOpenDropdown(prev => prev === 'branch' ? null : 'branch')}
-                  className={`h-9 px-3 rounded-lg flex items-center gap-1.5 font-label-sm text-label-sm transition-all cursor-pointer ${
+                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${
                     selectedBranch
                       ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
                       : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
@@ -428,7 +428,7 @@ export default function EventFeedPage() {
                   type="button"
                   id="filter-year-btn"
                   onClick={() => setOpenDropdown(prev => prev === 'year' ? null : 'year')}
-                  className={`h-9 px-3 rounded-lg flex items-center gap-1.5 font-label-sm text-label-sm transition-all cursor-pointer ${
+                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${
                     selectedYear > 0
                       ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
                       : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
@@ -474,7 +474,7 @@ export default function EventFeedPage() {
                   type="button"
                   id="filter-mode-btn"
                   onClick={() => setOpenDropdown(prev => prev === 'mode' ? null : 'mode')}
-                  className={`h-9 px-3 rounded-lg flex items-center gap-1.5 font-label-sm text-label-sm transition-all cursor-pointer ${
+                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${
                     selectedMode
                       ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
                       : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
@@ -520,7 +520,7 @@ export default function EventFeedPage() {
                   type="button"
                   id="filter-participation-btn"
                   onClick={() => setOpenDropdown(prev => prev === 'participation' ? null : 'participation')}
-                  className={`h-9 px-3 rounded-lg flex items-center gap-1.5 font-label-sm text-label-sm transition-all cursor-pointer ${
+                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${
                     selectedParticipation
                       ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
                       : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
@@ -565,7 +565,7 @@ export default function EventFeedPage() {
                 type="button"
                 id="filter-closing-soon-btn"
                 onClick={() => setClosingSoonOnly(prev => !prev)}
-                className={`h-9 px-3 rounded-lg flex items-center gap-1.5 font-label-sm text-label-sm transition-all cursor-pointer ${
+                className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${
                   closingSoonOnly
                     ? 'bg-secondary text-on-secondary font-semibold shadow-sm ring-1 ring-secondary'
                     : 'bg-secondary-fixed/50 hover:bg-secondary-fixed text-on-secondary-fixed'
@@ -579,12 +579,12 @@ export default function EventFeedPage() {
 
             {/* Sort by Select */}
             <div className="flex items-center gap-2">
-              <span className="text-outline font-label-sm text-label-sm">Sort by:</span>
+              <span className="text-outline text-sm font-medium">Sort by:</span>
               <select
                 id="events-sort-select"
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className="bg-surface-container-low text-on-surface rounded-lg px-2.5 py-1.5 focus:outline-none font-label-md text-label-md cursor-pointer border-0"
+                className="bg-surface-container-low text-on-surface rounded-lg px-3 py-1.5 focus:outline-none text-sm font-medium cursor-pointer border-0"
               >
                 <option value="deadline">Deadline (Soonest first)</option>
                 <option value="recent">Recently Added</option>

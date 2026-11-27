@@ -365,15 +365,15 @@ export default function TeamFinderPage() {
 
           {/* Event chips */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-label-sm text-[11px] text-outline uppercase tracking-wider mr-1">Event:</span>
+            <span className="text-xs font-semibold text-outline uppercase tracking-wider mr-1">Event:</span>
             <button
               onClick={() => setSelectedEventId('all')}
-              className={`px-3 py-1.5 rounded-full font-label-md text-[11px] transition-all flex items-center gap-1.5 ${selectedEventId === 'all'
+              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${selectedEventId === 'all'
                   ? 'bg-primary-container text-on-primary shadow-sm'
                   : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
                 }`}>
               All Events
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${selectedEventId === 'all' ? 'bg-primary/20' : 'bg-surface-container-high'
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${selectedEventId === 'all' ? 'bg-primary/20' : 'bg-surface-container-high'
                 }`}>{allPosts.length}</span>
             </button>
             {activeEvents.map(evt => {
@@ -383,13 +383,13 @@ export default function TeamFinderPage() {
                 <button
                   key={evt.id}
                   onClick={() => setSelectedEventId(evt.id)}
-                  className={`px-3 py-1.5 rounded-full font-label-md text-[11px] transition-all flex items-center gap-1.5 max-w-[230px] ${isSelected
+                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 max-w-[260px] ${isSelected
                       ? 'bg-primary-container text-on-primary shadow-sm'
                       : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
                     }`}>
                   <span className="truncate">{evt.title}</span>
                   {count > 0 && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${isSelected ? 'bg-primary/20' : 'bg-surface-container-high'
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold shrink-0 ${isSelected ? 'bg-primary/20' : 'bg-surface-container-high'
                       }`}>{count}</span>
                   )}
                 </button>
@@ -402,12 +402,12 @@ export default function TeamFinderPage() {
             <div className="flex flex-wrap items-center gap-2">
               {availableRoles.length > 0 && (
                 <>
-                  <span className="font-label-sm text-[11px] text-outline uppercase tracking-wider mr-1">Role:</span>
+                  <span className="text-xs font-semibold text-outline uppercase tracking-wider mr-1">Role:</span>
                   {availableRoles.map(r => (
                     <button
                       key={r}
                       onClick={() => setActiveRole(rr => rr === r ? null : r)}
-                      className={`px-2.5 py-1 rounded-md font-label-md text-[11px] cursor-pointer transition-colors ${activeRole === r
+                      className={`px-3 py-1 rounded-md text-sm font-medium cursor-pointer transition-colors ${activeRole === r
                           ? 'bg-primary-container text-on-primary'
                           : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                         }`}>{r}</button>
@@ -422,15 +422,15 @@ export default function TeamFinderPage() {
                   onChange={e => setUrgentOnly(e.target.checked)}
                   className="w-4 h-4 accent-primary rounded cursor-pointer"
                 />
-                <span className="font-label-md text-[11px] text-on-surface font-medium">Last spot left (1 spot)</span>
+                <span className="text-sm text-on-surface font-medium">Last spot left (1 spot)</span>
               </label>
             </div>
             <div className="flex items-center gap-4">
-              <span className="font-label-sm text-[11px] text-on-surface-variant">
+              <span className="text-sm text-on-surface-variant">
                 Showing <span className="font-bold text-on-surface">{filteredPosts.length}</span> team post{filteredPosts.length === 1 ? '' : 's'}
               </span>
               {hasFilters && (
-                <button onClick={resetFilters} className="font-label-sm text-[11px] text-primary hover:underline font-semibold">
+                <button onClick={resetFilters} className="text-sm text-primary hover:underline font-semibold">
                   Reset Filters
                 </button>
               )}
