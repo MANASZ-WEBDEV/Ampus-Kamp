@@ -9,10 +9,13 @@ interface StudentCardProps {
 }
 
 export function StudentCard({ person, eventId, onReport }: StudentCardProps) {
-  const { mutate: sendLink, isPending: isSending } = useSendLink();
+  const { mutate: sendLink, isPending: isSending, isSuccess: isSent, error: sendError } = useSendLink();
   const { mutate: block,    isPending: isBlocking } = useCreateBlock();
 
   const canInvite = person.allowInvites;
+  const errorMessage =
+    (sendError as { response?: { data?: { error?: { message?: string } } } } | null)
+      ?.response?.data?.error?.message ?? (sendError as Error | null)?.message ?? null;
 
   function handleInvite() {
     sendLink({
@@ -97,23 +100,23 @@ export function StudentCard({ person, eventId, onReport }: StudentCardProps) {
               <button
                 id={`student-invite-${person.id}`}
                 onClick={handleInvite}
-                disabled={isSending}
+                disabled={isSending || isSent}
                 className="flex-1 py-2 rounded-xl bg-primary text-on-primary
                            font-label-lg text-sm font-medium
-                           hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50"
+                           hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60"
               >
-                Invite to Team
+                {isSent ? 'Invite Sent ✓' : isSending ? 'Sending…' : 'Invite to Team'}
               </button>
             ) : (
               <button
                 id={`student-connect-${person.id}`}
                 onClick={handleConnect}
-                disabled={isSending}
+                disabled={isSending || isSent}
                 className="flex-1 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20
                            font-label-lg text-sm font-medium
-                           hover:bg-primary/20 active:scale-[0.98] transition-all disabled:opacity-50"
+                           hover:bg-primary/20 active:scale-[0.98] transition-all disabled:opacity-60"
               >
-                Connect
+                {isSent ? 'Request Sent ✓' : isSending ? 'Sending…' : 'Connect'}
               </button>
             )}
           </>
@@ -147,6 +150,9 @@ export function StudentCard({ person, eventId, onReport }: StudentCardProps) {
           <span className="material-symbols-outlined text-[16px]">block</span>
         </button>
       </div>
+      {errorMessage && (
+        <p className="text-xs text-error font-medium">{errorMessage}</p>
+      )}
     </article>
   );
 }
