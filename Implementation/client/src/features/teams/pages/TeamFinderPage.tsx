@@ -38,10 +38,23 @@ export default function TeamFinderPage() {
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
+  const [eventDropdownOpen, setEventDropdownOpen] = useState(false);
+  const [eventSearch, setEventSearch] = useState('');
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'deadline' | 'spots'>('newest');
+
+  // Close event dropdown on outside click
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (!(e.target as HTMLElement).closest('.team-event-dropdown')) {
+        setEventDropdownOpen(false);
+      }
+    }
+    document.addEventListener('click', handleOutside);
+    return () => document.removeEventListener('click', handleOutside);
+  }, []);
 
   // ── Modals / forms ────────────────────────────────────────────────────────
   const [joiningPost, setJoiningPost] = useState<TeamPost | null>(null);
@@ -60,12 +73,13 @@ export default function TeamFinderPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // ── 1. Fetch active team events ───────────────────────────────────────────
+  // ── 1. Fetch active (published) team events ───────────────────────────────
   const { data: eventsData, isLoading: eventsLoading } = useEvents({
     type: ['hackathon', 'competition', 'sports'],
+    status: ['published'],
   });
   const activeEvents = useMemo(
-    () => eventsData?.pages.flatMap(p => p.items) ?? [],
+    () => (eventsData?.pages.flatMap(p => p.items) ?? []).filter(e => e.status === 'published'),
     [eventsData],
   );
 
@@ -188,6 +202,19 @@ export default function TeamFinderPage() {
     }
     return map;
   }, [allPosts]);
+
+  // Events sorted with active posts first, filtered by dropdown search
+  const dropdownEvents = useMemo(() => {
+    const q = eventSearch.trim().toLowerCase();
+    return [...activeEvents]
+      .sort((a, b) => (postCountByEvent.get(b.id) ?? 0) - (postCountByEvent.get(a.id) ?? 0))
+      .filter(evt => !q || evt.title.toLowerCase().includes(q));
+  }, [activeEvents, postCountByEvent, eventSearch]);
+
+  const selectedEvent = useMemo(
+    () => activeEvents.find(e => e.id === selectedEventId),
+    [activeEvents, selectedEventId],
+  );
 
   // ── Filtered & sorted posts ───────────────────────────────────────────────
   const filteredPosts = useMemo(() => {
@@ -363,11 +390,12 @@ export default function TeamFinderPage() {
             </div>
           </div>
 
-          {/* Event chips */}
+          {/* Event filter (compact single-row dropdown) */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-outline uppercase tracking-wider mr-1">Event:</span>
             <button
-              onClick={() => setSelectedEventId('all')}
+              type="button"
+              onClick={() => { setSelectedEventId('all'); setEventDropdownOpen(false); }}
               className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${selectedEventId === 'all'
                   ? 'bg-primary-container text-on-primary shadow-sm'
                   : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
@@ -376,25 +404,83 @@ export default function TeamFinderPage() {
               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${selectedEventId === 'all' ? 'bg-primary/20' : 'bg-surface-container-high'
                 }`}>{allPosts.length}</span>
             </button>
-            {activeEvents.map(evt => {
-              const count = postCountByEvent.get(evt.id) ?? 0;
-              const isSelected = selectedEventId === evt.id;
-              return (
-                <button
-                  key={evt.id}
-                  onClick={() => setSelectedEventId(evt.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 max-w-[260px] ${isSelected
-                      ? 'bg-primary-container text-on-primary shadow-sm'
-                      : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
-                    }`}>
-                  <span className="truncate">{evt.title}</span>
-                  {count > 0 && (
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold shrink-0 ${isSelected ? 'bg-primary/20' : 'bg-surface-container-high'
-                      }`}>{count}</span>
+
+            <div className="relative inline-block team-event-dropdown">
+              <button
+                type="button"
+                onClick={() => setEventDropdownOpen(prev => !prev)}
+                className={`h-9 px-3.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 cursor-pointer max-w-[320px] ${
+                  selectedEventId !== 'all'
+                    ? 'bg-primary-container text-on-primary shadow-sm'
+                    : 'bg-surface-container hover:bg-surface-container-high text-on-surface'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px] shrink-0">event</span>
+                <span className="truncate">
+                  {selectedEvent ? selectedEvent.title : `Select Event (${activeEvents.length})`}
+                </span>
+                <span className="material-symbols-outlined text-[16px] shrink-0">
+                  {eventDropdownOpen ? 'expand_less' : 'expand_more'}
+                </span>
+              </button>
+
+              {eventDropdownOpen && (
+                <div className="absolute left-0 top-11 z-50 w-80 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-xl overflow-hidden">
+                  {activeEvents.length > 5 && (
+                    <div className="p-2 border-b border-outline-variant/20">
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[16px]">search</span>
+                        <input
+                          type="text"
+                          value={eventSearch}
+                          onChange={e => setEventSearch(e.target.value)}
+                          placeholder="Search events…"
+                          className="w-full h-8 pl-8 pr-2.5 rounded-lg bg-surface-container-low text-sm text-on-surface placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        />
+                      </div>
+                    </div>
                   )}
-                </button>
-              );
-            })}
+                  <div className="max-h-64 overflow-y-auto py-1">
+                    {dropdownEvents.length === 0 ? (
+                      <div className="px-3 py-3 text-sm text-on-surface-variant text-center">No matching events</div>
+                    ) : (
+                      dropdownEvents.map(evt => {
+                        const count = postCountByEvent.get(evt.id) ?? 0;
+                        const isSelected = selectedEventId === evt.id;
+                        return (
+                          <button
+                            key={evt.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedEventId(evt.id);
+                              setEventDropdownOpen(false);
+                              setEventSearch('');
+                            }}
+                            className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between gap-2 transition-colors ${
+                              isSelected
+                                ? 'bg-primary-container/20 text-primary font-semibold'
+                                : 'hover:bg-surface-container-low text-on-surface'
+                            }`}
+                          >
+                            <span className="leading-snug">{evt.title}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {count > 0 && (
+                                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-primary-fixed text-on-primary-fixed-variant">
+                                  {count}
+                                </span>
+                              )}
+                              {isSelected && (
+                                <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Role track + summary row */}
