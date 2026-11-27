@@ -585,6 +585,7 @@ export default function EventDetailPage() {
                     currentUserId={user.id}
                     teamSizeMin={event.teamSize?.min ?? 1}
                     teamSizeMax={event.teamSize?.max ?? 1}
+                    requiresFemale={event.requiresFemale ?? false}
                     isUpdatingMembers={isUpdatingReg}
                     updateMembersError={
                       (updateRegError as { response?: { data?: { error?: { message?: string } } } } | null)

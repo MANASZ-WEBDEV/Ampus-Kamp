@@ -7,6 +7,7 @@ export type RegistrationStatus = 'draft' | 'submitted' | 'withdrawn' | 'locked';
 export interface Member {
   userId:      string;
   name:        string;
+  gender?:     string | null;
   status:      MemberStatus;
   respondedAt?: string;
 }

@@ -17,6 +17,8 @@ interface RegistrationStatusCardProps {
   teamSizeMin?: number;
   /** Max total members allowed (from event teamSize.max) */
   teamSizeMax?: number;
+  /** Whether at least 1 confirmed female member is required */
+  requiresFemale?: boolean;
 }
 
 const STATUS_CONFIG = {
@@ -42,6 +44,7 @@ export function RegistrationStatusCard({
   updateMembersError = null,
   teamSizeMin = 1,
   teamSizeMax = 1,
+  requiresFemale = false,
 }: RegistrationStatusCardProps) {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [pendingAdds, setPendingAdds] = useState<PersonCard[]>([]);
@@ -52,8 +55,11 @@ export function RegistrationStatusCard({
   const canWithdraw     = isLeader && ['draft', 'submitted'].includes(reg.status);
   const confirmedCount  = reg.members.filter(m => m.status === 'confirmed').length;
   const pendingCount    = reg.members.filter(m => m.status === 'invited').length;
-  // Leader can submit once confirmed members meet the min threshold
-  const canSubmit       = isLeader && reg.status === 'draft' && confirmedCount >= teamSizeMin;
+  const hasFemaleMember = !requiresFemale || reg.members.some(
+    m => m.status === 'confirmed' && m.gender === 'female',
+  );
+  // Leader can submit once confirmed members meet the min threshold AND female quota (if any)
+  const canSubmit       = isLeader && reg.status === 'draft' && confirmedCount >= teamSizeMin && hasFemaleMember;
 
   const isTeamDraft     = reg.type === 'team' && reg.status === 'draft' && isLeader;
   const remainingSlots  = Math.max(0, teamSizeMax - reg.members.length);
@@ -124,6 +130,17 @@ export function RegistrationStatusCard({
             day: 'numeric', month: 'short', year: 'numeric',
           })}
         </p>
+      )}
+
+      {/* ── Female-quota warning on legacy submitted teams ─────────────── */}
+      {reg.status === 'submitted' && reg.type === 'team' && requiresFemale && !hasFemaleMember && (
+        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/60 flex items-start gap-2">
+          <span className="material-symbols-outlined text-[18px] text-amber-700 shrink-0 mt-0.5">warning</span>
+          <p className="font-body-sm text-sm text-amber-800">
+            <span className="font-semibold">1 female member mandatory.</span>{' '}
+            This team currently has no confirmed female member. Withdraw to add a female teammate.
+          </p>
+        </div>
       )}
 
       {/* ── Members ────────────────────────────────────────────────────── */}
@@ -259,8 +276,18 @@ export function RegistrationStatusCard({
             )}
           </div>
         ) : (
-          // Team draft — submit when min threshold met; show pending info
+          // Team draft — submit when min threshold + female quota met; show pending info
           <div className="flex flex-col gap-2">
+            {requiresFemale && !hasFemaleMember && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/60 flex items-start gap-2">
+                <span className="material-symbols-outlined text-[18px] text-amber-700 shrink-0 mt-0.5">warning</span>
+                <p className="font-body-sm text-sm text-amber-800">
+                  <span className="font-semibold">1 female member mandatory.</span>{' '}
+                  At least 1 confirmed female teammate is required before you can submit this team.
+                </p>
+              </div>
+            )}
+
             {pendingCount > 0 && (
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/40">
                 <p className="font-body-sm text-sm text-amber-700">

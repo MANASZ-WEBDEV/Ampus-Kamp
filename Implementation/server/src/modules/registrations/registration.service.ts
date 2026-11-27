@@ -23,6 +23,7 @@ import { sendNotification } from '@/modules/notifications/notification.service';
 export interface MemberCard {
   userId:      string;
   name:        string;
+  gender?:     string | null;
   status:      IMember['status'];
   respondedAt?: string;
 }
@@ -45,7 +46,7 @@ export interface RegistrationCard {
 function shapeReg(
   reg: IRegistration & {
     leaderId:   { _id: mongoose.Types.ObjectId; name: string };
-    members:    Array<IMember & { userId: { _id: mongoose.Types.ObjectId; name: string } }>;
+    members:    Array<IMember & { userId: { _id: mongoose.Types.ObjectId; name: string; gender?: string | null } }>;
   },
 ): RegistrationCard {
   return {
@@ -55,12 +56,16 @@ function shapeReg(
     status:   reg.status,
     teamName: reg.teamName,
     leader:   { id: reg.leaderId._id.toString(), name: reg.leaderId.name },
-    members:  reg.members.map(m => ({
-      userId:      (m.userId as unknown as { _id: mongoose.Types.ObjectId; name: string })._id.toString(),
-      name:        (m.userId as unknown as { _id: mongoose.Types.ObjectId; name: string }).name,
-      status:      m.status,
-      respondedAt: m.respondedAt?.toISOString(),
-    })),
+    members:  reg.members.map(m => {
+      const u = m.userId as unknown as { _id: mongoose.Types.ObjectId; name: string; gender?: string | null };
+      return {
+        userId:      u._id.toString(),
+        name:        u.name,
+        gender:      u.gender ?? null,
+        status:      m.status,
+        respondedAt: m.respondedAt?.toISOString(),
+      };
+    }),
     externalRegId: reg.externalRegId,
     submittedAt:   reg.submittedAt?.toISOString(),
     createdAt:     reg.createdAt.toISOString(),
@@ -71,8 +76,8 @@ function shapeReg(
 async function populateReg(id: mongoose.Types.ObjectId | string) {
   return Registration.findById(id)
     .populate<{ leaderId: { _id: mongoose.Types.ObjectId; name: string } }>('leaderId', 'name')
-    .populate<{ members: Array<IMember & { userId: { _id: mongoose.Types.ObjectId; name: string } }> }>(
-      'members.userId', 'name',
+    .populate<{ members: Array<IMember & { userId: { _id: mongoose.Types.ObjectId; name: string; gender?: string | null } }> }>(
+      'members.userId', 'name gender',
     )
     .lean();
 }
@@ -99,7 +104,7 @@ export async function createRegistration(
     status: 'published',
     deletedAt: { $exists: false },
   })
-    .select('registrationMode registrationDeadline teamSize title')
+    .select('registrationMode registrationDeadline teamSize requiresFemale title')
     .lean();
 
   if (!event) throw new NotFoundError('Event');
@@ -110,6 +115,13 @@ export async function createRegistration(
 
   if (event.registrationDeadline && new Date() > event.registrationDeadline) {
     throw new ForbiddenError('Registration deadline has passed.');
+  }
+
+  if (body.type === 'individual' && event.requiresFemale) {
+    const isFemale = await User.exists({ _id: actor.id, gender: 'female' });
+    if (!isFemale) {
+      throw new ValidationError('This event requires at least 1 female participant.');
+    }
   }
 
   // ── Validate and resolve invited members ─────────────────────────────────
@@ -470,13 +482,13 @@ export async function updateRegistration(
       throw new ConflictError(`Cannot submit a registration with status '${reg.status}'.`);
     }
 
-    // Fetch event for deadline + teamSize validation
+    // Fetch event for deadline + teamSize + requiresFemale validation
     const event = await Event.findOne({
       _id: reg.eventId,
       status: 'published',
       deletedAt: { $exists: false },
     })
-      .select('registrationDeadline teamSize counters')
+      .select('registrationDeadline teamSize requiresFemale counters')
       .lean();
 
     if (!event) throw new NotFoundError('Event (closed or deleted)');
@@ -485,7 +497,8 @@ export async function updateRegistration(
     }
 
     // Count confirmed members (leader always confirmed)
-    const confirmedCount = reg.members.filter(m => m.status === 'confirmed').length;
+    const confirmedMembers = reg.members.filter(m => m.status === 'confirmed');
+    const confirmedCount   = confirmedMembers.length;
     const { min = 1, max = 10 } = event.teamSize ?? {};
 
     if (reg.type === 'team') {
@@ -497,6 +510,15 @@ export async function updateRegistration(
       }
       if (confirmedCount > max) {
         throw new ValidationError(`Max team size is ${max}. ${confirmedCount} members are confirmed.`);
+      }
+      if (event.requiresFemale) {
+        const confirmedIds = confirmedMembers.map(m => m.userId);
+        const hasFemale = await User.exists({ _id: { $in: confirmedIds }, gender: 'female' });
+        if (!hasFemale) {
+          throw new ValidationError(
+            'This event requires at least 1 confirmed female team member before submitting.',
+          );
+        }
       }
     }
 
