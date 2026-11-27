@@ -33,7 +33,7 @@ const DEFAULT_EVENT_IMG =
 // ── CTA label/icon ────────────────────────────────────────────────────────────
 
 function ctaLabel(event: EventCard): string {
-  if (event.status === 'closed' || event.status === 'archived') return 'View Results';
+  if (event.status === 'concluded' || event.status === 'archived') return 'View Results';
   if (event.type === 'seminar')  return 'RSVP';
   if (event.type === 'workshop') return 'Reserve Spot';
   if (event.type === 'sports')   return 'Register Squad';
@@ -41,7 +41,7 @@ function ctaLabel(event: EventCard): string {
 }
 
 function ctaIcon(event: EventCard): string {
-  if (event.status === 'closed' || event.status === 'archived') return 'leaderboard';
+  if (event.status === 'concluded' || event.status === 'archived') return 'leaderboard';
   if (event.type === 'seminar')  return 'event_available';
   if (event.type === 'sports')   return 'sports_soccer';
   if (event.type === 'workshop') return 'airplane_ticket';
@@ -58,7 +58,7 @@ export function EventCardComponent({ event }: EventCardProps) {
   const { isBookmarked, toggle, isPending } = useBookmark(event.id, event.isBookmarked);
 
   const isFaculty = user?.role === 'faculty' || user?.role === 'dept_head' || user?.role === 'admin';
-  const isClosed  = event.status === 'closed' || event.status === 'archived';
+  const isClosed  = event.status === 'registration_closed' || event.status === 'concluded' || event.status === 'archived';
 
   const badgeClass = TYPE_BADGE_COLOR[event.type] ?? TYPE_BADGE_COLOR.other;
   const gradient   = BANNER_GRADIENT[event.type]  ?? BANNER_GRADIENT.other;

@@ -10,7 +10,12 @@ export type EventType =
   | 'seminar'
   | 'other';
 
-export type EventStatus = 'draft' | 'published' | 'closed' | 'archived';
+export type EventStatus =
+  | 'draft'
+  | 'published'
+  | 'registration_closed'   // registrationDeadline passed; event not yet held
+  | 'concluded'             // eventDate passed; post-event state
+  | 'archived';             // historical archive; off main feed
 
 // ── Interface ────────────────────────────────────────────────────────────────
 
@@ -142,7 +147,7 @@ const eventSchema = new Schema<IEvent>(
 
     status: {
       type: String,
-      enum: ['draft', 'published', 'closed', 'archived'],
+      enum: ['draft', 'published', 'registration_closed', 'concluded', 'archived'],
       default: 'draft',
       index: true,
     },

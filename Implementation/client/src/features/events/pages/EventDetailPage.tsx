@@ -97,7 +97,7 @@ export default function EventDetailPage() {
 
   const isFaculty  = user?.role === 'faculty' || user?.role === 'dept_head' || user?.role === 'admin';
   const isOwner    = isFaculty && event?.postedBy?.id === user?.id;
-  const isClosed   = event?.status === 'closed' || event?.status === 'archived';
+  const isClosed   = event?.status === 'registration_closed' || event?.status === 'concluded' || event?.status === 'archived';
   const isDraft    = event?.status === 'draft';
   const isTeamEvent = event?.type === 'hackathon' || event?.type === 'competition' || event?.type === 'sports';
   const { data: lookingData } = useLooking(isTeamEvent && !isClosed && id ? id : '');
@@ -676,16 +676,16 @@ export default function EventDetailPage() {
               </div>
             )}
 
-            {/* Faculty: archive action for own published / closed event */}
-            {isOwner && (event.status === 'published' || event.status === 'closed') && (
+            {/* Faculty: archive action for own published / reg-closed / concluded event */}
+            {isOwner && (event.status === 'published' || event.status === 'registration_closed' || event.status === 'concluded') && (
               <div className="rounded-xl bg-surface-container-low border border-dashed border-secondary/30 p-4 flex flex-col gap-3">
                 <div className="flex items-center gap-2 text-on-surface">
                   <span className="material-symbols-outlined text-[20px] text-secondary">inventory_2</span>
                   <span className="text-sm font-semibold">Verified Archive</span>
                 </div>
                 <p className="text-[12px] text-on-surface-variant">
-                  {event.status === 'closed' || isDeadlinePassed
-                    ? 'This event has concluded. Move it to the Verified Academic Archive to preserve historical outcomes and credentials.'
+                  {event.status === 'concluded' || event.status === 'registration_closed' || isDeadlinePassed
+                    ? 'This event has concluded or closed registrations. Move it to the Verified Academic Archive to preserve historical outcomes and credentials.'
                     : 'Archive this event to close registrations and preserve it in the verified repository.'}
                 </p>
                 <button

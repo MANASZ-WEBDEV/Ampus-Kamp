@@ -4,7 +4,7 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { AppBar } from '@/components/layout/AppBar';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { EventTypeBadge, DeadlineCountdown } from '../components/EventStatusBadge';
-import type { EventCard } from '../types';
+import type { EventCard, EventStatus } from '../types';
 
 /**
  * MyEventsPage — /events/my
@@ -23,7 +23,7 @@ export default function MyEventsPage() {
     total:     allEvents.length,
     published: allEvents.filter(e => e.status === 'published').length,
     draft:     allEvents.filter(e => e.status === 'draft').length,
-    closed:    allEvents.filter(e => e.status === 'closed').length,
+    closed:    allEvents.filter(e => e.status === 'registration_closed' || e.status === 'concluded').length,
   };
 
   return (
@@ -137,13 +137,14 @@ interface MyEventRowProps {
 function MyEventRow({ event, onEdit, onView }: MyEventRowProps) {
   const isDraft     = event.status === 'draft';
   const isPublished = event.status === 'published';
-  const isClosed    = event.status === 'closed' || event.status === 'archived';
+  const isClosed    = event.status === 'registration_closed' || event.status === 'concluded' || event.status === 'archived';
 
-  const statusConfig = {
-    draft:    { label: 'Draft',     bg: 'bg-surface-container-high text-on-surface-variant' },
-    published:{ label: 'Live',      bg: 'bg-primary-fixed text-on-primary-fixed-variant' },
-    closed:   { label: 'Closed',    bg: 'bg-error-container text-on-error-container' },
-    archived: { label: 'Archived',  bg: 'bg-surface-container text-on-surface-variant' },
+  const statusConfig: Record<EventStatus, { label: string; bg: string }> = {
+    draft:                { label: 'Draft',         bg: 'bg-surface-container-high text-on-surface-variant' },
+    published:            { label: 'Live',           bg: 'bg-primary-fixed text-on-primary-fixed-variant' },
+    registration_closed:  { label: 'Reg. Closed',   bg: 'bg-secondary-container text-on-secondary-container' },
+    concluded:            { label: 'Concluded',      bg: 'bg-surface-container-high text-on-surface-variant' },
+    archived:             { label: 'Archived',       bg: 'bg-surface-container text-on-surface-variant' },
   };
 
   const sc = statusConfig[event.status];

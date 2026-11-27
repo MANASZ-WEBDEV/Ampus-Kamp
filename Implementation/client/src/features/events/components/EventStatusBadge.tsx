@@ -46,11 +46,19 @@ export function EventStatusBadge({ status, deadline }: StatusBadgeProps) {
       </span>
     );
   }
-  if (status === 'closed') {
+  if (status === 'concluded') {
     return (
-      <span className="inline-flex items-center gap-1 font-label-sm text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-error-container text-on-error-container uppercase tracking-wider">
-        <span className="material-symbols-outlined text-[12px]">lock</span>
-        Registration Closed
+      <span className="inline-flex items-center gap-1 font-label-sm text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant uppercase tracking-wider">
+        <span className="material-symbols-outlined text-[12px]">verified</span>
+        Concluded
+      </span>
+    );
+  }
+  if (status === 'registration_closed') {
+    return (
+      <span className="inline-flex items-center gap-1 font-label-sm text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container uppercase tracking-wider">
+        <span className="material-symbols-outlined text-[12px]">lock_clock</span>
+        Reg. Closed
       </span>
     );
   }
@@ -87,11 +95,11 @@ export function DeadlineCountdown({ deadline, status, className = '' }: Deadline
   const days  = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
-  if (diff < 0 || status === 'closed' || status === 'archived') {
+  if (diff < 0 || status === 'registration_closed' || status === 'concluded' || status === 'archived') {
     return (
       <span className={`inline-flex items-center gap-1 font-code-sm text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-black/60 text-white backdrop-blur-sm ${className}`}>
-        <span className="material-symbols-outlined text-[13px]">lock</span>
-        Closed
+        <span className="material-symbols-outlined text-[13px]">{status === 'concluded' ? 'verified' : 'lock'}</span>
+        {status === 'concluded' ? 'Concluded' : 'Reg. Closed'}
       </span>
     );
   }

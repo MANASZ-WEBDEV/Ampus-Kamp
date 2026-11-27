@@ -42,6 +42,11 @@ export interface PaginatedResponse<T> {
 
 export type VerificationStatus = 'pending' | 'verified' | 'rejected';
 export type RegistrationStatus = 'draft' | 'submitted' | 'withdrawn' | 'locked';
-export type EventStatus = 'draft' | 'published' | 'closed' | 'archived';
+export type EventStatus =
+  | 'draft'
+  | 'published'
+  | 'registration_closed'
+  | 'concluded'
+  | 'archived';
 export type LinkStatus = 'pending' | 'accepted' | 'declined' | 'withdrawn' | 'expired';
 export type LinkDirection = 'request' | 'invite' | 'connect';

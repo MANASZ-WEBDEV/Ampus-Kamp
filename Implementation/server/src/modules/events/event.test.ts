@@ -145,10 +145,11 @@ async function createPublishedEvent(overrides: Partial<Record<string, unknown>> 
 // ── GET /events — feed ────────────────────────────────────────────────────────
 
 describe('GET /api/v1/events', () => {
-  it('student sees only published events', async () => {
+  it('student sees published and registration_closed events, not draft or concluded', async () => {
     await createPublishedEvent({ status: 'published', title: 'Published Event' });
+    await createPublishedEvent({ status: 'registration_closed', title: 'Reg Closed Event' });
     await createPublishedEvent({ status: 'draft', title: 'Draft Event' });
-    await createPublishedEvent({ status: 'closed', title: 'Closed Event' });
+    await createPublishedEvent({ status: 'concluded', title: 'Concluded Event' });
 
     const res = await request(app)
       .get('/api/v1/events')
@@ -157,8 +158,9 @@ describe('GET /api/v1/events', () => {
     expect(res.status).toBe(200);
     const titles = res.body.data.items.map((e: { title: string }) => e.title);
     expect(titles).toContain('Published Event');
+    expect(titles).toContain('Reg Closed Event');
     expect(titles).not.toContain('Draft Event');
-    expect(titles).not.toContain('Closed Event');
+    expect(titles).not.toContain('Concluded Event');
   });
 
   it('feed is sorted by deadline ASC (soonest first)', async () => {
@@ -366,8 +368,8 @@ describe('PUT /api/v1/events/:id', () => {
     expect(res.status).toBe(403);
   });
 
-  it('cannot edit a closed event', async () => {
-    const event = await createPublishedEvent({ status: 'closed' });
+  it('cannot edit a registration_closed event', async () => {
+    const event = await createPublishedEvent({ status: 'registration_closed' });
 
     const res = await request(app)
       .put(`/api/v1/events/${event._id.toString()}`)
@@ -443,7 +445,7 @@ describe('PATCH /api/v1/events/:id/close', () => {
       .set('Authorization', `Bearer ${facultyToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe('closed');
+    expect(res.body.data.status).toBe('registration_closed');
   });
 
   it('returns 409 when trying to close a draft', async () => {
@@ -568,7 +570,7 @@ describe('closeExpiredEvents (cron logic)', () => {
     expect(count).toBe(1);
 
     const expired = await Event.findOne({ title: 'Expired' }).lean();
-    expect(expired?.status).toBe('closed');
+    expect(expired?.status).toBe('registration_closed');
 
     const future = await Event.findOne({ title: 'Future' }).lean();
     expect(future?.status).toBe('published');

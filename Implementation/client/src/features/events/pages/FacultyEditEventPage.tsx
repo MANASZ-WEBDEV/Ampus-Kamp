@@ -127,7 +127,7 @@ export default function FacultyEditEventPage() {
 
   const isDraft     = event.status === 'draft';
   const isPublished = event.status === 'published';
-  const isClosed    = event.status === 'closed' || event.status === 'archived';
+  const isClosed    = event.status === 'registration_closed' || event.status === 'concluded' || event.status === 'archived';
 
   return (
     <div className="min-h-screen bg-background pb-20 pt-14">

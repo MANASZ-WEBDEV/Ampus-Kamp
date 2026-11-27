@@ -157,10 +157,14 @@ function buildFeedFilter(
   if (actor.role === 'student') {
     if (query.status && query.status.length > 0) {
       // Students can view published or archived events, but never draft or closed
-      const allowed = query.status.filter((s) => s === 'published' || s === 'archived');
-      filter['status'] = allowed.length > 0 ? { $in: allowed } : 'published';
+      // Students can see published, registration_closed, concluded, and archived events
+      const allowed = query.status.filter(
+        (s) => s === 'published' || s === 'registration_closed' || s === 'concluded' || s === 'archived',
+      );
+      filter['status'] = allowed.length > 0 ? { $in: allowed } : { $in: ['published', 'registration_closed'] };
     } else {
-      filter['status'] = 'published';
+      // Default student feed: show open + registration-closed (event upcoming)
+      filter['status'] = { $in: ['published', 'registration_closed'] };
     }
   } else if (query.status && query.status.length > 0) {
     filter['status'] = { $in: query.status };
@@ -445,7 +449,11 @@ export async function updateEvent(
   assertOwnerOrAdmin(event, actor);
 
   // Only draft and published events can be edited
-  if (event.status === 'closed' || event.status === 'archived') {
+  if (
+    event.status === 'registration_closed' ||
+    event.status === 'concluded' ||
+    event.status === 'archived'
+  ) {
     throw new ConflictError(
       `Cannot edit a ${event.status} event. Archive or restore it first.`,
     );
@@ -583,15 +591,15 @@ export async function closeEvent(actor: AuthUser, id: string): Promise<EventDeta
 
   assertOwnerOrAdmin(event, actor);
 
-  if (event.status !== 'published') {
+  if (event.status !== 'published' && event.status !== 'registration_closed') {
     throw new ConflictError(
-      `Only published events can be closed. Current status: '${event.status}'.`,
+      `Only published or registration-closed events can be manually closed. Current status: '${event.status}'.`,
     );
   }
 
   const updated = await Event.findByIdAndUpdate(
     id,
-    { $set: { status: 'closed' } },
+    { $set: { status: 'registration_closed' } },
     { new: true },
   )
     .populate<{ postedBy: { _id: mongoose.Types.ObjectId; name: string } }>('postedBy', 'name')
@@ -622,9 +630,13 @@ export async function archiveEvent(actor: AuthUser, id: string): Promise<EventDe
 
   assertOwnerOrAdmin(event, actor);
 
-  if (event.status !== 'closed' && event.status !== 'published') {
+  if (
+    event.status !== 'concluded' &&
+    event.status !== 'registration_closed' &&
+    event.status !== 'published'
+  ) {
     throw new ConflictError(
-      `Only published or closed events can be archived. Current status: '${event.status}'.`,
+      `Only published, registration-closed, or concluded events can be archived. Current status: '${event.status}'.`,
     );
   }
 
@@ -699,17 +711,76 @@ export async function toggleBookmark(
 // ── Used by cron job (jobs/closeEvents.ts) ────────────────────────────────────
 
 /**
- * closeExpiredEvents — closes all published events whose deadline has passed.
- * Called by the nightly cron at 00:05. Returns the count of events closed.
+ * closeExpiredEvents — transitions published events to registration_closed
+ * when their registrationDeadline (or deadline) has passed but the event date
+ * is still in the future (or unknown). Called by cron at 00:05.
  */
 export async function closeExpiredEvents(): Promise<number> {
+  const now = new Date();
   const result = await Event.updateMany(
     {
       status: 'published',
-      deadline: { $lt: new Date() },
+      $or: [
+        // registrationDeadline set and passed, event date still upcoming or unknown
+        {
+          registrationDeadline: { $lt: now },
+          $or: [{ eventDate: { $gte: now } }, { eventDate: { $exists: false } }],
+        },
+        // no registrationDeadline — fall back to deadline field
+        {
+          registrationDeadline: { $exists: false },
+          deadline: { $lt: now },
+          $or: [{ eventDate: { $gte: now } }, { eventDate: { $exists: false } }],
+        },
+      ],
       deletedAt: { $exists: false },
     },
-    { $set: { status: 'closed' } },
+    { $set: { status: 'registration_closed' } },
+  );
+
+  if (result.modifiedCount > 0) {
+    invalidateFeedCache();
+  }
+
+  return result.modifiedCount;
+}
+
+/**
+ * concludeExpiredEvents — transitions registration_closed (and any published)
+ * events to concluded when their eventDate has passed.
+ * Called by cron at 00:10 (after closeExpiredEvents).
+ */
+export async function concludeExpiredEvents(): Promise<number> {
+  const now = new Date();
+  const result = await Event.updateMany(
+    {
+      status: { $in: ['published', 'registration_closed'] },
+      eventDate: { $lt: now },
+      deletedAt: { $exists: false },
+    },
+    { $set: { status: 'concluded' } },
+  );
+
+  if (result.modifiedCount > 0) {
+    invalidateFeedCache();
+  }
+
+  return result.modifiedCount;
+}
+
+/**
+ * autoArchiveOldEvents — archives concluded events older than 90 days.
+ * Called by cron on the 1st of each month.
+ */
+export async function autoArchiveOldEvents(): Promise<number> {
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const result = await Event.updateMany(
+    {
+      status: 'concluded',
+      eventDate: { $lt: cutoff },
+      deletedAt: { $exists: false },
+    },
+    { $set: { status: 'archived' } },
   );
 
   if (result.modifiedCount > 0) {

@@ -206,7 +206,7 @@ export const listEventsSchema = z.object({
         .map((t) => t.trim())
         .filter(Boolean),
     )
-    .pipe(z.array(z.enum(['draft', 'published', 'closed', 'archived'])))
+    .pipe(z.array(z.enum(['draft', 'published', 'registration_closed', 'concluded', 'archived'])))
     .optional(),
 
   // Cursor-based pagination

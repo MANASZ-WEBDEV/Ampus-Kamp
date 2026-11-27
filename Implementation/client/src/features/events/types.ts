@@ -8,7 +8,12 @@ export type EventType =
   | 'seminar'
   | 'other';
 
-export type EventStatus = 'draft' | 'published' | 'closed' | 'archived';
+export type EventStatus =
+  | 'draft'
+  | 'published'
+  | 'registration_closed'   // registrationDeadline passed; event upcoming
+  | 'concluded'             // eventDate passed; post-event
+  | 'archived';             // off main feed; historical only
 
 export type RegistrationMode = 'in_app' | 'external';
 
