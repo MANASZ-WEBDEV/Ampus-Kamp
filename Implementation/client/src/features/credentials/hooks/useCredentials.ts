@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   searchCourses,
+  extractCredential,
   createCredential,
   getMyCredentials,
   getPendingCredentials,
@@ -61,6 +62,13 @@ export function usePendingCredentials() {
     queryFn:  getPendingCredentials,
     staleTime: 10_000,
     refetchInterval: 30_000,  // auto-refresh every 30s
+  });
+}
+
+/** Student: extract metadata + QR from certificate file using AI */
+export function useExtractCredential() {
+  return useMutation({
+    mutationFn: (proof: File) => extractCredential(proof),
   });
 }
 

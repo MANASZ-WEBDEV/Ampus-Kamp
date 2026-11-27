@@ -27,6 +27,15 @@ credentialsRouter.get(
   ctrl.getPendingQueue,
 );
 
+// POST /api/v1/credentials/extract — AI + QR auto-fill from certificate file
+credentialsRouter.post(
+  '/extract',
+  requireAuth,
+  requireRole(['student']),
+  singleProofUpload,
+  ctrl.extractCredential,
+);
+
 // POST /api/v1/credentials — upload credential (multipart/form-data)
 // multer runs BEFORE validate so req.file is populated before Zod sees req.body
 credentialsRouter.post(

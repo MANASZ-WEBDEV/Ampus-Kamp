@@ -22,6 +22,27 @@ export async function searchCourses(q?: string, category?: string): Promise<Cour
 
 // ── Credentials ───────────────────────────────────────────────────────────────
 
+export interface ExtractedCredential {
+  title?:         string;
+  issuer?:        string;
+  certificateId?: string;
+  session?:       string;
+  year?:          number;
+  tier?:          Credential['tier'];
+  qrUrl?:         string;
+  usedFallback:   boolean;
+}
+
+/** POST /api/v1/credentials/extract — AI + QR extraction from certificate file */
+export async function extractCredential(proof: File): Promise<ExtractedCredential> {
+  const form = new FormData();
+  form.append('proof', proof);
+  const res = await apiClient.post<{ data: ExtractedCredential }>('/credentials/extract', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data.data;
+}
+
 /**
  * POST /api/v1/credentials — upload credential as multipart/form-data.
  * Uses FormData so the proof file is sent correctly.

@@ -84,11 +84,12 @@ export async function createCredential(
 
   const qrEnabled = await getSetting<boolean>('qrPipelineEnabled', true);
 
-  if (qrEnabled && !isOther && body.issuer === 'NPTEL') {
-    const filePath = file.path;
-    const result   = await runQrPipeline(filePath, {
+  if (qrEnabled && body.issuer.toUpperCase().includes('NPTEL')) {
+    const filePath   = file.path;
+    const courseName = body.otherCourseName ?? body.issuer;
+    const result     = await runQrPipeline(filePath, {
       studentName: user.name,
-      courseName:  body.issuer,   // will be replaced by course name in a real impl
+      courseName,
       session:     body.session,
     });
 

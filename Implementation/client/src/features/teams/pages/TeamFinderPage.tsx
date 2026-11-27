@@ -524,11 +524,40 @@ export default function TeamFinderPage() {
           </div>
         </div>
 
-        {/* ── 12-col Grid ─────────────────────────────────────────────────── */}
-        <div className="w-full mt-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* ── Full-width stacked layout ───────────────────────────────────── */}
+        <div className="w-full mt-5 flex flex-col gap-6">
 
-          {/* LEFT: Live Squad Feed (8 cols) */}
-          <div className="lg:col-span-8 flex flex-col gap-4">
+          {/* ── 1. Forming a New Squad? (Horizontal Banner) ───────────────── */}
+          <div className="p-5 rounded-xl bg-primary text-on-primary shadow-md relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="absolute -right-8 -bottom-8 w-40 h-40 rounded-full bg-primary-container blur-xl pointer-events-none" />
+            <div className="relative z-10">
+              <span className="px-2.5 py-0.5 rounded bg-primary-container text-on-primary text-xs uppercase font-bold tracking-wider">
+                Lead a Team
+              </span>
+              <h2 className="font-headline-md text-lg font-bold mt-1.5 tracking-tight">Forming a New Squad?</h2>
+              <p className="text-sm text-on-primary-container mt-0.5 leading-relaxed">
+                Post open roles for an active hackathon or competition so interested teammates can send join requests.
+              </p>
+            </div>
+            {isStudent && activeEvents.length > 0 ? (
+              <button
+                id="sidebar-create-squad-btn"
+                onClick={() => setShowCreateModal(true)}
+                className="relative z-10 shrink-0 px-5 py-2.5 rounded-lg bg-secondary-container text-on-secondary-fixed text-sm font-bold shadow hover:bg-amber-400 transition-all flex items-center justify-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                Create Team Recruitment
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/events')}
+                className="relative z-10 shrink-0 px-5 py-2.5 rounded-lg bg-secondary-container text-on-secondary-fixed text-sm font-bold shadow hover:bg-amber-400 transition-all flex items-center justify-center gap-2">
+                Browse Events
+              </button>
+            )}
+          </div>
+
+          {/* ── 2. Live Squad Feed (Full Width) ───────────────────────────── */}
+          <div className="flex flex-col gap-4">
 
             {/* Loading skeletons */}
             {postsLoading && (
@@ -733,122 +762,106 @@ export default function TeamFinderPage() {
             })}
           </div>
 
-          {/* RIGHT: Sidebar (4 cols) */}
-          <div className="lg:col-span-4 flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
-
-            {/* 1. Form a Squad callout */}
-            <div className="p-5 rounded-xl bg-primary text-on-primary shadow-md relative overflow-hidden flex flex-col gap-4">
-              <div className="absolute -right-8 -bottom-8 w-40 h-40 rounded-full bg-primary-container blur-xl pointer-events-none" />
-              <div className="relative z-10">
-                <span className="px-2 py-0.5 rounded bg-primary-container text-on-primary font-label-sm text-[10px] uppercase font-bold tracking-wider">
-                  Lead a Team
-                </span>
-                <h3 className="font-headline-md text-[1.125rem] font-bold mt-2 tracking-tight">Forming a New Squad?</h3>
-                <p className="font-body-sm text-[12px] text-on-primary-container mt-1 leading-relaxed">
-                  Post open roles for an active hackathon or competition so interested teammates can send join requests.
-                </p>
+          {/* ── 3. Students Looking for a Team (Full Width) ───────────────── */}
+          <section className="rounded-xl bg-surface-container-lowest p-5 sm:p-6 shadow-sm flex flex-col gap-4 border border-outline-variant/15">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-[24px] text-primary">person_search</span>
+                <div>
+                  <h2 className="font-headline-sm text-lg text-on-surface font-bold">
+                    Students Looking for a Team
+                  </h2>
+                  <p className="text-sm text-on-surface-variant">
+                    Students who marked themselves as available to join a squad.
+                  </p>
+                </div>
               </div>
-              {isStudent && activeEvents.length > 0 ? (
-                <button
-                  id="sidebar-create-squad-btn"
-                  onClick={() => setShowCreateModal(true)}
-                  className="relative z-10 w-full py-2.5 rounded-lg bg-secondary-container text-on-secondary-fixed font-label-lg text-[13px] font-bold shadow hover:bg-amber-400 transition-all flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                  Create Team Recruitment
-                </button>
-              ) : (
-                <button
-                  onClick={() => navigate('/events')}
-                  className="relative z-10 w-full py-2.5 rounded-lg bg-secondary-container text-on-secondary-fixed font-label-lg text-[13px] font-bold shadow hover:bg-amber-400 transition-all flex items-center justify-center gap-2">
-                  Browse Events
-                </button>
-              )}
-            </div>
-
-            {/* 2. Students Looking for a Team (Live) */}
-            <div className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-headline-sm text-[14px] text-on-surface font-semibold">Students Looking for a Team</h2>
-                <span className="font-label-sm text-[11px] text-primary font-bold">
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-bold">
                   {visibleLooking.length} active
                 </span>
+                <button
+                  onClick={() =>
+                    navigate(selectedEventId !== 'all' ? `/events/${selectedEventId}/looking` : '/teams/people')
+                  }
+                  className="flex items-center gap-1 text-primary text-sm font-semibold hover:underline"
+                >
+                  {selectedEventId !== 'all' ? 'View all looking for this event' : 'Search all students'}
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </button>
               </div>
+            </div>
 
-              {visibleLooking.length === 0 ? (
-                <p className="font-body-sm text-xs text-on-surface-variant">
-                  No students have marked themselves as looking yet.
-                </p>
-              ) : (
-                <div className="flex flex-col gap-2.5">
-                  {visibleLooking.slice(0, 5).map(({ item, eventId, eventTitle }) => (
-                    <div key={`${eventId}-${item.id}`} className="flex items-start gap-2.5 p-2 rounded-lg bg-surface-container-low/70">
-                      <div className="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center font-label-md text-xs font-bold shrink-0">
+            {visibleLooking.length === 0 ? (
+              <p className="text-sm text-on-surface-variant py-2">
+                No students have marked themselves as looking yet.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {visibleLooking.slice(0, 6).map(({ item, eventId, eventTitle }) => (
+                  <div
+                    key={`${eventId}-${item.id}`}
+                    className="flex items-start justify-between gap-3 p-4 rounded-xl bg-surface-container-low/70 border border-outline-variant/15"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-bold shrink-0">
                         {item.user.name.charAt(0).toUpperCase()}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="font-label-md text-xs text-on-surface font-semibold truncate">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-base text-on-surface font-semibold truncate">
                             {item.user.name}
                           </span>
                           {item.user.gender === 'female' && (
-                            <span className="px-1.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[9px] font-bold shrink-0">
+                            <span className="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-xs font-bold shrink-0">
                               Female
                             </span>
                           )}
                         </div>
-                        <span className="font-body-sm text-[11px] text-primary truncate block">
+                        <span className="text-sm text-primary font-medium truncate block mt-0.5">
                           {eventTitle}
                         </span>
                         {item.note && (
-                          <span className="font-body-sm text-[11px] text-on-surface-variant line-clamp-2 mt-0.5 block">
+                          <p className="text-sm text-on-surface-variant line-clamp-2 mt-1.5 leading-relaxed">
                             “{item.note}”
-                          </span>
+                          </p>
                         )}
                       </div>
-                      <button
-                        onClick={() => navigate(`/events/${eventId}/looking`)}
-                        className="px-2 py-1 rounded bg-surface-container hover:bg-primary-container hover:text-on-primary text-primary font-label-md text-[11px] font-semibold transition-colors shrink-0">
-                        View
-                      </button>
                     </div>
-                  ))}
-                </div>
-              )}
-
-              <button
-                onClick={() =>
-                  navigate(selectedEventId !== 'all' ? `/events/${selectedEventId}/looking` : '/teams/people')
-                }
-                className="flex items-center gap-1 text-primary font-label-md text-xs font-semibold hover:underline mt-1">
-                {selectedEventId !== 'all' ? 'View all looking for this event' : 'Search all students'}
-                <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
-              </button>
-            </div>
-
-            {/* 3. Team Finder Rules */}
-            <div className="rounded-xl bg-surface-container-lowest p-5 shadow-sm flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[20px] text-secondary">gavel</span>
-                <h2 className="font-headline-sm text-[14px] text-on-surface font-semibold">Team Finder Rules</h2>
-              </div>
-              <div className="flex flex-col gap-2">
-                {[
-                  { icon: 'looks_one', title: '1 Open Post per Event', desc: 'Each student can maintain one open recruitment post per event at a time.' },
-                  { icon: 'group_add', title: 'Auto-Updated Spots', desc: 'Accepted join requests automatically decrement open spots and mark full posts.' },
-                  { icon: 'schedule', title: 'Deadline Expiry', desc: 'Team posts automatically expire when the event registration deadline passes.' },
-                ].map(r => (
-                  <div key={r.title} className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-[18px] text-emerald-600 shrink-0 mt-0.5">{r.icon}</span>
-                    <div>
-                      <span className="font-label-md text-[11px] text-on-surface font-semibold block">{r.title}:</span>
-                      <span className="font-body-sm text-[11px] text-on-surface-variant">{r.desc}</span>
-                    </div>
+                    <button
+                      onClick={() => navigate(`/events/${eventId}/looking`)}
+                      className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-primary-container hover:text-on-primary text-primary text-sm font-semibold transition-colors shrink-0"
+                    >
+                      View
+                    </button>
                   </div>
                 ))}
               </div>
-            </div>
+            )}
+          </section>
 
-          </div>
+          {/* ── 4. Team Finder Rules (Full Width at Bottom) ───────────────── */}
+          <section className="rounded-xl bg-surface-container-lowest p-5 sm:p-6 shadow-sm flex flex-col gap-4 border border-outline-variant/15">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[24px] text-secondary">gavel</span>
+              <h2 className="font-headline-sm text-lg text-on-surface font-bold">Team Finder Rules</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { icon: 'looks_one', title: '1 Open Post per Event', desc: 'Each student can maintain one open recruitment post per event at a time.' },
+                { icon: 'group_add', title: 'Auto-Updated Spots', desc: 'Accepted join requests automatically decrement open spots and mark full posts.' },
+                { icon: 'schedule', title: 'Deadline Expiry', desc: 'Team posts automatically expire when the event registration deadline passes.' },
+              ].map(r => (
+                <div key={r.title} className="flex items-start gap-3 p-3.5 rounded-xl bg-surface-container-low/50">
+                  <span className="material-symbols-outlined text-[22px] text-emerald-600 shrink-0 mt-0.5">{r.icon}</span>
+                  <div>
+                    <h3 className="text-base text-on-surface font-semibold">{r.title}</h3>
+                    <p className="text-sm text-on-surface-variant mt-0.5 leading-relaxed">{r.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
       </main>
 

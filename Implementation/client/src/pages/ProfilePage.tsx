@@ -533,7 +533,9 @@ export default function ProfilePage() {
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 py-4 border-t border-b border-outline-variant/20">
                       <div>
                         <div className="text-[11px] text-outline uppercase tracking-wider font-medium">Session &amp; Year</div>
-                        <div className="text-sm font-semibold text-on-surface mt-1">{cred.session} {cred.year}</div>
+                        <div className="text-sm font-semibold text-on-surface mt-1">
+                          {cred.session.includes(String(cred.year)) ? cred.session : `${cred.session} ${cred.year}`}
+                        </div>
                       </div>
                       <div>
                         <div className="text-[11px] text-outline uppercase tracking-wider font-medium">Certificate ID</div>

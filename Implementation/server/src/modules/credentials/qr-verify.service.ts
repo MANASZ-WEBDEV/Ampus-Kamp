@@ -23,7 +23,11 @@ import { createReadStream } from 'fs';
 
 // ── Allowlisted QR hosts ──────────────────────────────────────────────────────
 // Expand this list when new issuers are added (or use Setting.qrAllowlist).
-const QR_ALLOWLIST = new Set(['nptel.ac.in']);
+const QR_ALLOWLIST = new Set([
+  'nptel.ac.in',
+  'archive.nptel.ac.in',
+  'internalapp.nptel.ac.in',
+]);
 
 // ── Private IP CIDR ranges (RFC-1918, loopback, link-local) ──────────────────
 // We parse the IP as a 32-bit integer and compare against these ranges.
@@ -121,43 +125,12 @@ async function ssrfSafeFetch(url: string): Promise<string | null> {
   }
 }
 
-// ── Fuzzy string comparison ───────────────────────────────────────────────────
-// Naive character-level Dice coefficient (no external dependency).
-// For production accuracy, swap with `string-similarity` package.
-
-function diceCoeff(a: string, b: string): number {
-  if (!a || !b) return 0;
-  if (a === b) return 1;
-  const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
-  const na = normalize(a);
-  const nb = normalize(b);
-  if (na === nb) return 1;
-
-  const bigrams = (s: string): Map<string, number> => {
-    const map = new Map<string, number>();
-    for (let i = 0; i < s.length - 1; i++) {
-      const bg = s.slice(i, i + 2);
-      map.set(bg, (map.get(bg) ?? 0) + 1);
-    }
-    return map;
-  };
-
-  const ba = bigrams(na);
-  const bb = bigrams(nb);
-  let intersection = 0;
-  for (const [bg, cnt] of ba) {
-    const cnt2 = bb.get(bg) ?? 0;
-    intersection += Math.min(cnt, cnt2);
-  }
-  return (2 * intersection) / (na.length - 1 + nb.length - 1);
-}
-
 // ── QR URL extraction from PDF ────────────────────────────────────────────────
 // Attempts to extract the QR code from the first page of a PDF.
 // Uses a lightweight approach: scan the PDF byte stream for known URL patterns.
 // If pdf-lib + jsQR are available, use them; otherwise fall through.
 
-async function extractQrUrlFromPdf(filePath: string): Promise<string | null> {
+export async function extractQrUrlFromPdf(filePath: string): Promise<string | null> {
   // Strategy: Read the raw PDF bytes and look for embedded URLs
   // that match our allowlist pattern. This is a best-effort scan.
   // A more robust approach would render the page and decode the QR image.
@@ -172,8 +145,7 @@ async function extractQrUrlFromPdf(filePath: string): Promise<string | null> {
     const content = Buffer.concat(chunks).toString('binary');
 
     // Look for NPTEL certificate verification URLs embedded in the PDF
-    // Typical NPTEL cert QR URL pattern: https://nptel.ac.in/noc/...
-    const urlPattern = /https?:\/\/nptel\.ac\.in\/[^\s"<>)]+/g;
+    const urlPattern = /https?:\/\/(?:[a-z0-9-]+\.)?nptel\.ac\.in\/[^\s"<>)]+/gi;
     const matches = content.match(urlPattern);
     if (matches && matches.length > 0) {
       // Return the first match that's a valid URL
@@ -201,12 +173,31 @@ interface CertFields {
   session?:    string;
 }
 
+function tokenContainmentScore(expectedText: string, haystack: string): number {
+  const tokens = expectedText
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length >= 2);
+  if (tokens.length === 0) return 0;
+  const matched = tokens.filter(t => haystack.includes(t)).length;
+  return matched / tokens.length;
+}
+
 function scorePageContent(html: string, expected: CertFields): number {
+  // Strip HTML tags and normalize whitespace before matching
+  const plainText = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
   const scores: number[] = [];
-  scores.push(diceCoeff(expected.studentName, html));
-  scores.push(diceCoeff(expected.courseName, html));
-  if (expected.session) scores.push(diceCoeff(expected.session, html));
-  if (expected.roll)    scores.push(diceCoeff(expected.roll, html));
+  scores.push(tokenContainmentScore(expected.studentName, plainText));
+  scores.push(tokenContainmentScore(expected.courseName, plainText));
+  if (expected.session) scores.push(tokenContainmentScore(expected.session, plainText));
+  if (expected.roll)    scores.push(tokenContainmentScore(expected.roll, plainText));
   return scores.reduce((a, b) => a + b, 0) / scores.length;
 }
 

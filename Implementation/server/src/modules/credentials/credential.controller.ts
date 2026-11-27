@@ -2,6 +2,20 @@ import type { Response } from 'express';
 import { asyncHandler }     from '@/shared/utils';
 import type { AuthRequest } from '@/shared/types';
 import * as svc             from './credential.service';
+import { extractCredentialFromFile } from './credential-extract.service';
+
+// ── POST /api/v1/credentials/extract ──────────────────────────────────────────
+
+export const extractCredential = asyncHandler<AuthRequest>(async (req, res: Response) => {
+  if (!req.file) {
+    res.status(422).json({
+      error: { code: 'MISSING_FILE', message: 'A certificate file (PDF, JPEG, or PNG) is required.' },
+    });
+    return;
+  }
+  const result = await extractCredentialFromFile(req.file);
+  res.status(200).json({ data: result });
+});
 
 // ── POST /api/v1/credentials ───────────────────────────────────────────────────
 // File is attached by multer before this handler runs.
