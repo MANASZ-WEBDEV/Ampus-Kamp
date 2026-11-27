@@ -8,13 +8,13 @@ import type { EventType } from '../types';
 
 // ── Category pills config ─────────────────────────────────────────────────────
 const CATEGORY_PILLS = [
-  { key: 'all',         label: 'All Events',         icon: 'apps',                    iconColor: 'text-on-primary' },
-  { key: 'hackathon',   label: 'Hackathons',          icon: 'terminal',                iconColor: 'text-tertiary' },
-  { key: 'sports',      label: 'Sports & Athletics',  icon: 'sports_soccer',           iconColor: 'text-secondary' },
-  { key: 'workshop',    label: 'Hands-on Workshops',  icon: 'precision_manufacturing', iconColor: 'text-primary' },
-  { key: 'seminar',     label: 'Seminars & Talks',    icon: 'record_voice_over',       iconColor: 'text-tertiary' },
-  { key: 'other',       label: 'Research Sprints',    icon: 'biotech',                 iconColor: 'text-primary' },
-  { key: 'archive',     label: 'Verified Archive',   icon: 'inventory_2',             iconColor: 'text-secondary' },
+  { key: 'all', label: 'All Events', icon: 'apps', iconColor: 'text-on-primary' },
+  { key: 'hackathon', label: 'Hackathons', icon: 'terminal', iconColor: 'text-tertiary' },
+  { key: 'sports', label: 'Sports & Athletics', icon: 'sports_soccer', iconColor: 'text-secondary' },
+  { key: 'workshop', label: 'Hands-on Workshops', icon: 'precision_manufacturing', iconColor: 'text-primary' },
+  { key: 'seminar', label: 'Seminars & Talks', icon: 'record_voice_over', iconColor: 'text-tertiary' },
+  { key: 'other', label: 'Research Sprints', icon: 'biotech', iconColor: 'text-primary' },
+  { key: 'archive', label: 'Verified Archive', icon: 'inventory_2', iconColor: 'text-secondary' },
 ] as const;
 
 type CategoryKey = typeof CATEGORY_PILLS[number]['key'];
@@ -47,7 +47,7 @@ const MODE_OPTIONS = [
 ];
 
 const PARTICIPATION_OPTIONS = [
-  { value: '' as const,     label: 'All Participation' },
+  { value: '' as const, label: 'All Participation' },
   { value: 'solo' as const, label: 'Solo / Individual' },
   { value: 'team' as const, label: 'Team Events' },
 ];
@@ -69,16 +69,16 @@ export default function EventFeedPage() {
   const { user } = useAuth();
   const isFaculty = user?.role === 'faculty' || user?.role === 'dept_head' || user?.role === 'admin';
 
-  const [searchQuery, setSearchQuery]       = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<CategoryKey>('all');
   const [selectedBranch, setSelectedBranch] = useState<string>('');
-  const [selectedYear, setSelectedYear]     = useState<number>(0);
-  const [selectedMode, setSelectedMode]     = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<number>(0);
+  const [selectedMode, setSelectedMode] = useState<string>('');
   const [selectedParticipation, setSelectedParticipation] = useState<'' | 'solo' | 'team'>('');
   const [closingSoonOnly, setClosingSoonOnly] = useState<boolean>(false);
-  const [openDropdown, setOpenDropdown]     = useState<'branch' | 'year' | 'mode' | 'participation' | null>(null);
-  const [viewMode, setViewMode]             = useState<'grid' | 'list'>('grid');
-  const [sortBy, setSortBy]                 = useState('deadline');
+  const [openDropdown, setOpenDropdown] = useState<'branch' | 'year' | 'mode' | 'participation' | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortBy, setSortBy] = useState('deadline');
 
   // Close filter dropdowns on outside click
   useEffect(() => {
@@ -309,7 +309,7 @@ export default function EventFeedPage() {
               <span className="material-symbols-outlined text-[18px] text-primary">bookmark_manager</span>
               <span>Subscribed Feeds</span>
             </button>
-            <button id="propose-event-btn" onClick={() => navigate(isFaculty ? '/events/paste' : '/events/new')}
+            <button id="propose-event-btn" onClick={() => navigate(isFaculty ? '/events/paste' : '/events/propose')}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg shadow-md transition-all active:scale-[0.98]">
               <span className="material-symbols-outlined text-[20px]">add_circle</span>
               <span>{isFaculty ? 'Post Event' : 'Propose Event'}</span>
@@ -361,11 +361,10 @@ export default function EventFeedPage() {
               const isActive = pill.key === activeCategory;
               return (
                 <button key={pill.key} id={`filter-${pill.key}`} onClick={() => setActiveCategory(pill.key)}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all active:scale-95 whitespace-nowrap shrink-0 ${
-                    isActive
-                      ? 'bg-primary-container text-on-primary font-semibold shadow-sm'
-                      : 'bg-surface-container-low hover:bg-surface-container text-on-surface-variant'
-                  }`}>
+                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all active:scale-95 whitespace-nowrap shrink-0 ${isActive
+                    ? 'bg-primary-container text-on-primary font-semibold shadow-sm'
+                    : 'bg-surface-container-low hover:bg-surface-container text-on-surface-variant'
+                    }`}>
                   <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-on-primary' : pill.iconColor}`}>{pill.icon}</span>
                   <span>{pill.label}</span>
                 </button>
@@ -382,11 +381,10 @@ export default function EventFeedPage() {
                   type="button"
                   id="filter-branch-btn"
                   onClick={() => setOpenDropdown(prev => prev === 'branch' ? null : 'branch')}
-                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${
-                    selectedBranch
-                      ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
-                      : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
-                  }`}
+                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${selectedBranch
+                    ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
+                    : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
+                    }`}
                 >
                   <span className="text-outline">Branch:</span>
                   <span className="font-semibold">
@@ -406,11 +404,10 @@ export default function EventFeedPage() {
                         key={opt.value}
                         type="button"
                         onClick={() => { setSelectedBranch(opt.value); setOpenDropdown(null); }}
-                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${
-                          selectedBranch === opt.value
-                            ? 'bg-primary-container/40 text-primary font-semibold'
-                            : 'hover:bg-surface-container-low text-on-surface'
-                        }`}
+                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${selectedBranch === opt.value
+                          ? 'bg-primary-container/40 text-primary font-semibold'
+                          : 'hover:bg-surface-container-low text-on-surface'
+                          }`}
                       >
                         <span>{opt.label}</span>
                         {selectedBranch === opt.value && (
@@ -428,11 +425,10 @@ export default function EventFeedPage() {
                   type="button"
                   id="filter-year-btn"
                   onClick={() => setOpenDropdown(prev => prev === 'year' ? null : 'year')}
-                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${
-                    selectedYear > 0
-                      ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
-                      : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
-                  }`}
+                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${selectedYear > 0
+                    ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
+                    : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
+                    }`}
                 >
                   <span className="text-outline">Year:</span>
                   <span className="font-semibold">
@@ -452,11 +448,10 @@ export default function EventFeedPage() {
                         key={opt.value}
                         type="button"
                         onClick={() => { setSelectedYear(opt.value); setOpenDropdown(null); }}
-                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${
-                          selectedYear === opt.value
-                            ? 'bg-primary-container/40 text-primary font-semibold'
-                            : 'hover:bg-surface-container-low text-on-surface'
-                        }`}
+                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${selectedYear === opt.value
+                          ? 'bg-primary-container/40 text-primary font-semibold'
+                          : 'hover:bg-surface-container-low text-on-surface'
+                          }`}
                       >
                         <span>{opt.label}</span>
                         {selectedYear === opt.value && (
@@ -474,11 +469,10 @@ export default function EventFeedPage() {
                   type="button"
                   id="filter-mode-btn"
                   onClick={() => setOpenDropdown(prev => prev === 'mode' ? null : 'mode')}
-                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${
-                    selectedMode
-                      ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
-                      : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
-                  }`}
+                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${selectedMode
+                    ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
+                    : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
+                    }`}
                 >
                   <span className="text-outline">Mode:</span>
                   <span className="font-semibold">
@@ -498,11 +492,10 @@ export default function EventFeedPage() {
                         key={opt.value}
                         type="button"
                         onClick={() => { setSelectedMode(opt.value); setOpenDropdown(null); }}
-                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${
-                          selectedMode === opt.value
-                            ? 'bg-primary-container/40 text-primary font-semibold'
-                            : 'hover:bg-surface-container-low text-on-surface'
-                        }`}
+                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${selectedMode === opt.value
+                          ? 'bg-primary-container/40 text-primary font-semibold'
+                          : 'hover:bg-surface-container-low text-on-surface'
+                          }`}
                       >
                         <span>{opt.label}</span>
                         {selectedMode === opt.value && (
@@ -520,11 +513,10 @@ export default function EventFeedPage() {
                   type="button"
                   id="filter-participation-btn"
                   onClick={() => setOpenDropdown(prev => prev === 'participation' ? null : 'participation')}
-                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${
-                    selectedParticipation
-                      ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
-                      : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
-                  }`}
+                  className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${selectedParticipation
+                    ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
+                    : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
+                    }`}
                 >
                   <span className="text-outline">Entry:</span>
                   <span className="font-semibold">
@@ -544,11 +536,10 @@ export default function EventFeedPage() {
                         key={opt.value}
                         type="button"
                         onClick={() => { setSelectedParticipation(opt.value); setOpenDropdown(null); }}
-                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${
-                          selectedParticipation === opt.value
-                            ? 'bg-primary-container/40 text-primary font-semibold'
-                            : 'hover:bg-surface-container-low text-on-surface'
-                        }`}
+                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${selectedParticipation === opt.value
+                          ? 'bg-primary-container/40 text-primary font-semibold'
+                          : 'hover:bg-surface-container-low text-on-surface'
+                          }`}
                       >
                         <span>{opt.label}</span>
                         {selectedParticipation === opt.value && (
@@ -565,11 +556,10 @@ export default function EventFeedPage() {
                 type="button"
                 id="filter-closing-soon-btn"
                 onClick={() => setClosingSoonOnly(prev => !prev)}
-                className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${
-                  closingSoonOnly
-                    ? 'bg-secondary text-on-secondary font-semibold shadow-sm ring-1 ring-secondary'
-                    : 'bg-secondary-fixed/50 hover:bg-secondary-fixed text-on-secondary-fixed'
-                }`}
+                className={`h-9 px-3.5 rounded-lg flex items-center gap-1.5 text-sm transition-all cursor-pointer ${closingSoonOnly
+                  ? 'bg-secondary text-on-secondary font-semibold shadow-sm ring-1 ring-secondary'
+                  : 'bg-secondary-fixed/50 hover:bg-secondary-fixed text-on-secondary-fixed'
+                  }`}
               >
                 <span className={`w-2 h-2 rounded-full ${closingSoonOnly ? 'bg-on-secondary animate-pulse' : 'bg-secondary'}`} />
                 <span className="font-semibold">Closing Soon ({closingSoonCount})</span>
@@ -677,7 +667,7 @@ export default function EventFeedPage() {
             <span className="font-label-lg text-label-lg text-on-surface font-semibold">Have an Idea for a Campus Event?</span>
             <span className="font-body-sm text-body-sm text-on-surface-variant ml-2 hidden sm:inline">Pitch directly to the Innovation Council for lab grants &amp; duty leaves.</span>
           </div>
-          <button id="submit-proposal-btn" onClick={() => navigate(isFaculty ? '/events/paste' : '/events/new')}
+          <button id="submit-proposal-btn" onClick={() => navigate(isFaculty ? '/events/paste' : '/events/propose')}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md shadow-sm transition-all active:scale-[0.98] shrink-0">
             <span className="material-symbols-outlined text-[16px]">add_circle</span>
             <span>{isFaculty ? 'Post Event' : 'Submit Proposal'}</span>
@@ -731,55 +721,55 @@ export default function EventFeedPage() {
                       </div>
                     )}
                     <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'flex flex-col gap-4'}>
-                    {displayEvents.map(event => (
-                      <article
-                        key={event.id}
-                        onClick={() => navigate(`/events/${event.id}`)}
-                        className="group bg-surface-container-lowest rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between">
-                        <div className={`absolute top-0 left-0 right-0 h-1 ${isArchiveCategory || event.status === 'archived' || event.status === 'concluded' ? 'bg-secondary' : 'bg-gradient-to-r from-primary via-primary-container to-secondary-container'}`} />
-                        <div>
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <span className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm uppercase ${isArchiveCategory || event.status === 'archived' || event.status === 'concluded' ? 'bg-surface-dim text-on-surface-variant font-semibold' : 'bg-tertiary-fixed text-on-tertiary-fixed'}`}>
-                              {event.type}
-                            </span>
-                            {event.status === 'archived' ? (
-                              <span className="font-code-sm text-code-sm text-secondary bg-secondary-fixed/40 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">inventory_2</span>
-                                Verified Archive
+                      {displayEvents.map(event => (
+                        <article
+                          key={event.id}
+                          onClick={() => navigate(`/events/${event.id}`)}
+                          className="group bg-surface-container-lowest rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between">
+                          <div className={`absolute top-0 left-0 right-0 h-1 ${isArchiveCategory || event.status === 'archived' || event.status === 'concluded' ? 'bg-secondary' : 'bg-gradient-to-r from-primary via-primary-container to-secondary-container'}`} />
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm uppercase ${isArchiveCategory || event.status === 'archived' || event.status === 'concluded' ? 'bg-surface-dim text-on-surface-variant font-semibold' : 'bg-tertiary-fixed text-on-tertiary-fixed'}`}>
+                                {event.type}
                               </span>
-                            ) : event.status === 'concluded' ? (
-                              <span className="font-code-sm text-code-sm text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">verified</span>
-                                Concluded
-                              </span>
-                            ) : event.deadline && (() => {
-                              const d = Math.ceil((new Date(event.deadline).getTime() - Date.now()) / 86400000);
-                              return (
-                                <span className="font-code-sm text-code-sm text-secondary bg-secondary-fixed/50 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
-                                  <span className="material-symbols-outlined text-[14px]">schedule</span>
-                                  {d <= 0 ? 'Closing today' : `${d}d left`}
+                              {event.status === 'archived' ? (
+                                <span className="font-code-sm text-code-sm text-secondary bg-secondary-fixed/40 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[14px]">inventory_2</span>
+                                  Verified Archive
                                 </span>
-                              );
-                            })()}
+                              ) : event.status === 'concluded' ? (
+                                <span className="font-code-sm text-code-sm text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[14px]">verified</span>
+                                  Concluded
+                                </span>
+                              ) : event.deadline && (() => {
+                                const d = Math.ceil((new Date(event.deadline).getTime() - Date.now()) / 86400000);
+                                return (
+                                  <span className="font-code-sm text-code-sm text-secondary bg-secondary-fixed/50 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[14px]">schedule</span>
+                                    {d <= 0 ? 'Closing today' : `${d}d left`}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                            <h2 className="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-snug">{event.title}</h2>
+                            {event.organizer && <p className="font-label-md text-label-md text-on-surface-variant mt-1">{event.organizer}</p>}
                           </div>
-                          <h2 className="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-snug">{event.title}</h2>
-                          {event.organizer && <p className="font-label-md text-label-md text-on-surface-variant mt-1">{event.organizer}</p>}
-                        </div>
-                        <div className="flex items-center justify-between pt-3 mt-3 border-t border-surface-container-high">
-                          <button className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface underline" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>Details &amp; Guidelines</button>
-                          {isArchiveCategory || event.status === 'archived' || event.status === 'concluded' ? (
-                            <button className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container-highest text-primary font-label-md text-label-md shadow-sm transition-colors flex items-center gap-1" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>
-                              <span className="material-symbols-outlined text-[16px]">visibility</span>
-                              View Details
-                            </button>
-                          ) : (
-                            <button className="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors shadow-sm flex items-center gap-1" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>
-                              Apply Now <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                            </button>
-                          )}
-                        </div>
-                      </article>
-                    ))}
+                          <div className="flex items-center justify-between pt-3 mt-3 border-t border-surface-container-high">
+                            <button className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface underline" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>Details &amp; Guidelines</button>
+                            {isArchiveCategory || event.status === 'archived' || event.status === 'concluded' ? (
+                              <button className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container-highest text-primary font-label-md text-label-md shadow-sm transition-colors flex items-center gap-1" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>
+                                <span className="material-symbols-outlined text-[16px]">visibility</span>
+                                View Details
+                              </button>
+                            ) : (
+                              <button className="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors shadow-sm flex items-center gap-1" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>
+                                Apply Now <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      ))}
                     </div>
                   </div>
                 )}

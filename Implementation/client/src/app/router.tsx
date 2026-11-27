@@ -19,6 +19,7 @@ const EventDetailPage      = lazy(() => import('@/features/events/pages/EventDet
 const FacultyPostEventPage = lazy(() => import('@/features/events/pages/FacultyPostEventPage'));
 const FacultyEditEventPage = lazy(() => import('@/features/events/pages/FacultyEditEventPage'));
 const MyEventsPage         = lazy(() => import('@/features/events/pages/MyEventsPage'));
+const ProposeEventPage     = lazy(() => import('@/features/events/pages/ProposeEventPage'));
 
 // F-3: Paste-to-Post AI Extraction
 const PasteToPostPage = lazy(() => import('@/features/events/pages/PasteToPostPage'));
@@ -111,6 +112,7 @@ export function AppRouter() {
           <Route path="/events"          element={<ProtectedRoute><EventFeedPage /></ProtectedRoute>} />
           <Route path="/events/my"       element={<ProtectedRoute roles={['faculty','dept_head','admin']}><MyEventsPage /></ProtectedRoute>} />
           <Route path="/events/new"      element={<ProtectedRoute roles={['faculty','dept_head','admin']}><FacultyPostEventPage /></ProtectedRoute>} />
+          <Route path="/events/propose"  element={<ProtectedRoute><ProposeEventPage /></ProtectedRoute>} />
 
           {/* ── F-3: Paste-to-Post — MUST be before /events/:id ─────────────────────── */}
           <Route path="/events/paste"    element={<ProtectedRoute roles={['faculty','dept_head','admin']}><PasteToPostPage /></ProtectedRoute>} />

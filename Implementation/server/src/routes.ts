@@ -5,6 +5,7 @@ import { authRouter }    from '@/modules/auth/auth.routes';
 import { usersRouter }   from '@/modules/users/user.routes';
 import { rosterRouter }  from '@/modules/roster/roster.routes';
 import { eventsRouter }  from '@/modules/events/event.routes';
+import { proposalsRouter } from '@/modules/proposals/proposal.routes';
 import { teamsRouter }   from '@/modules/teams/team.routes';
 import { linksRouter }   from '@/modules/links/link.routes';
 import { peopleRouter }        from '@/modules/people/people.routes';
@@ -71,8 +72,9 @@ export function mountRoutes(app: Application): void {
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/roster', rosterRouter);
 
-  // ── F-2: Events ───────────────────────────────────────────────────────────
-  app.use('/api/v1/events', eventsRouter);
+  // ── F-2: Events & Proposals ───────────────────────────────────────────────
+  app.use('/api/v1/events',    eventsRouter);
+  app.use('/api/v1/proposals', proposalsRouter);
 
   // ── F-3: Extraction (mounted on /events/extract inside eventsRouter) ──────
 
