@@ -98,9 +98,10 @@ export default function EventFeedPage() {
   });
   const allEvents = data?.pages.flatMap(p => p.items) ?? [];
 
-  // Archived events
+  // Archived & concluded events
   const [isArchiveExpanded, setIsArchiveExpanded] = useState(true);
-  const { data: archivedData } = useEvents({ status: ['archived'] });
+  const [isRegClosedExpanded, setIsRegClosedExpanded] = useState(true);
+  const { data: archivedData } = useEvents({ status: ['concluded', 'archived'] });
   const archivedEvents = archivedData?.pages.flatMap(p => p.items) ?? [];
 
   const filteredArchivedEvents = useMemo(() => {
@@ -223,17 +224,33 @@ export default function EventFeedPage() {
   }, []);
 
   const isArchiveCategory = activeCategory === 'archive';
-  const displayEvents = isArchiveCategory ? filteredArchivedEvents : filteredEvents;
 
-  // Closing Soon count
+  const isRegClosedEvent = useCallback((evt: typeof allEvents[number]) => {
+    if (evt.status === 'registration_closed') return true;
+    if (evt.deadline && new Date(evt.deadline).getTime() < Date.now()) return true;
+    return false;
+  }, []);
+
+  const ongoingEvents = useMemo(
+    () => filteredEvents.filter(evt => !isRegClosedEvent(evt)),
+    [filteredEvents, isRegClosedEvent],
+  );
+  const regClosedEvents = useMemo(
+    () => filteredEvents.filter(evt => isRegClosedEvent(evt)),
+    [filteredEvents, isRegClosedEvent],
+  );
+
+  const displayEvents = isArchiveCategory ? filteredArchivedEvents : ongoingEvents;
+
+  // Closing Soon count (only active open events)
   const closingSoonCount = useMemo(() => {
     const now = Date.now();
     return allEvents.filter(evt => {
-      if (!evt.deadline) return false;
+      if (isRegClosedEvent(evt) || !evt.deadline) return false;
       const d = Math.ceil((new Date(evt.deadline).getTime() - now) / 86400000);
       return d >= 0 && d <= 2;
     }).length;
-  }, [allEvents]);
+  }, [allEvents, isRegClosedEvent]);
 
   return (
     <div className="min-h-screen bg-background font-body-md text-on-surface antialiased">
@@ -510,10 +527,16 @@ export default function EventFeedPage() {
               <span className="material-symbols-outlined text-[16px] text-primary">filter_alt</span>
               <span>
                 {isArchiveCategory ? (
-                  <>Showing <strong className="text-on-surface">{filteredArchivedEvents.length} archived record(s)</strong> in Verified Academic Archive</>
+                  <>Showing <strong className="text-on-surface">{filteredArchivedEvents.length} archived / concluded record(s)</strong> in Verified Academic Archive</>
                 ) : (
                   <>
-                    Showing <strong className="text-on-surface">{filteredEvents.length} events</strong> across campus labs &amp; sports arena
+                    Showing <strong className="text-on-surface">{ongoingEvents.length} open event{ongoingEvents.length !== 1 ? 's' : ''}</strong> across campus labs &amp; sports arena
+                    {regClosedEvents.length > 0 && (
+                      <>
+                        {' '}•{' '}
+                        <span className="text-on-surface-variant">{regClosedEvents.length} registration closed</span>
+                      </>
+                    )}
                     {closingSoonCount > 0 && (
                       <>
                         {' '}•{' '}
@@ -607,62 +630,79 @@ export default function EventFeedPage() {
             )}
 
             {/* Real API event cards */}
-            {!isLoading && !isError && displayEvents.length > 0 && (
+            {!isLoading && !isError && (displayEvents.length > 0 || (activeCategory === 'all' && (regClosedEvents.length > 0 || archivedEvents.length > 0))) && (
               <>
-                <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'flex flex-col gap-4'}>
-                  {displayEvents.map(event => (
-                    <article
-                      key={event.id}
-                      onClick={() => navigate(`/events/${event.id}`)}
-                      className="group bg-surface-container-lowest rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between">
-                      <div className={`absolute top-0 left-0 right-0 h-1 ${isArchiveCategory || event.status === 'archived' ? 'bg-secondary' : 'bg-gradient-to-r from-primary via-primary-container to-secondary-container'}`} />
-                      <div>
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm uppercase ${isArchiveCategory || event.status === 'archived' ? 'bg-surface-dim text-on-surface-variant font-semibold' : 'bg-tertiary-fixed text-on-tertiary-fixed'}`}>
-                            {event.type}
-                          </span>
-                          {isArchiveCategory || event.status === 'archived' ? (
-                            <span className="font-code-sm text-code-sm text-secondary bg-secondary-fixed/40 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[14px]">inventory_2</span>
-                              Verified Archive
+                {displayEvents.length > 0 && (
+                  <div className="space-y-4">
+                    {!isArchiveCategory && (
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary text-[22px]">event_available</span>
+                        <div>
+                          <h3 className="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+                            Open for Registration · Active Events
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed-variant font-semibold">
+                              {displayEvents.length}
                             </span>
-                          ) : event.deadline && (() => {
-                            const d = Math.ceil((new Date(event.deadline).getTime() - Date.now()) / 86400000);
-                            if (d < 0) {
+                          </h3>
+                          <p className="text-xs text-on-surface-variant">
+                            Live campus opportunities currently accepting applications and team registrations.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'flex flex-col gap-4'}>
+                    {displayEvents.map(event => (
+                      <article
+                        key={event.id}
+                        onClick={() => navigate(`/events/${event.id}`)}
+                        className="group bg-surface-container-lowest rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between">
+                        <div className={`absolute top-0 left-0 right-0 h-1 ${isArchiveCategory || event.status === 'archived' || event.status === 'concluded' ? 'bg-secondary' : 'bg-gradient-to-r from-primary via-primary-container to-secondary-container'}`} />
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className={`px-2 py-0.5 rounded-full font-label-sm text-label-sm uppercase ${isArchiveCategory || event.status === 'archived' || event.status === 'concluded' ? 'bg-surface-dim text-on-surface-variant font-semibold' : 'bg-tertiary-fixed text-on-tertiary-fixed'}`}>
+                              {event.type}
+                            </span>
+                            {event.status === 'archived' ? (
+                              <span className="font-code-sm text-code-sm text-secondary bg-secondary-fixed/40 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px]">inventory_2</span>
+                                Verified Archive
+                              </span>
+                            ) : event.status === 'concluded' ? (
+                              <span className="font-code-sm text-code-sm text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px]">verified</span>
+                                Concluded
+                              </span>
+                            ) : event.deadline && (() => {
+                              const d = Math.ceil((new Date(event.deadline).getTime() - Date.now()) / 86400000);
                               return (
-                                <span className="font-code-sm text-code-sm text-outline bg-surface-container-high px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
-                                  <span className="material-symbols-outlined text-[14px]">event_busy</span>
-                                  Past Deadline
+                                <span className="font-code-sm text-code-sm text-secondary bg-secondary-fixed/50 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[14px]">schedule</span>
+                                  {d <= 0 ? 'Closing today' : `${d}d left`}
                                 </span>
                               );
-                            }
-                            return (
-                              <span className="font-code-sm text-code-sm text-secondary bg-secondary-fixed/50 px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">schedule</span>
-                                {d === 0 ? 'Closing today' : `${d}d left`}
-                              </span>
-                            );
-                          })()}
+                            })()}
+                          </div>
+                          <h2 className="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-snug">{event.title}</h2>
+                          {event.organizer && <p className="font-label-md text-label-md text-on-surface-variant mt-1">{event.organizer}</p>}
                         </div>
-                        <h2 className="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-snug">{event.title}</h2>
-                        {event.organizer && <p className="font-label-md text-label-md text-on-surface-variant mt-1">{event.organizer}</p>}
-                      </div>
-                      <div className="flex items-center justify-between pt-3 mt-3 border-t border-surface-container-high">
-                        <button className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface underline" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>Details &amp; Guidelines</button>
-                        {isArchiveCategory || event.status === 'archived' ? (
-                          <button className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container-highest text-primary font-label-md text-label-md shadow-sm transition-colors flex items-center gap-1" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>
-                            <span className="material-symbols-outlined text-[16px]">visibility</span>
-                            View Details
-                          </button>
-                        ) : (
-                          <button className="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors shadow-sm flex items-center gap-1" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>
-                            Apply Now <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                          </button>
-                        )}
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                        <div className="flex items-center justify-between pt-3 mt-3 border-t border-surface-container-high">
+                          <button className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface underline" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>Details &amp; Guidelines</button>
+                          {isArchiveCategory || event.status === 'archived' || event.status === 'concluded' ? (
+                            <button className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container-highest text-primary font-label-md text-label-md shadow-sm transition-colors flex items-center gap-1" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>
+                              <span className="material-symbols-outlined text-[16px]">visibility</span>
+                              View Details
+                            </button>
+                          ) : (
+                            <button className="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors shadow-sm flex items-center gap-1" onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}>
+                              Apply Now <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                            </button>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                    </div>
+                  </div>
+                )}
                 {hasNextPage && !searchQuery && !isArchiveCategory && (
                   <button id="events-load-more-btn" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}
                     className="w-full py-3 rounded-lg bg-surface-container-lowest border border-outline-variant/30 text-on-surface font-label-lg text-label-lg hover:bg-surface-container-low transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-60">
@@ -673,8 +713,80 @@ export default function EventFeedPage() {
                   </button>
                 )}
 
-                {/* ── Archived & Concluded Events (Collapsible section on main feed) ── */}
-                {!isArchiveCategory && archivedEvents.length > 0 && (
+                {/* ── Registration Closed · Upcoming Events (only on All Events) ── */}
+                {activeCategory === 'all' && regClosedEvents.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-surface-container-high space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-on-surface-variant text-[22px]">lock_clock</span>
+                        <div>
+                          <h3 className="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+                            Registration Closed · Upcoming Events
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-normal">
+                              {regClosedEvents.length}
+                            </span>
+                          </h3>
+                          <p className="text-xs text-on-surface-variant">
+                            Registrations have closed, but these events have not taken place yet.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setIsRegClosedExpanded(prev => !prev)}
+                        className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant flex items-center gap-1 font-label-sm text-label-sm"
+                        aria-label={isRegClosedExpanded ? 'Collapse registration closed events' : 'Expand registration closed events'}
+                      >
+                        <span>{isRegClosedExpanded ? 'Hide' : 'Show'}</span>
+                        <span className="material-symbols-outlined text-[18px]">
+                          {isRegClosedExpanded ? 'expand_less' : 'expand_more'}
+                        </span>
+                      </button>
+                    </div>
+                    {isRegClosedExpanded && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {regClosedEvents.map(event => (
+                          <article
+                            key={event.id}
+                            onClick={() => navigate(`/events/${event.id}`)}
+                            className="group bg-surface-container-low/80 rounded-xl p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between border border-outline-variant/20"
+                          >
+                            <div className="absolute top-0 left-0 right-0 h-1 bg-outline-variant/60" />
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <span className="px-2 py-0.5 rounded-full font-label-sm text-label-sm uppercase bg-surface-dim text-on-surface-variant font-semibold">
+                                  {event.type}
+                                </span>
+                                <span className="font-code-sm text-code-sm text-on-surface-variant bg-surface-container-high px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[14px]">lock_clock</span>
+                                  Reg. Closed
+                                </span>
+                              </div>
+                              <h4 className="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors leading-snug">{event.title}</h4>
+                              {event.organizer && <p className="font-label-md text-label-md text-on-surface-variant mt-1">{event.organizer}</p>}
+                            </div>
+                            <div className="flex items-center justify-between pt-3 mt-3 border-t border-surface-container-high">
+                              <span className="font-label-sm text-label-sm text-on-surface-variant">
+                                {event.eventDate
+                                  ? `Event: ${new Date(event.eventDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}`
+                                  : 'Deadline passed'}
+                              </span>
+                              <button
+                                className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container-highest text-primary font-label-md text-label-md shadow-sm transition-colors flex items-center gap-1"
+                                onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`); }}
+                              >
+                                <span className="material-symbols-outlined text-[16px]">visibility</span>
+                                View Details
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Archived & Concluded Events (only on All Events) ── */}
+                {activeCategory === 'all' && archivedEvents.length > 0 && (
                   <div className="mt-8 pt-6 border-t border-surface-container-high space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -712,36 +824,42 @@ export default function EventFeedPage() {
                     </div>
                     {isArchiveExpanded && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {archivedEvents.map(evt => (
-                          <article
-                            key={evt.id}
-                            onClick={() => navigate(`/events/${evt.id}`)}
-                            className="flex flex-col justify-between bg-surface-container-low/70 rounded-xl p-4 opacity-90 hover:opacity-100 hover:bg-surface-container-low transition-all cursor-pointer border border-outline-variant/20 shadow-sm"
-                          >
-                            <div>
-                              <div className="flex items-center justify-between gap-2 mb-2">
-                                <span className="px-2.5 py-0.5 rounded-full bg-surface-dim text-on-surface-variant font-label-sm text-label-sm uppercase font-semibold">
-                                  Concluded • {evt.deadline ? new Date(evt.deadline).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Archive'}
-                                </span>
-                                <span className="font-code-sm text-code-sm text-outline flex items-center gap-1">
-                                  <span className="material-symbols-outlined text-[14px]">verified</span> Verified Archive
-                                </span>
+                        {archivedEvents.map(evt => {
+                          const dateStr = evt.eventDate || evt.deadline;
+                          return (
+                            <article
+                              key={evt.id}
+                              onClick={() => navigate(`/events/${evt.id}`)}
+                              className="flex flex-col justify-between bg-surface-container-low/70 rounded-xl p-4 opacity-90 hover:opacity-100 hover:bg-surface-container-low transition-all cursor-pointer border border-outline-variant/20 shadow-sm"
+                            >
+                              <div>
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                  <span className="px-2.5 py-0.5 rounded-full bg-surface-dim text-on-surface-variant font-label-sm text-label-sm uppercase font-semibold">
+                                    Concluded{dateStr ? ` • ${new Date(dateStr).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+                                  </span>
+                                  <span className="font-code-sm text-code-sm text-outline flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[14px]">
+                                      {evt.status === 'archived' ? 'inventory_2' : 'verified'}
+                                    </span>
+                                    {evt.status === 'archived' ? 'Verified Archive' : 'Concluded'}
+                                  </span>
+                                </div>
+                                <h4 className="font-headline-sm text-headline-sm text-on-surface leading-snug">{evt.title}</h4>
+                                {evt.organizer && <p className="font-label-md text-label-md text-on-surface-variant mt-1">{evt.organizer}</p>}
                               </div>
-                              <h4 className="font-headline-sm text-headline-sm text-on-surface leading-snug">{evt.title}</h4>
-                              {evt.organizer && <p className="font-label-md text-label-md text-on-surface-variant mt-1">{evt.organizer}</p>}
-                            </div>
-                            <div className="flex items-center justify-between pt-3 mt-3 border-t border-surface-container-high/60">
-                              <span className="font-label-sm text-label-sm text-outline uppercase">{evt.type}</span>
-                              <button
-                                className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container-highest text-primary font-label-sm text-label-sm shadow-sm transition-colors flex items-center gap-1 shrink-0"
-                                onClick={e => { e.stopPropagation(); navigate(`/events/${evt.id}`); }}
-                              >
-                                <span className="material-symbols-outlined text-[16px]">visibility</span>
-                                <span>View Details</span>
-                              </button>
-                            </div>
-                          </article>
-                        ))}
+                              <div className="flex items-center justify-between pt-3 mt-3 border-t border-surface-container-high/60">
+                                <span className="font-label-sm text-label-sm text-outline uppercase">{evt.type}</span>
+                                <button
+                                  className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container-highest text-primary font-label-sm text-label-sm shadow-sm transition-colors flex items-center gap-1 shrink-0"
+                                  onClick={e => { e.stopPropagation(); navigate(`/events/${evt.id}`); }}
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">visibility</span>
+                                  <span>View Details</span>
+                                </button>
+                              </div>
+                            </article>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -750,7 +868,7 @@ export default function EventFeedPage() {
             )}
 
             {/* Empty state (no results) */}
-            {!isLoading && !isError && displayEvents.length === 0 && (
+            {!isLoading && !isError && displayEvents.length === 0 && (activeCategory !== 'all' || (regClosedEvents.length === 0 && archivedEvents.length === 0)) && (
               <div className="flex flex-col items-center gap-4 py-16 text-center">
                 <div className={`w-16 h-16 rounded-full ${isArchiveCategory ? 'bg-secondary-fixed' : 'bg-primary-fixed'} flex items-center justify-center mb-2`}>
                   <span className={`material-symbols-outlined ${isArchiveCategory ? 'text-secondary' : 'text-primary'} text-[32px]`}>
