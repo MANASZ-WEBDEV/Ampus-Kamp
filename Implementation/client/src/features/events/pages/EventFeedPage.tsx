@@ -46,6 +46,21 @@ const MODE_OPTIONS = [
   { value: 'external', label: 'External Portal / Form' },
 ];
 
+const PARTICIPATION_OPTIONS = [
+  { value: '' as const,     label: 'All Participation' },
+  { value: 'solo' as const, label: 'Solo / Individual' },
+  { value: 'team' as const, label: 'Team Events' },
+];
+
+function matchesParticipation(
+  teamSize: { min: number; max: number } | undefined,
+  filter: '' | 'solo' | 'team',
+): boolean {
+  if (!filter) return true;
+  if (filter === 'solo') return !teamSize || teamSize.min <= 1;
+  return Boolean(teamSize && teamSize.max > 1);
+}
+
 
 
 // ── EventFeedPage ─────────────────────────────────────────────────────────────
@@ -59,8 +74,9 @@ export default function EventFeedPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [selectedYear, setSelectedYear]     = useState<number>(0);
   const [selectedMode, setSelectedMode]     = useState<string>('');
+  const [selectedParticipation, setSelectedParticipation] = useState<'' | 'solo' | 'team'>('');
   const [closingSoonOnly, setClosingSoonOnly] = useState<boolean>(false);
-  const [openDropdown, setOpenDropdown]     = useState<'branch' | 'year' | 'mode' | null>(null);
+  const [openDropdown, setOpenDropdown]     = useState<'branch' | 'year' | 'mode' | 'participation' | null>(null);
   const [viewMode, setViewMode]             = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy]                 = useState('deadline');
 
@@ -127,6 +143,9 @@ export default function EventFeedPage() {
     if (selectedMode) {
       result = result.filter(evt => evt.registrationMode === selectedMode);
     }
+    if (selectedParticipation) {
+      result = result.filter(evt => matchesParticipation(evt.teamSize, selectedParticipation));
+    }
     return [...result].sort((a, b) => {
       if (sortBy === 'deadline') {
         if (!a.deadline) return 1;
@@ -140,7 +159,7 @@ export default function EventFeedPage() {
       }
       return 0;
     });
-  }, [archivedEvents, searchQuery, selectedBranch, selectedYear, selectedMode, sortBy]);
+  }, [archivedEvents, searchQuery, selectedBranch, selectedYear, selectedMode, selectedParticipation, sortBy]);
 
   const filteredEvents = useMemo(() => {
     let result = allEvents;
@@ -174,6 +193,11 @@ export default function EventFeedPage() {
       result = result.filter(evt => evt.registrationMode === selectedMode);
     }
 
+    // Participation filter (Solo / Team)
+    if (selectedParticipation) {
+      result = result.filter(evt => matchesParticipation(evt.teamSize, selectedParticipation));
+    }
+
     // Closing soon toggle
     if (closingSoonOnly) {
       const now = Date.now();
@@ -203,7 +227,7 @@ export default function EventFeedPage() {
       }
       return 0;
     });
-  }, [allEvents, searchQuery, selectedBranch, selectedYear, selectedMode, closingSoonOnly, sortBy]);
+  }, [allEvents, searchQuery, selectedBranch, selectedYear, selectedMode, selectedParticipation, closingSoonOnly, sortBy]);
 
   const hasFilters =
     searchQuery.trim() !== '' ||
@@ -211,6 +235,7 @@ export default function EventFeedPage() {
     selectedBranch !== '' ||
     selectedYear !== 0 ||
     selectedMode !== '' ||
+    selectedParticipation !== '' ||
     closingSoonOnly;
 
   const clearAll = useCallback(() => {
@@ -219,6 +244,7 @@ export default function EventFeedPage() {
     setSelectedBranch('');
     setSelectedYear(0);
     setSelectedMode('');
+    setSelectedParticipation('');
     setClosingSoonOnly(false);
     setOpenDropdown(null);
   }, []);
@@ -488,6 +514,52 @@ export default function EventFeedPage() {
                 )}
               </div>
 
+              {/* Participation Dropdown (Solo / Team) */}
+              <div className="relative inline-block filter-dropdown-container">
+                <button
+                  type="button"
+                  id="filter-participation-btn"
+                  onClick={() => setOpenDropdown(prev => prev === 'participation' ? null : 'participation')}
+                  className={`h-9 px-3 rounded-lg flex items-center gap-1.5 font-label-sm text-label-sm transition-all cursor-pointer ${
+                    selectedParticipation
+                      ? 'bg-primary-container text-on-primary-container font-semibold ring-1 ring-primary/40'
+                      : 'bg-surface-container-low hover:bg-surface-container text-on-surface'
+                  }`}
+                >
+                  <span className="text-outline">Entry:</span>
+                  <span className="font-semibold">
+                    {selectedParticipation === 'solo' ? 'Solo / Individual' : selectedParticipation === 'team' ? 'Team Events' : 'All'}
+                  </span>
+                  <span className="material-symbols-outlined text-[16px] text-outline">
+                    {openDropdown === 'participation' ? 'expand_less' : 'expand_more'}
+                  </span>
+                </button>
+                {openDropdown === 'participation' && (
+                  <div className="absolute left-0 top-11 z-50 w-52 py-1 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-1.5 font-label-sm text-label-sm text-outline border-b border-outline-variant/20 uppercase font-semibold">
+                      Participation Type
+                    </div>
+                    {PARTICIPATION_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => { setSelectedParticipation(opt.value); setOpenDropdown(null); }}
+                        className={`w-full px-3 py-2 text-left font-label-md text-label-md flex items-center justify-between transition-colors ${
+                          selectedParticipation === opt.value
+                            ? 'bg-primary-container/40 text-primary font-semibold'
+                            : 'hover:bg-surface-container-low text-on-surface'
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {selectedParticipation === opt.value && (
+                          <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Closing Soon Toggle */}
               <button
                 type="button"
@@ -567,6 +639,14 @@ export default function EventFeedPage() {
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary-container text-on-primary-container font-label-sm text-label-sm font-semibold">
                   Mode: {selectedMode === 'in_app' ? 'In-App' : 'External'}
                   <button type="button" onClick={() => setSelectedMode('')} className="hover:text-error flex items-center">
+                    <span className="material-symbols-outlined text-[13px]">close</span>
+                  </button>
+                </span>
+              )}
+              {selectedParticipation && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary-container text-on-primary-container font-label-sm text-label-sm font-semibold">
+                  Entry: {selectedParticipation === 'solo' ? 'Solo / Individual' : 'Team Events'}
+                  <button type="button" onClick={() => setSelectedParticipation('')} className="hover:text-error flex items-center">
                     <span className="material-symbols-outlined text-[13px]">close</span>
                   </button>
                 </span>
