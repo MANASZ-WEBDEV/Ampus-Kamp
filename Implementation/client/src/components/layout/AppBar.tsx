@@ -107,10 +107,11 @@ export function AppBar({ subtitle = 'Incubator PWA' }: AppBarProps) {
           aria-label="Go to Home"
           className="flex items-center gap-3 shrink-0 group hover:opacity-90 active:scale-[0.98] transition-all"
         >
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center
-                          shadow-[0_2px_8px_rgba(0,69,65,0.25)]">
-            <span className="material-symbols-outlined text-on-primary text-[20px]">biotech</span>
-          </div>
+          <img
+            src="/logo.jpg"
+            alt="CIP Logo"
+            className="w-9 h-9 rounded-lg object-cover shadow-[0_2px_8px_rgba(0,69,65,0.25)] shrink-0"
+          />
           <div className="flex flex-col leading-none">
             <span className="font-headline-sm text-sm text-primary leading-tight tracking-tight font-bold">
               CIP

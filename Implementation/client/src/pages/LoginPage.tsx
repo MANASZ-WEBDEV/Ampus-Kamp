@@ -151,9 +151,11 @@ export default function LoginPage() {
 
           {/* Logo */}
           <div className="relative z-10 flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm shrink-0">
-              <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
-            </div>
+            <img
+              src="/logo.jpg"
+              alt="Campus Innovation Logo"
+              className="w-10 h-10 rounded-lg object-cover shadow-sm shrink-0"
+            />
             <div>
               <span className="font-headline-sm text-headline-sm block leading-tight">Campus Innovation</span>
               <span className="font-label-sm text-label-sm text-primary-fixed-dim uppercase tracking-wider block">Engineering Incubator Hub</span>
