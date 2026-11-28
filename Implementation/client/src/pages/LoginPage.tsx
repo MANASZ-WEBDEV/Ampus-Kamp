@@ -320,14 +320,16 @@ export default function LoginPage() {
             >
               {/* Enrollment No */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="enrollmentNo" className="font-label-lg text-label-lg text-on-surface flex items-center gap-1">
-                    {isFaculty ? 'Employee / Staff ID' : 'Institutional Roll / Enrollment Number'}
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <label htmlFor="enrollmentNo" className="font-label-lg text-label-lg text-on-surface flex items-center gap-1 whitespace-nowrap">
+                    {isFaculty ? 'Employee / Staff ID' : 'Enrollment Number'}
                     <span className="text-error">*</span>
                   </label>
-                  <span className="px-2 py-0.5 rounded bg-surface-container-low font-code-sm text-code-sm text-on-surface-variant">
-                    {isFaculty ? 'e.g. FAC0042 / HOD-CSE / ADM001' : 'Format: YY-BRANCH-ROLL'}
-                  </span>
+                  {!isFaculty && (
+                    <span className="px-2 py-0.5 rounded bg-surface-container-low font-code-sm text-code-sm text-on-surface-variant whitespace-nowrap shrink-0">
+                      0827 · BRANCH · YY · CODE
+                    </span>
+                  )}
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-outline">
@@ -339,7 +341,7 @@ export default function LoginPage() {
                     required
                     value={form.enrollmentNo}
                     onChange={e => setForm(f => ({ ...f, enrollmentNo: e.target.value.toUpperCase() }))}
-                    placeholder={isFaculty ? 'e.g. FAC0042, HOD-CSE, or ADM001' : 'e.g. 21BCE10428'}
+                    placeholder={isFaculty ? 'Enter your staff / employee ID' : 'e.g. 0827CS231144'}
                     className="w-full pl-10 pr-28 py-3 bg-surface-container-lowest text-on-surface font-code-sm text-code-sm rounded-xl border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                   />
                   {showPattern && (

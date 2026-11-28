@@ -134,9 +134,9 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-5 flex-1" id="register-form">
             {/* Enrollment No */}
             <div>
-              <label htmlFor="reg-enrollmentNo" className="font-label-lg text-label-lg text-on-surface mb-1.5 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">Enrollment Number <span className="text-error">*</span></span>
-                <span className="px-2 py-0.5 rounded bg-surface-container-low font-code-sm text-code-sm text-on-surface-variant">Format: YY-BRANCH-ROLL</span>
+              <label htmlFor="reg-enrollmentNo" className="font-label-lg text-label-lg text-on-surface mb-1.5 flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 whitespace-nowrap">Enrollment Number <span className="text-error">*</span></span>
+                <span className="px-2 py-0.5 rounded bg-surface-container-low font-code-sm text-code-sm text-on-surface-variant whitespace-nowrap shrink-0">0827 · BRANCH · YY · CODE</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline">
@@ -148,7 +148,7 @@ export default function RegisterPage() {
                   required
                   value={form.enrollmentNo}
                   onChange={e => setForm(f => ({ ...f, enrollmentNo: e.target.value.toUpperCase() }))}
-                  placeholder="e.g. 22CS0001"
+                  placeholder="e.g. 0827CS231144"
                   className="w-full pl-11 pr-4 py-3 bg-surface-container-low text-on-surface font-code-sm text-code-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm"
                 />
               </div>
