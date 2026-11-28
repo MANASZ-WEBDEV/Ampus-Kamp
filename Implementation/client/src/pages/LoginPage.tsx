@@ -207,7 +207,7 @@ export default function LoginPage() {
               </div>
               <div>
                 <span className="font-label-lg text-label-lg block text-surface-bright">4,200+ Students</span>
-                <span className="font-label-sm text-label-sm text-primary-fixed-dim">CS · IT · CSIT · AIML · DS · CY · ECE · EEE · Mech · Civil · Chemical · Biotech</span>
+                <span className="font-label-sm text-label-sm text-primary-fixed-dim">CS · IT · ECE · Mech · +8 more</span>
               </div>
             </div>
             <span className="material-symbols-outlined text-secondary-fixed text-xl">verified</span>
