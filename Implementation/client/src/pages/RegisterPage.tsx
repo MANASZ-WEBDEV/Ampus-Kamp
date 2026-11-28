@@ -5,7 +5,7 @@ import { ApiError } from '@/lib/apiClient';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ enrollmentNo: '', collegeId: '', password: '', confirm: '' });
+  const [form, setForm] = useState({ enrollmentNo: '', email: '', password: '', confirm: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,7 +38,7 @@ export default function RegisterPage() {
     try {
       const { userId, message } = await authApi.register({
         enrollmentNo: form.enrollmentNo,
-        collegeId: form.collegeId,
+        email: form.email,
         password: form.password,
       });
       navigate('/verify', { state: { userId, message }, replace: true });
@@ -154,22 +154,22 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* College ID */}
+            {/* Institutional Email */}
             <div>
-              <label htmlFor="reg-collegeId" className="font-label-lg text-label-lg text-on-surface mb-1.5 flex items-center gap-1.5">
-                College ID <span className="text-error">*</span>
+              <label htmlFor="reg-email" className="font-label-lg text-label-lg text-on-surface mb-1.5 flex items-center gap-1.5">
+                Institutional Email <span className="text-error">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline">
-                  <span className="material-symbols-outlined text-xl">badge</span>
+                  <span className="material-symbols-outlined text-xl">mail</span>
                 </div>
                 <input
-                  id="reg-collegeId"
-                  type="text"
+                  id="reg-email"
+                  type="email"
                   required
-                  value={form.collegeId}
-                  onChange={e => setForm(f => ({ ...f, collegeId: e.target.value }))}
-                  placeholder="e.g. COL2025"
+                  value={form.email}
+                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="e.g. yourname@acropolis.in"
                   className="w-full pl-11 pr-4 py-3 bg-surface-container-low text-on-surface font-body-md text-body-md rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-sm"
                 />
               </div>
