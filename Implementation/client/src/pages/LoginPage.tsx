@@ -216,8 +216,8 @@ export default function LoginPage() {
         <div className="flex-1 flex flex-col bg-surface-container-lowest rounded-2xl shadow-md overflow-hidden">
 
           {/* Top bar — role tabs + mode pills (fixed, no scroll) */}
-          <div className="flex items-center justify-between px-8 pt-6 pb-5 border-b border-surface-container-high shrink-0">
-            <div className="inline-flex p-1 rounded-lg bg-surface-container-low" role="tablist">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-8 pt-6 pb-5 border-b border-surface-container-high shrink-0">
+            <div className="inline-flex p-1 rounded-lg bg-surface-container-low shrink-0" role="tablist">
               {(['student', 'faculty'] as LoginRole[]).map(r => (
                 <button
                   key={r}
@@ -226,7 +226,7 @@ export default function LoginPage() {
                   role="tab"
                   aria-selected={role === r}
                   onClick={() => setRole(r)}
-                  className={`px-3 py-1.5 rounded font-label-lg text-label-lg transition-all duration-200 ${
+                  className={`px-3 py-1.5 rounded font-label-lg text-label-lg whitespace-nowrap transition-all duration-200 ${
                     role === r ? 'bg-surface-container-lowest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
@@ -237,12 +237,12 @@ export default function LoginPage() {
                 </button>
               ))}
             </div>
-            <div className="inline-flex items-center gap-1">
+            <div className="inline-flex items-center gap-1.5 shrink-0">
               <button
                 id="mode-signin-btn"
                 type="button"
                 onClick={() => { setMode('signin'); setShowOtp(false); setError(''); setResendMsg(''); }}
-                className={`px-3 py-1.5 rounded-full font-label-md text-label-md transition-all ${
+                className={`px-5 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap transition-all ${
                   mode === 'signin' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'
                 }`}
               >Sign In</button>
@@ -250,7 +250,7 @@ export default function LoginPage() {
                 id="mode-activate-btn"
                 type="button"
                 onClick={() => { setMode('activate'); setShowOtp(false); setError(''); setResendMsg(''); }}
-                className={`px-3 py-1.5 rounded-full font-label-md text-label-md transition-all ${
+                className={`px-4 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap transition-all ${
                   mode === 'activate' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'
                 }`}
               >New Student Activation</button>
