@@ -232,7 +232,7 @@ export default function LoginPage() {
                 >
                   <span className="flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-sm">{r === 'student' ? 'badge' : 'assignment_ind'}</span>
-                    {r === 'student' ? 'Student Portal' : 'Faculty / Admin'}
+                    {r === 'student' ? 'Student Portal' : 'Faculty / Dept / Admin'}
                   </span>
                 </button>
               ))}
@@ -263,26 +263,26 @@ export default function LoginPage() {
             {/* Heading */}
             <div className="mb-6">
               <h2 className="font-headline-md text-headline-md text-on-surface">
-                {isFaculty ? 'Faculty & Evaluator Portal Login'
+                {isFaculty ? 'Faculty, Dept (HOD) & Admin Login'
                   : mode === 'activate' ? 'New Student Account Activation'
                   : 'Institutional Verification & Login'}
               </h2>
               <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-                {isFaculty ? 'Sign in with your faculty employee credentials to access the dashboard.'
+                {isFaculty ? 'Sign in with your Faculty, Department Head (HOD), or Admin Employee ID.'
                   : mode === 'activate' ? 'Register your campus enrollment to activate your workspace account.'
                   : 'Authenticate through official campus directory credentials to gain lab & project access.'}
               </p>
             </div>
 
-            {/* Faculty badge */}
+            {/* Faculty / Dept / Admin badge */}
             {isFaculty && (
               <div className="mb-4 p-3 rounded-xl bg-surface-container-low flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary shrink-0">
                   <span className="material-symbols-outlined text-base">assignment_ind</span>
                 </div>
                 <div>
-                  <p className="font-label-lg text-label-lg text-on-surface">Faculty / Admin Portal</p>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">Use your Employee ID as the Enrollment Number</p>
+                  <p className="font-label-lg text-label-lg text-on-surface">Faculty, Dept (HOD) &amp; Admin Portal</p>
+                  <p className="font-body-sm text-body-sm text-on-surface-variant">Use your Employee / Staff ID as your Login ID</p>
                 </div>
               </div>
             )}
@@ -313,11 +313,11 @@ export default function LoginPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label htmlFor="enrollmentNo" className="font-label-lg text-label-lg text-on-surface flex items-center gap-1">
-                    {isFaculty ? 'Employee / Faculty ID' : 'Institutional Roll / Enrollment Number'}
+                    {isFaculty ? 'Employee / Staff ID' : 'Institutional Roll / Enrollment Number'}
                     <span className="text-error">*</span>
                   </label>
                   <span className="px-2 py-0.5 rounded bg-surface-container-low font-code-sm text-code-sm text-on-surface-variant">
-                    Format: YY-BRANCH-ROLL
+                    {isFaculty ? 'e.g. FAC0042 / HOD-CSE / ADM001' : 'Format: YY-BRANCH-ROLL'}
                   </span>
                 </div>
                 <div className="relative">
@@ -330,7 +330,7 @@ export default function LoginPage() {
                     required
                     value={form.enrollmentNo}
                     onChange={e => setForm(f => ({ ...f, enrollmentNo: e.target.value.toUpperCase() }))}
-                    placeholder={isFaculty ? 'e.g. FAC0042 or EMP-001' : 'e.g. 21BCE10428'}
+                    placeholder={isFaculty ? 'e.g. FAC0042, HOD-CSE, or ADM001' : 'e.g. 21BCE10428'}
                     className="w-full pl-10 pr-28 py-3 bg-surface-container-lowest text-on-surface font-code-sm text-code-sm rounded-xl border border-surface-container-high focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                   />
                   {showPattern && (
