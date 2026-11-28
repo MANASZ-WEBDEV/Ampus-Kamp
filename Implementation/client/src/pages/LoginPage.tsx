@@ -234,28 +234,31 @@ export default function LoginPage() {
                 >
                   <span className="flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-sm">{r === 'student' ? 'badge' : 'assignment_ind'}</span>
-                    {r === 'student' ? 'Student Portal' : 'Faculty / Dept / Admin'}
+                    {r === 'student' ? 'Student Portal' : 'Staff'}
                   </span>
                 </button>
               ))}
             </div>
-            <div className="inline-flex items-center gap-1.5 shrink-0">
-              <button
-                id="mode-signin-btn"
-                type="button"
-                onClick={() => { setMode('signin'); setShowOtp(false); setError(''); setResendMsg(''); }}
-                className={`px-5 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap transition-all ${
-                  mode === 'signin' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'
-                }`}
-              >Sign In</button>
-              <button
-                id="mode-activate-btn"
-                type="button"
-                onClick={() => { setMode('activate'); setShowOtp(false); setError(''); setResendMsg(''); }}
-                className={`px-4 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap transition-all ${
-                  mode === 'activate' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'
-                }`}
-              >New Student Activation</button>
+            <div className="inline-flex items-center shrink-0">
+              {mode === 'signin' ? (
+                <button
+                  id="mode-activate-btn"
+                  type="button"
+                  onClick={() => { setMode('activate'); setShowOtp(false); setError(''); setResendMsg(''); }}
+                  className="px-3.5 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all"
+                >
+                  New Activation
+                </button>
+              ) : (
+                <button
+                  id="mode-signin-btn"
+                  type="button"
+                  onClick={() => { setMode('signin'); setShowOtp(false); setError(''); setResendMsg(''); }}
+                  className="px-3.5 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap bg-primary text-on-primary transition-all"
+                >
+                  ← Back to Sign In
+                </button>
+              )}
             </div>
           </div>
 
@@ -265,14 +268,18 @@ export default function LoginPage() {
             {/* Heading */}
             <div className="mb-6">
               <h2 className="font-headline-md text-headline-md text-on-surface">
-                {isFaculty ? 'Faculty, Dept (HOD) & Admin Login'
-                  : mode === 'activate' ? 'New Student Account Activation'
-                  : 'Institutional Verification & Login'}
+                {mode === 'activate'
+                  ? (isFaculty ? 'New Staff Account Activation' : 'New Student Account Activation')
+                  : isFaculty
+                    ? 'Faculty, Dept (HOD) & Admin Login'
+                    : 'Institutional Verification & Login'}
               </h2>
               <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-                {isFaculty ? 'Sign in with your Faculty, Department Head (HOD), or Admin Employee ID.'
-                  : mode === 'activate' ? 'Register your campus enrollment to activate your workspace account.'
-                  : 'Authenticate through official campus directory credentials to gain lab & project access.'}
+                {mode === 'activate'
+                  ? 'Register your institutional ID and college email to activate your workspace account.'
+                  : isFaculty
+                    ? 'Sign in with your Faculty, Department Head (HOD), or Admin Employee ID.'
+                    : 'Authenticate through official campus directory credentials to gain lab & project access.'}
               </p>
             </div>
 
